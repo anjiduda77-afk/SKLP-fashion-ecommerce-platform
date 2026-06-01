@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
-  FiSearch, FiEye, FiChevronDown, FiShoppingBag,
+  FiSearch, FiEye, FiShoppingBag,
   FiX, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'

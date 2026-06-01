@@ -362,7 +362,7 @@ function Products() {
                   : 'grid-cols-1'
               }`}
             >
-              {products.map((p, idx) => (
+              {products.map((p) => (
                 <motion.div
                   key={p._id || p.id}
                   layout

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiTrash2, FiMinus, FiPlus, FiArrowRight, FiPercent, FiTruck, FiShoppingBag, FiCheck } from 'react-icons/fi'
+import { FiTrash2, FiMinus, FiPlus, FiArrowRight, FiPercent, FiTruck, FiShoppingBag } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'

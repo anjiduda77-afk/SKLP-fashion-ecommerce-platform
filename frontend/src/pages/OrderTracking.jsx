@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { FiPackage, FiTruck, FiCheckCircle, FiFileText, FiMapPin } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useTheme } from '@context/ThemeContext'

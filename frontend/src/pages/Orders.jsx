@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiShoppingBag, FiTruck, FiCornerUpLeft, FiXCircle, FiInfo, FiChevronDown, FiActivity } from 'react-icons/fi'
+import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -10,7 +10,6 @@ import { toast } from 'react-toastify'
 function Orders() {
   const { isDarkMode } = useTheme()
   const { isAuthenticated } = useAuth()
-  const location = useLocation()
 
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)

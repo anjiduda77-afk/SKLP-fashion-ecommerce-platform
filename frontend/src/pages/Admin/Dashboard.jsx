@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiTrendingUp, FiShoppingBag, FiUsers, FiPackage,
-  FiArrowUp, FiArrowDown, FiEye, FiClock, FiCheckCircle, FiXCircle
+  FiArrowUp, FiArrowDown, FiClock
 } from 'react-icons/fi'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {

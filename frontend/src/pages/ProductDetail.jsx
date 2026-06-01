@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiChevronLeft, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck } from 'react-icons/fi'
+import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck } from 'react-icons/fi'
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
@@ -23,7 +23,6 @@ function ProductDetail() {
 
   // Zoom Magnifier States
   const [zoomStyle, setZoomStyle] = useState({ display: 'none' })
-  const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 })
 
   // Drawer / Modals
   const [showSizeAdvisor, setShowSizeAdvisor] = useState(false)
@@ -88,7 +87,6 @@ function ProductDetail() {
     const { left, top, width, height } = e.target.getBoundingClientRect()
     const x = ((e.pageX - left - window.scrollX) / width) * 100
     const y = ((e.pageY - top - window.scrollY) / height) * 100
-    setZoomPos({ x, y })
     setZoomStyle({
       display: 'block',
       backgroundImage: `url(${product?.images?.[activeImageIdx]?.url || product?.image})`,

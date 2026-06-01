@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiSearch, FiUsers, FiShield, FiUser,
-  FiMail, FiPhone, FiMoreVertical, FiCheckCircle, FiSlash, FiEye
+  FiMail, FiPhone, FiCheckCircle, FiSlash, FiEye
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 

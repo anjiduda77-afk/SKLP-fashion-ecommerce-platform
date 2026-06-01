@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { 
   FiTruck, FiCheckCircle, FiTrendingUp, FiMapPin, FiPhone, 
-  FiKey, FiClock, FiCheckSquare, FiMap, FiFileText, FiSearch, FiZap
+  FiKey, FiCheckSquare, FiMap, FiFileText, FiZap
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { 
   FiChevronDown, FiChevronLeft, FiHeart, FiShoppingBag, FiSettings, 
-  FiZap, FiTrendingUp, FiHelpCircle, FiUser, FiGlobe, FiMoon, FiSun, FiActivity, FiGift,
+  FiZap, FiTrendingUp, FiHelpCircle, FiGlobe, FiMoon, FiSun, FiActivity, FiGift,
   FiGrid, FiPackage, FiUsers, FiBarChart2, FiTruck, FiMapPin, FiClipboard, FiDollarSign, FiPlusSquare, FiExternalLink
 } from 'react-icons/fi'
 import { useAuth } from '@context/AuthContext'

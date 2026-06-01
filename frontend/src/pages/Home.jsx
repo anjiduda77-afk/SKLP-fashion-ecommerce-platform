@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiArrowRight, FiChevronLeft, FiChevronRight, FiStar, FiHeart, 
-  FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap, FiEye 
+  FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap 
 } from 'react-icons/fi'
 import { useTheme } from '@context/ThemeContext'
 import { useCart } from '@context/CartContext'

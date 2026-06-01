@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { 
-  FiShoppingBag, FiDollarSign, FiInbox, FiCheckSquare, 
-  FiPlusCircle, FiList, FiTruck, FiMessageSquare, FiSettings, 
-  FiEdit, FiTrash2, FiZap, FiCheckCircle, FiFileText 
+  FiShoppingBag, FiDollarSign, FiInbox, 
+  FiPlusCircle, FiList, FiTruck, FiMessageSquare, 
+  FiEdit, FiTrash2, FiZap, FiFileText 
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 
@@ -30,7 +29,7 @@ function SellerDashboard() {
   // Local state
   const [products, setProducts] = useState(initialProducts)
   const [orders, setOrders] = useState(initialOrders)
-  const [earnings, setEarnings] = useState(254890)
+  const [earnings] = useState(254890)
   
   // Upload product form state
   const [newProduct, setNewProduct] = useState({

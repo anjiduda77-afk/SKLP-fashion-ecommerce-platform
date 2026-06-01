@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { FiCreditCard, FiTruck, FiShoppingBag, FiCheckCircle } from 'react-icons/fi'
+import { FiCheckCircle } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { cartService, orderService, userService } from '@services/apiServices'

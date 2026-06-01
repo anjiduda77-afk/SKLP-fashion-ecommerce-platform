@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { 
   FiSearch, FiShoppingCart, FiHeart, FiUser, 
-  FiSun, FiMoon, FiMic, FiX, FiTrendingUp, FiArrowRight,
+  FiSun, FiMoon, FiMic, FiX, FiArrowRight,
   FiZap
 } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
@@ -45,7 +45,7 @@ function Header({ isDarkMode }) {
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
   const { isAuthenticated, user, logout } = useAuth()
-  const { toggleTheme, language } = useTheme()
+  const { toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   // Track scrolling to toggle sticky header floating shadow

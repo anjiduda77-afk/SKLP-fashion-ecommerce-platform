@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 import { authService } from '@services/apiServices'
 import { toast } from 'react-toastify'
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi'
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi'
 
 function PasswordStrength({ password }) {
   const checks = [

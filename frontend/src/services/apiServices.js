@@ -1,5 +1,5 @@
 import apiClient from './apiClient'
-
+import adminService from './adminService'
 export const authService = {
   // Email Login
   login: (email, password) =>
@@ -201,4 +201,5 @@ export default {
   cartService,
   orderService,
   wishlistService,
+  adminService,
 }

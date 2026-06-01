@@ -1,23 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiSearch, FiUsers, FiShield, FiUser,
   FiMail, FiPhone, FiCheckCircle, FiSlash, FiEye
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import apiServices from '../../services/apiServices'
 
-const ROLES = ['All', 'user', 'admin']
+const ROLES = ['All', 'customer', 'admin']
 const STATUS_OPTS = ['All', 'active', 'blocked']
-
-const INITIAL_USERS = [
-  { id: '1', firstName: 'Priya', lastName: 'Sharma', email: 'priya@email.com', phone: '98765 43210', role: 'user', status: 'active', orders: 12, joined: '2025-03-14', avatar: 'PS' },
-  { id: '2', firstName: 'Rahul', lastName: 'Mehta',  email: 'rahul@email.com', phone: '87654 32109', role: 'user', status: 'active', orders: 8, joined: '2025-04-22', avatar: 'RM' },
-  { id: '3', firstName: 'Admin', lastName: 'User',   email: 'admin@sklp.com', phone: '76543 21098', role: 'admin', status: 'active', orders: 0, joined: '2024-01-01', avatar: 'AU' },
-  { id: '4', firstName: 'Anjali', lastName: 'Reddy', email: 'anjali@email.com', phone: '65432 10987', role: 'user', status: 'active', orders: 5, joined: '2025-06-10', avatar: 'AR' },
-  { id: '5', firstName: 'Vikram', lastName: 'Singh', email: 'vikram@email.com', phone: '54321 09876', role: 'user', status: 'blocked', orders: 2, joined: '2025-07-05', avatar: 'VS' },
-  { id: '6', firstName: 'Meena', lastName: 'Patel',  email: 'meena@email.com', phone: '43210 98765', role: 'user', status: 'active', orders: 19, joined: '2025-02-18', avatar: 'MP' },
-  { id: '7', firstName: 'Arjun', lastName: 'Kumar',  email: 'arjun@email.com', phone: '32109 87654', role: 'user', status: 'active', orders: 7, joined: '2025-05-30', avatar: 'AK' },
-]
 
 // ── User Detail Modal ─────────────────────────────────────────────────────────
 function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
@@ -25,6 +16,8 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
   const modalBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
   const textSecondary = isDarkMode ? 'text-luxury-mediumGray' : 'text-gray-500'
+
+  const avatarInitial = user.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
@@ -39,7 +32,7 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
             <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
               user.role === 'admin' ? 'bg-luxury-gold text-luxury-black' : isDarkMode ? 'bg-luxury-darkGray text-white' : 'bg-gray-200 text-gray-700'
             }`}>
-              {user.avatar}
+              {avatarInitial}
             </div>
             <div>
               <p className={`text-lg font-bold ${textPrimary}`}>{user.firstName} {user.lastName}</p>
@@ -69,29 +62,25 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
             </div>
             <div className="flex items-center gap-3 text-sm">
               <FiPhone size={15} className="text-luxury-gold flex-shrink-0" />
-              <span className={textSecondary}>{user.phone}</span>
+              <span className={textSecondary}>{user.phone || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <FiCheckCircle size={15} className="text-luxury-gold flex-shrink-0" />
-              <span className={textSecondary}>Joined: {user.joined}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <FiShield size={15} className="text-luxury-gold flex-shrink-0" />
-              <span className={textSecondary}>{user.orders} orders placed</span>
+              <span className={textSecondary}>Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
             </div>
           </div>
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             {user.role !== 'admin' && (
               <button
-                onClick={() => { onMakeAdmin(user.id); onClose() }}
+                onClick={() => { onMakeAdmin(user._id); onClose() }}
                 className="flex-1 py-2 text-xs font-bold border border-luxury-gold/30 text-luxury-gold rounded-xl hover:bg-luxury-gold/10 transition-all"
               >
                 Make Admin
               </button>
             )}
             <button
-              onClick={() => { onBlock(user.id); onClose() }}
+              onClick={() => { onBlock(user._id, user.status); onClose() }}
               className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
                 user.status === 'active'
                   ? 'border border-red-500/30 text-red-500 hover:bg-red-50'
@@ -110,11 +99,30 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 function AdminUsers() {
   const { isDarkMode } = useTheme()
-  const [users, setUsers] = useState(INITIAL_USERS)
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selectedUser, setSelectedUser] = useState(null)
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const res = await apiServices.adminService.getUsers()
+      if (res.data.success) {
+        setUsers(res.data.users)
+      }
+    } catch (error) {
+      toast.error('Failed to load users')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const cardBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
@@ -127,62 +135,85 @@ function AdminUsers() {
       `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
     )
     .filter((u) => roleFilter === 'All' || u.role === roleFilter)
-    .filter((u) => statusFilter === 'All' || u.status === statusFilter)
+    .filter((u) => statusFilter === 'All' || (u.status || 'active') === statusFilter)
 
-  const handleBlock = (id) => {
-    setUsers((prev) => prev.map((u) =>
-      u.id === id ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u
-    ))
-    const user = users.find((u) => u.id === id)
-    toast.success(`${user?.firstName} ${user?.status === 'active' ? 'blocked' : 'activated'}`)
+  const handleBlock = async (id, currentStatus) => {
+    const newStatus = (currentStatus || 'active') === 'active' ? 'blocked' : 'active'
+    try {
+      const res = await apiServices.adminService.changeUserRole(id, { status: newStatus })
+      if (res.data.success) {
+        setUsers((prev) => prev.map((u) => u._id === id ? { ...u, status: newStatus } : u))
+        toast.success(`User ${newStatus === 'active' ? 'activated' : 'blocked'} successfully`)
+      }
+    } catch (error) {
+      toast.error('Failed to update user status')
+    }
   }
 
-  const handleMakeAdmin = (id) => {
-    setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role: 'admin' } : u))
-    const user = users.find((u) => u.id === id)
-    toast.success(`${user?.firstName} is now an admin`)
+  const handleMakeAdmin = async (id) => {
+    if (!window.confirm("Are you sure you want to grant Admin privileges to this user?")) return
+    try {
+      const res = await apiServices.adminService.changeUserRole(id, { role: 'admin' })
+      if (res.data.success) {
+        setUsers((prev) => prev.map((u) => u._id === id ? { ...u, role: 'admin' } : u))
+        toast.success('User has been granted Admin privileges')
+      }
+    } catch (error) {
+      toast.error('Failed to update user role')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="w-8 h-8 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className={`text-2xl font-serif font-bold ${textPrimary}`}>Users</h2>
-          <p className={`text-sm mt-0.5 ${textSecondary}`}>{users.length} total users</p>
-        </div>
-        {/* Quick stats */}
-        <div className="flex gap-3">
-          {[
-            { label: 'Active', count: users.filter(u => u.status === 'active').length, color: 'text-green-500' },
-            { label: 'Blocked', count: users.filter(u => u.status === 'blocked').length, color: 'text-red-500' },
-            { label: 'Admins', count: users.filter(u => u.role === 'admin').length, color: 'text-luxury-gold' },
-          ].map(({ label, count, color }) => (
-            <div key={label} className={`rounded-xl border px-4 py-2 text-center ${cardBg}`}>
-              <p className={`text-lg font-bold ${color}`}>{count}</p>
-              <p className={`text-xs ${textSecondary}`}>{label}</p>
-            </div>
-          ))}
-        </div>
+      <div>
+        <h2 className={`text-2xl font-serif font-bold ${textPrimary}`}>Users Management</h2>
+        <p className={`text-sm mt-0.5 ${textSecondary}`}>{users.length} registered users</p>
       </div>
 
-      {/* Filters */}
-      <div className={`rounded-xl border p-4 flex flex-wrap gap-3 ${cardBg}`}>
-        <div className="flex-1 min-w-48 relative">
-          <FiSearch size={15} className={`absolute left-3 top-3 ${textSecondary}`} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users by name or email..."
-            className={`w-full pl-9 py-2 border text-sm rounded-lg ${inputBg}`}
-          />
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Search */}
+        <div className={`flex-1 rounded-xl border p-4 ${cardBg}`}>
+          <div className="relative">
+            <FiSearch size={15} className={`absolute left-3 top-3 ${textSecondary}`} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email..."
+              className={`w-full pl-9 py-2 border text-sm rounded-lg ${inputBg}`}
+            />
+          </div>
         </div>
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg ${inputBg}`}>
-          {ROLES.map((r) => <option key={r} value={r}>{r === 'All' ? 'All Roles' : r}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg ${inputBg}`}>
-          {STATUS_OPTS.map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
-        </select>
+
+        {/* Filters */}
+        <div className={`sm:w-80 rounded-xl border p-4 flex gap-3 ${cardBg}`}>
+          <div className="flex-1">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className={`w-full border text-sm py-2 px-3 rounded-lg capitalize ${inputBg}`}
+            >
+              {ROLES.map(r => <option key={r} value={r}>{r} Role</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={`w-full border text-sm py-2 px-3 rounded-lg capitalize ${inputBg}`}
+            >
+              {STATUS_OPTS.map(s => <option key={s} value={s}>{s} Status</option>)}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -191,7 +222,7 @@ function AdminUsers() {
           <table className="w-full">
             <thead>
               <tr className={`border-b ${isDarkMode ? 'bg-luxury-black/30 border-luxury-darkGray' : 'bg-gray-50 border-gray-200'}`}>
-                {['User', 'Email', 'Phone', 'Role', 'Status', 'Orders', 'Joined', 'Actions'].map((h) => (
+                {['User', 'Role', 'Status', 'Joined', 'Actions'].map((h) => (
                   <th key={h} className={`px-5 py-3.5 text-left text-xs uppercase tracking-wider font-semibold ${textSecondary}`}>{h}</th>
                 ))}
               </tr>
@@ -199,67 +230,54 @@ function AdminUsers() {
             <tbody className={`divide-y ${isDarkMode ? 'divide-luxury-darkGray/50' : 'divide-gray-100'}`}>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={`px-5 py-12 text-center ${textSecondary}`}>
+                  <td colSpan={5} className={`px-5 py-12 text-center ${textSecondary}`}>
                     <FiUsers size={32} className="mx-auto mb-3 opacity-30" />
-                    No users found
+                    No users found matching your search.
                   </td>
                 </tr>
               ) : filtered.map((user) => (
-                <tr key={user.id} className={`transition-colors group ${rowHover}`}>
+                <tr key={user._id} className={`transition-colors group ${rowHover}`}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                         user.role === 'admin' ? 'bg-luxury-gold text-luxury-black' : isDarkMode ? 'bg-luxury-darkGray text-white' : 'bg-gray-200 text-gray-700'
                       }`}>
-                        {user.avatar}
+                        {user.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
                       </div>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>{user.firstName} {user.lastName}</p>
+                      <div>
+                        <p className={`text-sm font-bold ${textPrimary}`}>{user.firstName} {user.lastName}</p>
+                        <p className={`text-xs ${textSecondary}`}>{user.email}</p>
+                      </div>
                     </div>
                   </td>
-                  <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{user.email}</td>
-                  <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{user.phone}</td>
                   <td className="px-5 py-3.5">
-                    <span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-bold border ${
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold border capitalize ${
                       user.role === 'admin'
                         ? 'bg-luxury-gold/10 text-luxury-gold border-luxury-gold/30'
-                        : isDarkMode ? 'bg-luxury-darkGray/50 text-luxury-mediumGray border-luxury-darkGray' : 'bg-gray-100 text-gray-600 border-gray-200'
+                        : isDarkMode ? 'bg-luxury-darkGray text-luxury-mediumGray border-luxury-darkGray' : 'bg-gray-100 text-gray-600 border-gray-200'
                     }`}>
-                      {user.role === 'admin' ? <FiShield size={11} /> : <FiUser size={11} />}
+                      {user.role === 'admin' ? <FiShield size={10} /> : <FiUser size={10} />}
                       {user.role}
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                      user.status === 'active'
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold border capitalize ${
+                      (user.status || 'active') === 'active'
                         ? 'bg-green-500/10 text-green-600 border-green-500/20'
                         : 'bg-red-500/10 text-red-600 border-red-500/20'
                     }`}>
-                      {user.status}
+                      {(user.status || 'active') === 'active' ? <FiCheckCircle size={10} /> : <FiSlash size={10} />}
+                      {user.status || 'active'}
                     </span>
                   </td>
-                  <td className={`px-5 py-3.5 text-sm font-semibold ${textPrimary}`}>{user.orders}</td>
-                  <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{user.joined}</td>
+                  <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setSelectedUser(user)}
-                        className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-luxury-gold/10 text-luxury-mediumGray hover:text-luxury-gold' : 'hover:bg-luxury-gold/10 text-gray-400 hover:text-luxury-gold'}`}
-                        title="View Details"
-                      >
-                        <FiEye size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleBlock(user.id)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          user.status === 'active'
-                            ? isDarkMode ? 'hover:bg-red-900/20 text-luxury-mediumGray hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'
-                            : isDarkMode ? 'hover:bg-green-900/20 text-luxury-mediumGray hover:text-green-400' : 'hover:bg-green-50 text-gray-400 hover:text-green-600'
-                        }`}
-                        title={user.status === 'active' ? 'Block' : 'Activate'}
-                      >
-                        {user.status === 'active' ? <FiSlash size={14} /> : <FiCheckCircle size={14} />}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setSelectedUser(user)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all opacity-0 group-hover:opacity-100 ${isDarkMode ? 'border-luxury-darkGray text-luxury-mediumGray hover:border-luxury-gold hover:text-luxury-gold' : 'border-gray-300 text-gray-500 hover:border-luxury-gold hover:text-luxury-gold'}`}
+                    >
+                      <FiEye size={13} /> View
+                    </button>
                   </td>
                 </tr>
               ))}

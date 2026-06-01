@@ -18,7 +18,7 @@ export const getDashboardMetrics = async (req, res) => {
     // Aggregation for Total Revenue
     const salesStats = await Order.aggregate([
       { $match: { status: { $nin: ['cancelled', 'returned', 'refunded'] } } },
-      { $group: { _id: null, totalSales: { $sum: '$total' }, avgOrder: { $avg: '$total' } } }
+      { $group: { _id: null, totalSales: { $sum: '$totalAmount' }, avgOrder: { $avg: '$totalAmount' } } }
     ]);
     
     const totalSales = salesStats[0]?.totalSales || 0;
@@ -75,7 +75,7 @@ export const getDashboardMetrics = async (req, res) => {
             month: { $month: '$createdAt' },
             day: { $dayOfMonth: '$createdAt' }
           },
-          revenue: { $sum: '$total' },
+          revenue: { $sum: '$totalAmount' },
           count: { $sum: 1 }
         }
       },
@@ -112,7 +112,7 @@ export const getDashboardMetrics = async (req, res) => {
         recentOrders: recentOrders.map(o => ({
           id: o._id,
           customer: o.userId ? `${o.userId.firstName} ${o.userId.lastName}` : 'Guest Customer',
-          total: o.total,
+          total: o.totalAmount,
           status: o.status,
           date: o.createdAt
         }))

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiSearch, FiEye, FiShoppingBag,
   FiX, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import apiServices from '../../services/apiServices'
 
 const STATUSES = ['All', 'pending', 'processing', 'shipped', 'delivered', 'cancelled']
 
@@ -14,16 +15,9 @@ const STATUS_STYLES = {
   shipped:    { cls: 'bg-purple-500/10 text-purple-600 border-purple-500/20', icon: FiTruck },
   delivered:  { cls: 'bg-green-500/10 text-green-600 border-green-500/20', icon: FiCheckCircle },
   cancelled:  { cls: 'bg-red-500/10 text-red-600 border-red-500/20',      icon: FiXCircle },
+  refunded:   { cls: 'bg-gray-500/10 text-gray-600 border-gray-500/20',      icon: FiXCircle },
+  returned:   { cls: 'bg-orange-500/10 text-orange-600 border-orange-500/20', icon: FiXCircle },
 }
-
-const INITIAL_ORDERS = [
-  { id: '#ORD-5821', customer: 'Priya Sharma', email: 'priya@email.com', phone: '98765 43210', items: [{ name: 'Silk Kurta Set', qty: 1, price: 4299 }], total: 4299, status: 'delivered', date: '2026-05-20', address: '12, MG Road, Hyderabad, TS – 500001' },
-  { id: '#ORD-5820', customer: 'Rahul Mehta',  email: 'rahul@email.com', phone: '87654 32109', items: [{ name: 'Leather Sneakers', qty: 1, price: 8999 }], total: 8999, status: 'processing', date: '2026-05-22', address: '34, Banjara Hills, Hyderabad, TS – 500034' },
-  { id: '#ORD-5819', customer: 'Anjali Reddy', email: 'anjali@email.com', phone: '76543 21098', items: [{ name: 'Floral Saree', qty: 1, price: 12500 }], total: 12500, status: 'shipped', date: '2026-05-21', address: '56, Jubilee Hills, Hyderabad, TS – 500033' },
-  { id: '#ORD-5818', customer: 'Vikram Singh', email: 'vikram@email.com', phone: '65432 10987', items: [{ name: 'Formal Blazer', qty: 1, price: 6750 }], total: 6750, status: 'pending', date: '2026-05-23', address: '78, HITEC City, Hyderabad, TS – 500081' },
-  { id: '#ORD-5817', customer: 'Meena Patel',  email: 'meena@email.com', phone: '54321 09876', items: [{ name: 'Designer Handbag', qty: 2, price: 3199 }], total: 6398, status: 'cancelled', date: '2026-05-19', address: '90, Gachibowli, Hyderabad, TS – 500032' },
-  { id: '#ORD-5816', customer: 'Arjun Kumar',  email: 'arjun@email.com', phone: '43210 98765', items: [{ name: 'Silk Kurta Set', qty: 2, price: 4299 }, { name: 'Embroidered Dupatta', qty: 1, price: 1899 }], total: 10497, status: 'delivered', date: '2026-05-18', address: '23, Ameerpet, Hyderabad, TS – 500016' },
-]
 
 // ── Order Detail Slide-over ───────────────────────────────────────────────────
 function OrderDetail({ order, onClose, onStatusChange }) {
@@ -32,15 +26,22 @@ function OrderDetail({ order, onClose, onStatusChange }) {
   const [saving, setSaving] = useState(false)
 
   const handleUpdate = async () => {
-    setSaving(true)
-    await new Promise((r) => setTimeout(r, 600))
-    onStatusChange(order.id, status)
-    toast.success(`Order ${order.id} status updated to "${status}"`)
-    setSaving(false)
-    onClose()
+    try {
+      setSaving(true)
+      const res = await apiServices.adminService.updateOrderStatus(order._id, status)
+      if (res.data.success) {
+        onStatusChange(order._id, status)
+        toast.success(`Order status updated to "${status}"`)
+        onClose()
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update order status')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const { icon: StatusIcon, cls } = STATUS_STYLES[order.status] || {}
+  const { icon: StatusIcon, cls } = STATUS_STYLES[order.status] || STATUS_STYLES.pending
   const panelBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const innerBg = isDarkMode ? 'bg-luxury-black border-luxury-darkGray' : 'bg-gray-50 border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
@@ -53,8 +54,8 @@ function OrderDetail({ order, onClose, onStatusChange }) {
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b sticky top-0 z-10 ${isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'}`}>
           <div>
-            <h3 className={`text-lg font-bold ${textPrimary}`}>{order.id}</h3>
-            <p className={`text-xs ${textSecondary}`}>{order.date}</p>
+            <h3 className={`text-lg font-bold ${textPrimary}`}>{order.orderNumber}</h3>
+            <p className={`text-xs ${textSecondary}`}>{new Date(order.createdAt).toLocaleDateString()}</p>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}><FiX /></button>
         </div>
@@ -69,28 +70,30 @@ function OrderDetail({ order, onClose, onStatusChange }) {
           {/* Customer */}
           <div className={`rounded-xl border p-4 space-y-2 ${innerBg}`}>
             <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textSecondary}`}>Customer</h4>
-            <p className={`font-semibold ${textPrimary}`}>{order.customer}</p>
-            <p className={`text-sm ${textSecondary}`}>{order.email}</p>
-            <p className={`text-sm ${textSecondary}`}>{order.phone}</p>
-            <p className={`text-sm ${textSecondary}`}>{order.address}</p>
+            <p className={`font-semibold ${textPrimary}`}>{order.userId?.firstName} {order.userId?.lastName}</p>
+            <p className={`text-sm ${textSecondary}`}>{order.userId?.email}</p>
+            <p className={`text-sm ${textSecondary}`}>{order.userId?.phone || 'N/A'}</p>
+            <p className={`text-sm ${textSecondary}`}>
+              {order.shippingAddress ? `${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.postalCode}` : 'Address not found'}
+            </p>
           </div>
 
           {/* Items */}
           <div className={`rounded-xl border p-4 ${innerBg}`}>
             <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textSecondary}`}>Items Ordered</h4>
             <div className="space-y-3">
-              {order.items.map((item, i) => (
+              {order.items?.map((item, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{item.name}</p>
-                    <p className={`text-xs ${textSecondary}`}>Qty: {item.qty}</p>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{item.productName || 'Product'}</p>
+                    <p className={`text-xs ${textSecondary}`}>Qty: {item.quantity}</p>
                   </div>
-                  <p className="text-sm font-bold text-luxury-gold">₹{(item.price * item.qty).toLocaleString('en-IN')}</p>
+                  <p className="text-sm font-bold text-luxury-gold">₹{((item.finalPrice || item.price) * item.quantity).toLocaleString('en-IN')}</p>
                 </div>
               ))}
               <div className={`pt-3 border-t flex justify-between ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
                 <span className={`text-sm font-bold ${textPrimary}`}>Total</span>
-                <span className="text-sm font-bold text-luxury-gold">₹{order.total.toLocaleString('en-IN')}</span>
+                <span className="text-sm font-bold text-luxury-gold">₹{order.totalAmount?.toLocaleString('en-IN')}</span>
               </div>
             </div>
           </div>
@@ -127,20 +130,43 @@ function OrderDetail({ order, onClose, onStatusChange }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 function AdminOrders() {
   const { isDarkMode } = useTheme()
-  const [orders, setOrders] = useState(INITIAL_ORDERS)
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selectedOrder, setSelectedOrder] = useState(null)
 
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true)
+      const res = await apiServices.adminService.getOrders({ limit: 100 })
+      if (res.data.success) {
+        setOrders(res.data.orders)
+      }
+    } catch (error) {
+      toast.error('Failed to load orders')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filtered = orders
     .filter((o) =>
-      o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.customer.toLowerCase().includes(search.toLowerCase())
+      o.orderNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      o.userId?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+      o.userId?.lastName?.toLowerCase().includes(search.toLowerCase())
     )
     .filter((o) => statusFilter === 'All' || o.status === statusFilter)
 
   const handleStatusChange = (orderId, newStatus) => {
-    setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o))
+    setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status: newStatus } : o))
+    if (selectedOrder && selectedOrder._id === orderId) {
+      setSelectedOrder({ ...selectedOrder, status: newStatus })
+    }
   }
 
   const statusCount = (s) => orders.filter((o) => o.status === s).length
@@ -151,6 +177,14 @@ function AdminOrders() {
   const inputBg = isDarkMode ? 'bg-luxury-black border-luxury-darkGray text-white' : 'bg-gray-50 border-gray-300 text-gray-900'
   const divider = isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'
   const rowHover = isDarkMode ? 'hover:bg-luxury-darkGray/20' : 'hover:bg-gray-50'
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="w-8 h-8 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -217,20 +251,20 @@ function AdminOrders() {
                   </td>
                 </tr>
               ) : filtered.map((order) => {
-                const { cls } = STATUS_STYLES[order.status] || {}
+                const { cls } = STATUS_STYLES[order.status] || STATUS_STYLES.pending
                 return (
-                  <tr key={order.id} className={`transition-colors group ${rowHover}`}>
-                    <td className="px-5 py-3.5 text-sm font-mono font-semibold text-luxury-gold">{order.id}</td>
+                  <tr key={order._id} className={`transition-colors group ${rowHover}`}>
+                    <td className="px-5 py-3.5 text-sm font-mono font-semibold text-luxury-gold">{order.orderNumber}</td>
                     <td className="px-5 py-3.5">
-                      <p className={`text-sm font-medium ${textPrimary}`}>{order.customer}</p>
-                      <p className={`text-xs ${textSecondary}`}>{order.email}</p>
+                      <p className={`text-sm font-medium ${textPrimary}`}>{order.userId?.firstName} {order.userId?.lastName}</p>
+                      <p className={`text-xs ${textSecondary}`}>{order.userId?.email}</p>
                     </td>
-                    <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{order.items.length} item{order.items.length > 1 ? 's' : ''}</td>
-                    <td className={`px-5 py-3.5 text-sm font-bold ${textPrimary}`}>₹{order.total.toLocaleString('en-IN')}</td>
+                    <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}</td>
+                    <td className={`px-5 py-3.5 text-sm font-bold ${textPrimary}`}>₹{order.totalAmount?.toLocaleString('en-IN')}</td>
                     <td className="px-5 py-3.5">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${cls}`}>{order.status}</span>
                     </td>
-                    <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{order.date}</td>
+                    <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="px-5 py-3.5">
                       <button
                         onClick={() => setSelectedOrder(order)}

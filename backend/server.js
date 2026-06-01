@@ -60,6 +60,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ============== Root Welcome Route ==============
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'SKLP Premium Fashion E-Commerce API is running smoothly.',
+    healthCheck: '/health',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ============== API Routes ==============
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);

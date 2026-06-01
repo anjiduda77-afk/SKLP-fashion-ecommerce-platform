@@ -82,7 +82,7 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // ============== Server Setup ==============
-const PORT = process.env.PORT || process.env.BACKEND_PORT || 5000;
+const PORT = process.env.BACKEND_PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`

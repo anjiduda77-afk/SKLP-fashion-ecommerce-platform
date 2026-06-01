@@ -1,29 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiPlus, FiSearch, FiEdit2, FiTrash2, FiX, FiSave,
   FiImage, FiChevronUp, FiChevronDown, FiPackage, FiAlertTriangle
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import apiServices from '../../services/apiServices'
 
-// ── Mock Data ────────────────────────────────────────────────────────────────
-const INITIAL_PRODUCTS = [
-  { id: '1', name: 'Silk Kurta Set', category: 'Women', price: 4299, stock: 142, status: 'active', sku: 'SKU-001', image: 'https://via.placeholder.com/60x60/FFD700/000?text=SK' },
-  { id: '2', name: 'Leather Sneakers', category: 'Footwear', price: 8999, stock: 56, status: 'active', sku: 'SKU-002', image: 'https://via.placeholder.com/60x60/FFD700/000?text=LS' },
-  { id: '3', name: 'Floral Saree', category: 'Women', price: 12500, stock: 8, status: 'active', sku: 'SKU-003', image: 'https://via.placeholder.com/60x60/FFD700/000?text=FS' },
-  { id: '4', name: 'Designer Handbag', category: 'Accessories', price: 3199, stock: 0, status: 'inactive', sku: 'SKU-004', image: 'https://via.placeholder.com/60x60/FFD700/000?text=DH' },
-  { id: '5', name: 'Formal Blazer', category: 'Men', price: 6750, stock: 34, status: 'active', sku: 'SKU-005', image: 'https://via.placeholder.com/60x60/FFD700/000?text=FB' },
-  { id: '6', name: 'Embroidered Dupatta', category: 'Women', price: 1899, stock: 203, status: 'active', sku: 'SKU-006', image: 'https://via.placeholder.com/60x60/FFD700/000?text=ED' },
-]
+const CATEGORIES = ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear']
+const GENDERS = ['men', 'women', 'kids', 'unisex']
 
-const CATEGORIES = ['Men', 'Women', 'Kids', 'Footwear', 'Accessories', 'Ethnic', 'Sports']
-
-const EMPTY_FORM = { name: '', category: 'Women', price: '', stock: '', sku: '', description: '', status: 'active' }
+const EMPTY_FORM = { name: '', category: 'shirts', gender: 'men', price: '', stock: '', description: '', shortDescription: '' }
 
 // ── Product Modal ─────────────────────────────────────────────────────────────
 function ProductModal({ product, onSave, onClose }) {
   const { isDarkMode } = useTheme()
-  const [form, setForm] = useState(product || EMPTY_FORM)
+  const [form, setForm] = useState(
+    product
+      ? { name: product.name, category: product.category, gender: product.gender, price: product.price, stock: product.stock, description: product.description || '', shortDescription: product.shortDescription || '' }
+      : EMPTY_FORM
+  )
   const [saving, setSaving] = useState(false)
 
   const inputCls = `w-full border text-sm p-2.5 rounded-lg ${isDarkMode ? 'bg-luxury-black border-luxury-darkGray text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`
@@ -35,14 +31,16 @@ function ProductModal({ product, onSave, onClose }) {
   }
 
   const handleSave = async () => {
-    if (!form.name || !form.price || !form.stock) {
+    if (!form.name || !form.price || !form.stock || !form.description) {
       toast.error('Please fill in all required fields')
       return
     }
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 600))
-    onSave({ ...form, id: product?.id || Date.now().toString(), image: product?.image || `https://via.placeholder.com/60x60/FFD700/000?text=${form.name[0]}` })
-    setSaving(false)
+    try {
+      await onSave(form, product?._id)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -64,18 +62,17 @@ function ProductModal({ product, onSave, onClose }) {
             <div>
               <label className={labelCls}>Category *</label>
               <select name="category" value={form.category} onChange={handleChange} className={inputCls}>
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>Status</label>
-              <select name="status" value={form.status} onChange={handleChange} className={inputCls}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+              <label className={labelCls}>Gender *</label>
+              <select name="gender" value={form.gender} onChange={handleChange} className={inputCls}>
+                {GENDERS.map((g) => <option key={g} value={g} className="capitalize">{g}</option>)}
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Price (₹) *</label>
               <input name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" className={inputCls} />
@@ -84,14 +81,14 @@ function ProductModal({ product, onSave, onClose }) {
               <label className={labelCls}>Stock *</label>
               <input name="stock" type="number" value={form.stock} onChange={handleChange} placeholder="0" className={inputCls} />
             </div>
-            <div>
-              <label className={labelCls}>SKU</label>
-              <input name="sku" value={form.sku} onChange={handleChange} placeholder="SKU-XXX" className={inputCls} />
-            </div>
           </div>
           <div>
-            <label className={labelCls}>Description</label>
-            <textarea name="description" value={form.description} onChange={handleChange} rows={3} placeholder="Product description..." className={`${inputCls} resize-none`} />
+            <label className={labelCls}>Description *</label>
+            <textarea name="description" value={form.description} onChange={handleChange} rows={3} placeholder="Product description (min 10 chars)..." className={`${inputCls} resize-none`} />
+          </div>
+          <div>
+            <label className={labelCls}>Short Description</label>
+            <input name="shortDescription" value={form.shortDescription} onChange={handleChange} placeholder="Brief one-liner..." className={inputCls} />
           </div>
           {/* Image upload placeholder */}
           <div className={`border-2 border-dashed rounded-xl p-6 text-center ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-300'}`}>
@@ -123,13 +120,13 @@ function DeleteConfirm({ product, onConfirm, onClose }) {
         <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
           <FiAlertTriangle size={24} className="text-red-400" />
         </div>
-        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Delete Product?</h3>
+        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Deactivate Product?</h3>
         <p className={`text-sm mb-6 ${isDarkMode ? 'text-luxury-mediumGray' : 'text-gray-500'}`}>
-          Are you sure you want to delete <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>"{product?.name}"</span>? This action cannot be undone.
+          Are you sure you want to deactivate <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>"{product?.name}"</span>? It will be hidden from the store.
         </p>
         <div className="flex gap-3">
           <button onClick={onClose} className={`flex-1 py-2.5 border rounded-xl font-semibold text-sm transition-colors ${isDarkMode ? 'border-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'border-gray-300 text-gray-600 hover:text-gray-900'}`}>Cancel</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all text-sm">Delete</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all text-sm">Deactivate</button>
         </div>
       </div>
     </div>
@@ -139,7 +136,8 @@ function DeleteConfirm({ product, onConfirm, onClose }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 function AdminProducts() {
   const { isDarkMode } = useTheme()
-  const [products, setProducts] = useState(INITIAL_PRODUCTS)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -148,6 +146,24 @@ function AdminProducts() {
   const [showModal, setShowModal] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
   const [deleteProduct, setDeleteProduct] = useState(null)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const res = await apiServices.adminService.getProducts({ limit: 100 })
+      if (res.data.success) {
+        setProducts(res.data.products)
+      }
+    } catch (error) {
+      toast.error('Failed to load products')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const cardBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
@@ -161,36 +177,68 @@ function AdminProducts() {
   }
 
   const filtered = products
-    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => (p.name || '').toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase()))
     .filter((p) => categoryFilter === 'All' || p.category === categoryFilter)
-    .filter((p) => statusFilter === 'All' || p.status === statusFilter)
+    .filter((p) => {
+      if (statusFilter === 'All') return true
+      if (statusFilter === 'active') return p.isActive === true
+      if (statusFilter === 'inactive') return p.isActive === false
+      return true
+    })
     .sort((a, b) => {
-      const av = sortField === 'price' || sortField === 'stock' ? Number(a[sortField]) : a[sortField]
-      const bv = sortField === 'price' || sortField === 'stock' ? Number(b[sortField]) : b[sortField]
+      const av = sortField === 'price' || sortField === 'stock' ? Number(a[sortField]) : (a[sortField] || '')
+      const bv = sortField === 'price' || sortField === 'stock' ? Number(b[sortField]) : (b[sortField] || '')
       return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1)
     })
 
-  const handleSave = (data) => {
-    if (editProduct) {
-      setProducts((prev) => prev.map((p) => p.id === data.id ? data : p))
-      toast.success('Product updated!')
-    } else {
-      setProducts((prev) => [...prev, data])
-      toast.success('Product added!')
+  const handleSave = async (formData, productId) => {
+    try {
+      if (productId) {
+        // Update existing
+        const res = await apiServices.adminService.updateProduct(productId, formData)
+        if (res.data.success) {
+          setProducts((prev) => prev.map((p) => p._id === productId ? res.data.product : p))
+          toast.success('Product updated!')
+        }
+      } else {
+        // Create new
+        const res = await apiServices.adminService.createProduct(formData)
+        if (res.data.success) {
+          setProducts((prev) => [res.data.product, ...prev])
+          toast.success('Product added!')
+        }
+      }
+      setShowModal(false)
+      setEditProduct(null)
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save product')
     }
-    setShowModal(false)
-    setEditProduct(null)
   }
 
-  const handleDelete = () => {
-    setProducts((prev) => prev.filter((p) => p.id !== deleteProduct.id))
-    toast.success('Product deleted')
+  const handleDelete = async () => {
+    try {
+      const res = await apiServices.adminService.deleteProduct(deleteProduct._id)
+      if (res.data.success) {
+        setProducts((prev) => prev.map((p) => p._id === deleteProduct._id ? { ...p, isActive: false } : p))
+        toast.success('Product deactivated')
+      }
+    } catch (error) {
+      toast.error('Failed to deactivate product')
+    }
     setDeleteProduct(null)
   }
 
   const SortIcon = ({ field }) => sortField === field
     ? (sortDir === 'asc' ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)
     : <FiChevronUp size={14} className="opacity-20" />
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="w-8 h-8 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -221,7 +269,7 @@ function AdminProducts() {
         </div>
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg min-w-32 ${inputBg}`}>
           <option value="All">All Categories</option>
-          {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg min-w-28 ${inputBg}`}>
           <option value="All">All Status</option>
@@ -241,7 +289,7 @@ function AdminProducts() {
                   { key: 'category', label: 'Category' },
                   { key: 'price', label: 'Price' },
                   { key: 'stock', label: 'Stock' },
-                  { key: 'status', label: 'Status' },
+                  { key: 'isActive', label: 'Status' },
                 ].map(({ key, label }) => (
                   <th key={key} className={`px-5 py-3.5 text-left text-xs uppercase tracking-wider cursor-pointer transition-colors ${textSecondary} hover:text-luxury-gold`} onClick={() => handleSort(key)}>
                     <span className="flex items-center gap-1">{label} <SortIcon field={key} /></span>
@@ -259,17 +307,23 @@ function AdminProducts() {
                   </td>
                 </tr>
               ) : filtered.map((product) => (
-                <tr key={product.id} className={`transition-colors group ${rowHover}`}>
+                <tr key={product._id} className={`transition-colors group ${rowHover}`}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isDarkMode ? 'bg-luxury-darkGray text-luxury-gold' : 'bg-gray-100 text-gray-600'}`}>
+                        {product.images?.[0]?.url ? (
+                          <img src={product.images[0].url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                        ) : (
+                          product.name?.charAt(0)?.toUpperCase() || 'P'
+                        )}
+                      </div>
                       <div>
                         <p className={`text-sm font-semibold ${textPrimary}`}>{product.name}</p>
                         <p className={`text-xs font-mono ${textSecondary}`}>{product.sku}</p>
                       </div>
                     </div>
                   </td>
-                  <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{product.category}</td>
+                  <td className={`px-5 py-3.5 text-sm capitalize ${textSecondary}`}>{product.category}</td>
                   <td className={`px-5 py-3.5 text-sm font-semibold ${textPrimary}`}>₹{Number(product.price).toLocaleString('en-IN')}</td>
                   <td className="px-5 py-3.5">
                     <span className={`text-sm font-semibold ${product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-orange-500' : textPrimary}`}>
@@ -278,11 +332,11 @@ function AdminProducts() {
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                      product.status === 'active'
+                      product.isActive
                         ? 'bg-green-500/10 text-green-600 border-green-500/20'
                         : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
                     }`}>
-                      {product.status}
+                      {product.isActive ? 'active' : 'inactive'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5">

@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================== Base Styles ==================== */
+* {
+  @apply m-0 p-0 box-border;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-luxury-black text-luxury-white;
+  background-image:
+    radial-gradient(circle at top right, rgba(255, 215, 0, 0.12), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.07), transparent 18%);
+  background-attachment: fixed;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================== Typography ==================== */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-serif font-bold;
+}
+
+h1 {
+  @apply text-4xl md:text-5xl;
+}
+
+h2 {
+  @apply text-3xl md:text-4xl;
+}
+
+h3 {
+  @apply text-2xl md:text-3xl;
+}
+
+p {
+  @apply leading-relaxed;
+}
+
+a {
+  @apply transition-colors duration-200;
+}
+
+/* ==================== Glass Morphism ==================== */
+.glass {
+  @apply backdrop-blur-md bg-opacity-10 border border-opacity-20 border-luxury-gold;
+}
+
+.glass-dark {
+  @apply backdrop-blur-md bg-black bg-opacity-40 border border-white border-opacity-10;
+}
+
+.glass-light {
+  @apply backdrop-blur-md bg-white bg-opacity-40 border border-black border-opacity-10;
+}
+
+/* ==================== Buttons ==================== */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 font-semibold rounded-lg;
+  @apply transition-all duration-300 ease-smooth;
+  @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-luxury-gold text-luxury-black hover:bg-luxury-darkGold;
+  @apply shadow-md hover:shadow-lg;
+}
+
+.btn-secondary {
+  @apply bg-luxury-darkGray text-luxury-white hover:bg-luxury-mediumGray;
+  @apply dark:bg-luxury-lightGray dark:text-luxury-black dark:hover:bg-luxury-offWhite;
+}
+
+.btn-outline {
+  @apply border-2 border-luxury-gold text-luxury-gold hover:bg-luxury-gold hover:text-luxury-black;
+}
+
+.btn-small {
+  @apply px-3 py-1 text-sm;
+}
+
+.btn-large {
+  @apply px-6 py-3 text-lg;
+}
+
+/* ==================== Cards ==================== */
+.card {
+  @apply bg-luxury-offWhite dark:bg-luxury-charcoal rounded-2xl p-6;
+  @apply shadow-card dark:shadow-card-dark;
+  @apply transition-all duration-300 ease-smooth transform-gpu;
+  backdrop-filter: blur(14px);
+}
+
+.card-hover {
+  @apply hover:scale-105 hover:shadow-glow;
+}
+
+.hero-glow {
+  background-image: radial-gradient(circle at top left, rgba(255, 215, 0, 0.14), transparent 20%), radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.08), transparent 22%);
+}
+
+.section-header {
+  @apply mb-10 text-center;
+}
+
+.section-header-title {
+  @apply text-4xl md:text-5xl font-serif font-bold;
+}
+
+.section-header-subtitle {
+  @apply text-sm text-luxury-gold tracking-[0.3em] uppercase mb-3;
+}
+
+.glass-card {
+  @apply glass rounded-[1.8rem] border border-white/10 shadow-glow;
+}
+
+/* ==================== Forms ==================== */
+input, textarea, select {
+  @apply w-full px-4 py-2 rounded-lg;
+  @apply bg-luxury-offWhite dark:bg-luxury-charcoal;
+  @apply border border-luxury-lightGray dark:border-luxury-mediumGray;
+  @apply text-luxury-darkBlack dark:text-luxury-white;
+  @apply transition-colors duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-luxury-gold;
+}
+
+label {
+  @apply block text-sm font-semibold mb-2;
+  @apply text-luxury-darkBlack dark:text-luxury-white;
+}
+
+/* ==================== Animations ==================== */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-slide-left {
+  animation: slideInLeft 0.6s ease-out;
+}
+
+/* ==================== Scrollbar ==================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-luxury-offWhite dark:bg-luxury-charcoal;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-luxury-gold rounded-full;
+  @apply hover:bg-luxury-darkGold;
+}
+
+/* ==================== Utilities ==================== */
+.container-custom {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent;
+}
+
+.flex-center {
+  @apply flex items-center justify-center;
+}
+
+.absolute-center {
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate-text {
+  @apply truncate;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 640px) {
+  .hidden-mobile {
+    @apply hidden;
+  }
+}
+
+@media (min-width: 641px) {
+  .hidden-desktop {
+    @apply hidden;
+  }
+}
+
+/* ==================== Accessibility ==================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+}
+
+:focus-visible {
+  @apply outline outline-2 outline-luxury-gold;
+}

@@ -5,12 +5,14 @@ import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruc
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
+import { useWishlist } from '@context/WishlistContext'
 import { toast } from 'react-toastify'
 
 function ProductDetail() {
   const { id } = useParams()
   const { isDarkMode } = useTheme()
   const { addToCart } = useCart()
+  const { toggleWishlist, isInWishlist } = useWishlist()
 
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -310,12 +312,22 @@ function ProductDetail() {
               <div className="flex gap-4">
                 <button
                   onClick={() => { addToCart(product, quantity, { size: selectedSize, color: selectedColor }); toast.success('Added to Cart!') }}
-                  className="flex-1 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2"
+                  className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap"
                 >
-                  <FiShoppingBag /> Add to Shopping Cart
+                  <FiShoppingBag size={14} className="shrink-0" /> Add to Shopping Cart
                 </button>
-                <button className={`p-4 border rounded-xl ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <FiHeart className="text-luxury-gold fill-luxury-gold" size={20} />
+                 <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`p-4 border rounded-xl transition-colors duration-200 ${
+                    isInWishlist(product._id || product.id)
+                      ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20'
+                      : isDarkMode
+                        ? 'border-white/10 text-luxury-gold hover:bg-white/5'
+                        : 'border-gray-200 text-luxury-gold hover:bg-gray-50'
+                  }`}
+                  aria-label="Toggle Wishlist"
+                >
+                  <FiHeart className={isInWishlist(product._id || product.id) ? 'fill-current' : ''} size={20} />
                 </button>
               </div>
 

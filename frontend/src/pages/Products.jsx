@@ -5,6 +5,7 @@ import { FiGrid, FiList, FiSearch, FiSliders, FiHeart, FiShoppingBag, FiStar, Fi
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
+import { useWishlist } from '@context/WishlistContext'
 import { toast } from 'react-toastify'
 
 const GENDERS = ['men', 'women', 'kids', 'unisex']
@@ -13,6 +14,7 @@ const CATEGORIES = ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes',
 function Products() {
   const { isDarkMode } = useTheme()
   const { addToCart } = useCart()
+  const { toggleWishlist, isInWishlist } = useWishlist()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [products, setProducts] = useState([])
@@ -21,9 +23,13 @@ function Products() {
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   // Filters State
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
-  const [selectedGender, setSelectedGender] = useState(searchParams.get('gender') || '')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || searchParams.get('search') || '')
+  const [selectedGenders, setSelectedGenders] = useState(
+    searchParams.get('gender') ? searchParams.get('gender').split(',') : []
+  )
+  const [selectedCategories, setSelectedCategories] = useState(
+    searchParams.get('category') ? searchParams.get('category').split(',') : []
+  )
   const [priceMin, setPriceMin] = useState(0)
   const [priceMax, setPriceMax] = useState(25000)
   const [sortBy, setSortBy] = useState('newest')
@@ -33,6 +39,15 @@ function Products() {
   // Smart suggestions dropdown state
   const [aiSuggestions, setAiSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Sync selected filters to URL params
+  useEffect(() => {
+    const params = {}
+    if (selectedGenders.length > 0) params.gender = selectedGenders.join(',')
+    if (selectedCategories.length > 0) params.category = selectedCategories.join(',')
+    if (searchQuery) params.q = searchQuery
+    setSearchParams(params)
+  }, [selectedGenders, selectedCategories, searchQuery, setSearchParams])
 
   // Load products based on query filters
   useEffect(() => {
@@ -45,8 +60,8 @@ function Products() {
           sort: sortBy,
           priceMin: priceMin > 0 ? priceMin : undefined,
           priceMax: priceMax < 25000 ? priceMax : undefined,
-          gender: selectedGender || undefined,
-          category: selectedCategory || undefined,
+          gender: selectedGenders.length > 0 ? selectedGenders.join(',') : undefined,
+          category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
           search: searchQuery || undefined
         }
 
@@ -72,8 +87,8 @@ function Products() {
         ]
         
         let filtered = mockDb.filter(p => {
-          if (selectedGender && p.gender !== selectedGender) return false
-          if (selectedCategory && p.category !== selectedCategory) return false
+          if (selectedGenders.length > 0 && !selectedGenders.includes(p.gender)) return false
+          if (selectedCategories.length > 0 && !selectedCategories.includes(p.category)) return false
           if (p.price < priceMin || p.price > priceMax) return false
           if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
           return true
@@ -91,7 +106,7 @@ function Products() {
     }
 
     fetchFilteredProducts()
-  }, [selectedGender, selectedCategory, priceMin, priceMax, sortBy, searchQuery, page])
+  }, [selectedGenders, selectedCategories, priceMin, priceMax, sortBy, searchQuery, page])
 
   // Instant AI Search suggestions handler
   const handleSearchChange = (e) => {
@@ -122,9 +137,9 @@ function Products() {
 
   const selectSuggestion = (sug) => {
     if (sug.type === 'category') {
-      setSelectedCategory(sug.value)
+      setSelectedCategories(prev => prev.includes(sug.value) ? prev : [...prev, sug.value])
     } else if (sug.type === 'gender') {
-      setSelectedGender(sug.value)
+      setSelectedGenders(prev => prev.includes(sug.value) ? prev : [...prev, sug.value])
     } else {
       setSearchQuery(sug.value)
     }
@@ -132,8 +147,8 @@ function Products() {
   }
 
   const resetFilters = () => {
-    setSelectedGender('')
-    setSelectedCategory('')
+    setSelectedGenders([])
+    setSelectedCategories([])
     setPriceMin(0)
     setPriceMax(25000)
     setSearchQuery('')
@@ -142,7 +157,7 @@ function Products() {
   }
 
   return (
-    <div className="container-custom py-12 min-h-screen">
+    <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 py-12 min-h-screen">
       {/* Header Banner */}
       <div className="relative rounded-2xl overflow-hidden py-16 px-8 mb-12 bg-luxury-charcoal border border-luxury-gold/20 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-yellow-500/10 via-transparent to-transparent pointer-events-none" />
@@ -255,58 +270,91 @@ function Products() {
           {/* Gender */}
           <div className="mb-6">
             <h4 className="font-semibold text-xs tracking-widest uppercase text-luxury-gold mb-3">Gender</h4>
-            <div className="space-y-2">
-              <label key="all-g" className="flex items-center gap-3 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name="gender"
-                  checked={selectedGender === ''}
-                  onChange={() => setSelectedGender('')}
-                  className="rounded-full text-luxury-gold focus:ring-luxury-gold"
-                />
-                All Genders
-              </label>
-              {GENDERS.map(g => (
-                <label key={g} className="flex items-center gap-3 text-sm cursor-pointer capitalize">
-                  <input
-                    type="radio"
-                    name="gender"
-                    checked={selectedGender === g}
-                    onChange={() => setSelectedGender(g)}
-                    className="rounded-full text-luxury-gold focus:ring-luxury-gold"
-                  />
-                  {g}
-                </label>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedGenders([])}
+                className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 ${
+                  selectedGenders.length === 0
+                    ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                    : isDarkMode
+                      ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                      : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                }`}
+              >
+                All
+              </button>
+              {GENDERS.map(g => {
+                const isSelected = selectedGenders.includes(g);
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedGenders(selectedGenders.filter(item => item !== g));
+                      } else {
+                        setSelectedGenders([...selectedGenders, g]);
+                      }
+                    }}
+                    className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 capitalize ${
+                      isSelected
+                        ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                        : isDarkMode
+                          ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                          : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Category */}
           <div className="mb-6">
             <h4 className="font-semibold text-xs tracking-widest uppercase text-luxury-gold mb-3">Category</h4>
-            <div className="space-y-2">
-              <label key="all-c" className="flex items-center gap-3 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name="category"
-                  checked={selectedCategory === ''}
-                  onChange={() => setSelectedCategory('')}
-                  className="rounded-full text-luxury-gold focus:ring-luxury-gold"
-                />
-                All Categories
-              </label>
-              {CATEGORIES.map(cat => (
-                <label key={cat} className="flex items-center gap-3 text-sm cursor-pointer capitalize">
-                  <input
-                    type="radio"
-                    name="category"
-                    checked={selectedCategory === cat}
-                    onChange={() => setSelectedCategory(cat)}
-                    className="rounded-full text-luxury-gold focus:ring-luxury-gold"
-                  />
-                  {cat.replace('-', ' ')}
-                </label>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCategories([])}
+                className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 ${
+                  selectedCategories.length === 0
+                    ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                    : isDarkMode
+                      ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                      : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                }`}
+              >
+                All
+              </button>
+              {CATEGORIES.map(cat => {
+                const isSelected = selectedCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCategories(selectedCategories.filter(item => item !== cat));
+                      } else {
+                        setSelectedCategories([...selectedCategories, cat]);
+                      }
+                    }}
+                    className={`py-2 px-1 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 capitalize truncate ${
+                      isSelected
+                        ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                        : isDarkMode
+                          ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                          : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                    }`}
+                    title={cat.replace('-', ' ')}
+                  >
+                    {cat.replace('-', ' ')}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -333,7 +381,7 @@ function Products() {
         <div className="flex-1">
           {loading ? (
             /* Skeleton Loading Grid */
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-1'}`}>
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="animate-pulse flex flex-col gap-4">
                   <div className="w-full aspect-[3/4] bg-luxury-charcoal rounded-2xl" />
@@ -358,7 +406,7 @@ function Products() {
               layout
               className={`grid gap-6 ${
                 viewMode === 'grid'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                  ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
                   : 'grid-cols-1'
               }`}
             >
@@ -414,12 +462,22 @@ function Products() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => { addToCart(p, 1); toast.success('Added to Cart!') }}
-                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-luxury-gold text-luxury-black font-bold text-xs tracking-wider uppercase hover:bg-yellow-400 transition-colors"
+                          className="flex-grow flex items-center justify-center gap-1.5 py-3 px-2 bg-luxury-gold text-luxury-black font-extrabold text-[10px] xs:text-xs uppercase tracking-wider hover:bg-yellow-400 transition-colors whitespace-nowrap rounded-lg"
                         >
-                          <FiShoppingBag /> Add to Cart
+                          <FiShoppingBag size={14} className="shrink-0" /> Add to Cart
                         </button>
-                        <button className={`p-3 border rounded-lg ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'}`}>
-                          <FiHeart className="text-luxury-gold" />
+                        <button
+                          onClick={() => toggleWishlist(p)}
+                          className={`p-3 border rounded-lg transition-colors duration-200 ${
+                            isInWishlist(p._id || p.id)
+                              ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20'
+                              : isDarkMode
+                                ? 'border-white/10 text-luxury-gold hover:bg-white/5'
+                                : 'border-gray-200 text-luxury-gold hover:bg-gray-50'
+                          }`}
+                          aria-label="Toggle Wishlist"
+                        >
+                          <FiHeart className={isInWishlist(p._id || p.id) ? 'fill-current' : ''} />
                         </button>
                       </div>
                     </div>
@@ -481,44 +539,91 @@ function Products() {
                 {/* Mobile Gender */}
                 <div className="mb-6">
                   <h4 className="font-semibold text-xs tracking-widest uppercase text-luxury-gold mb-3">Gender</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => setSelectedGender('')}
-                      className={`px-4 py-2 text-xs rounded-full border ${selectedGender === '' ? 'bg-luxury-gold text-luxury-black border-luxury-gold' : 'border-white/10'}`}
+                      type="button"
+                      onClick={() => setSelectedGenders([])}
+                      className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 ${
+                        selectedGenders.length === 0
+                          ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                          : isDarkMode
+                            ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                            : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                      }`}
                     >
                       All
                     </button>
-                    {GENDERS.map(g => (
-                      <button
-                        key={g}
-                        onClick={() => setSelectedGender(g)}
-                        className={`px-4 py-2 text-xs rounded-full border capitalize ${selectedGender === g ? 'bg-luxury-gold text-luxury-black border-luxury-gold' : 'border-white/10'}`}
-                      >
-                        {g}
-                      </button>
-                    ))}
+                    {GENDERS.map(g => {
+                      const isSelected = selectedGenders.includes(g);
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedGenders(selectedGenders.filter(item => item !== g))
+                            } else {
+                              setSelectedGenders([...selectedGenders, g])
+                            }
+                          }}
+                          className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 capitalize ${
+                            isSelected
+                              ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                              : isDarkMode
+                                ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                                : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Mobile Category */}
                 <div className="mb-6">
                   <h4 className="font-semibold text-xs tracking-widest uppercase text-luxury-gold mb-3">Category</h4>
-                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
                     <button
-                      onClick={() => setSelectedCategory('')}
-                      className={`px-4 py-2 text-xs rounded-full border ${selectedCategory === '' ? 'bg-luxury-gold text-luxury-black border-luxury-gold' : 'border-white/10'}`}
+                      type="button"
+                      onClick={() => setSelectedCategories([])}
+                      className={`py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 ${
+                        selectedCategories.length === 0
+                          ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                          : isDarkMode
+                            ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                            : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                      }`}
                     >
                       All
                     </button>
-                    {CATEGORIES.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setSelectedCategory(c)}
-                        className={`px-4 py-2 text-xs rounded-full border capitalize ${selectedCategory === c ? 'bg-luxury-gold text-luxury-black border-luxury-gold' : 'border-white/10'}`}
-                      >
-                        {c.replace('-', ' ')}
-                      </button>
-                    ))}
+                    {CATEGORIES.map(c => {
+                      const isSelected = selectedCategories.includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedCategories(selectedCategories.filter(item => item !== c))
+                            } else {
+                              setSelectedCategories([...selectedCategories, c])
+                            }
+                          }}
+                          className={`py-2 px-1 text-[11px] font-bold uppercase tracking-wider rounded-xl border-2 transition-all duration-300 capitalize truncate ${
+                            isSelected
+                              ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow'
+                              : isDarkMode
+                                ? 'border-white/10 hover:border-luxury-gold/50 text-white/70 hover:text-white bg-white/5'
+                                : 'border-black/10 hover:border-luxury-gold/50 text-black/70 hover:text-black bg-black/5'
+                          }`}
+                          title={c.replace('-', ' ')}
+                        >
+                          {c.replace('-', ' ')}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -38,10 +38,21 @@ export const WishlistProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await wishlistService.getWishlist()
-      if (response?.data?.items) {
-        setWishlistItems(response.data.items)
+      if (response?.data?.wishlist?.items) {
+        const items = response.data.wishlist.items.map(item => {
+          if (item.product) {
+            return {
+              ...item.product,
+              wishlistId: item._id,
+              addedAt: item.addedAt
+            }
+          }
+          return null
+        }).filter(Boolean)
+        setWishlistItems(items)
       }
-    } catch {
+    } catch (error) {
+      console.error('Error fetching wishlist:', error)
       // Use local state if API fails
     } finally {
       setLoading(false)

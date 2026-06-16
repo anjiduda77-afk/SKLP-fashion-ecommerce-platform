@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { FiFacebook, FiInstagram, FiTwitter, FiLinkedin } from 'react-icons/fi'
 import { useTranslation } from 'react-i18next'
 
 function Footer({ isDarkMode }) {
@@ -19,12 +18,6 @@ function Footer({ isDarkMode }) {
             <p className="text-sm opacity-75 mb-4">
               {t('footer.description', 'Premium fashion and footwear for everyone. Discover luxury style and comfort.')}
             </p>
-            <div className="flex gap-4">
-              <button className="hover:text-luxury-gold transition-colors"><FiFacebook /></button>
-              <button className="hover:text-luxury-gold transition-colors"><FiInstagram /></button>
-              <button className="hover:text-luxury-gold transition-colors"><FiTwitter /></button>
-              <button className="hover:text-luxury-gold transition-colors"><FiLinkedin /></button>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -33,8 +26,8 @@ function Footer({ isDarkMode }) {
             <ul className="space-y-2 text-sm">
               <li><Link to="/" className="hover:text-luxury-gold transition-colors">{t('footer.home', 'Home')}</Link></li>
               <li><Link to="/products" className="hover:text-luxury-gold transition-colors">{t('footer.products', 'Products')}</Link></li>
-              <li><Link to="/about" className="hover:text-luxury-gold transition-colors">{t('footer.aboutUs', 'About Us')}</Link></li>
-              <li><Link to="/contact" className="hover:text-luxury-gold transition-colors">{t('footer.contact', 'Contact')}</Link></li>
+              <li><Link to="/profile" className="hover:text-luxury-gold transition-colors">{t('footer.aboutUs', 'About Us')}</Link></li>
+              <li><Link to="/profile" className="hover:text-luxury-gold transition-colors">{t('footer.contact', 'Contact')}</Link></li>
             </ul>
           </div>
 
@@ -42,10 +35,10 @@ function Footer({ isDarkMode }) {
           <div>
             <h3 className="font-semibold mb-4 text-luxury-gold">{t('footer.support', 'Support')}</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-luxury-gold transition-colors">{t('footer.shippingInfo', 'Shipping Info')}</a></li>
-              <li><a href="#" className="hover:text-luxury-gold transition-colors">{t('footer.returns', 'Returns')}</a></li>
-              <li><a href="#" className="hover:text-luxury-gold transition-colors">{t('footer.faq', 'FAQ')}</a></li>
-              <li><a href="#" className="hover:text-luxury-gold transition-colors">{t('footer.trackOrder', 'Track Order')}</a></li>
+              <li><Link to="/profile" className="hover:text-luxury-gold transition-colors">{t('footer.shippingInfo', 'Shipping Info')}</Link></li>
+              <li><Link to="/profile" className="hover:text-luxury-gold transition-colors">{t('footer.returns', 'Returns')}</Link></li>
+              <li><Link to="/profile" className="hover:text-luxury-gold transition-colors">{t('footer.faq', 'FAQ')}</Link></li>
+              <li><Link to="/orders" className="hover:text-luxury-gold transition-colors">{t('footer.trackOrder', 'Track Order')}</Link></li>
             </ul>
           </div>
 
@@ -55,7 +48,7 @@ function Footer({ isDarkMode }) {
             <p className="text-sm opacity-75 mb-4">
               {t('footer.newsletterText', 'Subscribe to get special offers and updates.')}
             </p>
-            <div className={`flex rounded-full overflow-hidden border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
+            <div className={`flex rounded-full overflow-hidden border mb-4 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
               <input
                 type="email"
                 placeholder={t('footer.emailPlaceholder', 'Your email')}
@@ -66,6 +59,14 @@ function Footer({ isDarkMode }) {
                 {t('footer.join', 'Join')}
               </button>
             </div>
+            
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
+              className="w-full py-3 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              💬 Chat Bot
+            </button>
           </div>
         </div>
 

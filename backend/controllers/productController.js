@@ -6,11 +6,39 @@ export const getProducts = async (req, res) => {
   const { page = 1, limit = 12, category, gender, priceMin, priceMax, search, sort } = req.query
   const query = { isActive: true }
 
-  if (category) query.category = category
-  if (gender) query.gender = gender
+  if (category) {
+    if (typeof category === 'string') {
+      query.category = category.includes(',') ? { $in: category.split(',') } : category
+    } else if (Array.isArray(category)) {
+      query.category = { $in: category }
+    }
+  }
+  if (gender) {
+    if (typeof gender === 'string') {
+      query.gender = gender.includes(',') ? { $in: gender.split(',') } : gender
+    } else if (Array.isArray(gender)) {
+      query.gender = { $in: gender }
+    }
+  }
   if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) }
   if (priceMax) query.price = { ...query.price, $lte: Number(priceMax) }
-  if (search) query.$text = { $search: search }
+  if (search) {
+    const words = search.trim().split(/\s+/).filter(Boolean)
+    if (words.length > 0) {
+      query.$and = words.map(word => {
+        const searchRegex = new RegExp(word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i')
+        return {
+          $or: [
+            { name: searchRegex },
+            { brand: searchRegex },
+            { category: searchRegex },
+            { tags: searchRegex },
+            { description: searchRegex }
+          ]
+        }
+      })
+    }
+  }
 
   const sortOptions = {
     newest: { createdAt: -1 },
@@ -45,10 +73,36 @@ export const searchProducts = async (req, res) => {
   const query = { isActive: true }
 
   if (q) {
-    query.$text = { $search: q }
+    const words = q.trim().split(/\s+/).filter(Boolean)
+    if (words.length > 0) {
+      query.$and = words.map(word => {
+        const searchRegex = new RegExp(word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i')
+        return {
+          $or: [
+            { name: searchRegex },
+            { brand: searchRegex },
+            { category: searchRegex },
+            { tags: searchRegex },
+            { description: searchRegex }
+          ]
+        }
+      })
+    }
   }
-  if (category) query.category = category
-  if (gender) query.gender = gender
+  if (category) {
+    if (typeof category === 'string') {
+      query.category = category.includes(',') ? { $in: category.split(',') } : category
+    } else if (Array.isArray(category)) {
+      query.category = { $in: category }
+    }
+  }
+  if (gender) {
+    if (typeof gender === 'string') {
+      query.gender = gender.includes(',') ? { $in: gender.split(',') } : gender
+    } else if (Array.isArray(gender)) {
+      query.gender = { $in: gender }
+    }
+  }
   if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) }
   if (priceMax) query.price = { ...query.price, $lte: Number(priceMax) }
 

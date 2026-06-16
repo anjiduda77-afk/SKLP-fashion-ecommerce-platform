@@ -354,6 +354,20 @@ function Sidebar({ isOpen, onClose }) {
 
             </div>
 
+            {/* Chatbot trigger */}
+            <div className="px-6 mb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  window.dispatchEvent(new CustomEvent('open-chatbot'))
+                }}
+                className="w-full py-3 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                💬 Chat Bot
+              </button>
+            </div>
+
             {/* Bottom Panel Profile Actions */}
             <div className={`p-6 border-t ${isDarkMode ? 'border-white/10' : 'border-black/5'}`}>
               {isAuthenticated ? (

@@ -28,6 +28,13 @@ function AIChatbot() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history, open])
 
+  // Listen to global open event
+  useEffect(() => {
+    const handleOpenChat = () => setOpen(true)
+    window.addEventListener('open-chatbot', handleOpenChat)
+    return () => window.removeEventListener('open-chatbot', handleOpenChat)
+  }, [])
+
   const sendMessage = (text) => {
     if (!text.trim()) return
     

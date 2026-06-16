@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { FiCheckCircle } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
+import { useTheme } from '@context/ThemeContext'
 import { cartService, orderService, userService } from '@services/apiServices'
 import { toast } from 'react-toastify'
 
@@ -10,6 +11,7 @@ function Checkout() {
   const navigate = useNavigate()
   const { cartItems, cartTotal, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
+  const { isDarkMode } = useTheme()
 
   const [loading, setLoading] = useState(false)
   const [shippingAddress, setShippingAddress] = useState({
@@ -240,56 +242,89 @@ function Checkout() {
           <div className="card p-8 rounded-2xl border border-white/5">
             <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">3. Payment Details</h2>
             <div className="space-y-4">
-              <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-                paymentMethod === 'cod' ? 'border-luxury-gold bg-luxury-gold/5' : 'border-white/10 hover:border-white/30'
-              }`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  checked={paymentMethod === 'cod'}
-                  onChange={() => setPaymentMethod('cod')}
-                  className="mr-4 text-luxury-gold focus:ring-luxury-gold"
-                />
-                <div>
-                  <p className="font-bold text-sm">Cash on Delivery (COD)</p>
-                  <p className="text-xs opacity-60">Pay with cash upon secure package delivery.</p>
+              {/* Cash on Delivery (COD) */}
+              <div 
+                onClick={() => setPaymentMethod('cod')}
+                className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
+                  paymentMethod === 'cod' 
+                    ? 'border-luxury-gold bg-luxury-gold/10 shadow-glow' 
+                    : isDarkMode 
+                      ? 'border-white/10 bg-white/5 hover:border-luxury-gold/50' 
+                      : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/50'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 mr-4 flex items-center justify-center transition-all duration-200 ${
+                  paymentMethod === 'cod' 
+                    ? 'border-luxury-gold bg-luxury-gold text-luxury-black' 
+                    : isDarkMode ? 'border-white/20' : 'border-black/20'
+                }`}>
+                  {paymentMethod === 'cod' && (
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                      <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                    </svg>
+                  )}
                 </div>
-              </label>
+                <div>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-luxury-black'}`}>Cash on Delivery (COD)</p>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>Pay with cash upon secure package delivery.</p>
+                </div>
+              </div>
 
-              <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-                paymentMethod === 'card' ? 'border-luxury-gold bg-luxury-gold/5' : 'border-white/10 hover:border-white/30'
-              }`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="card"
-                  checked={paymentMethod === 'card'}
-                  onChange={() => setPaymentMethod('card')}
-                  className="mr-4 text-luxury-gold focus:ring-luxury-gold"
-                />
-                <div>
-                  <p className="font-bold text-sm">Credit / Debit Card</p>
-                  <p className="text-xs opacity-60">Visa, Mastercard, RuPay cards supported via secure link.</p>
+              {/* Credit / Debit Card */}
+              <div 
+                onClick={() => setPaymentMethod('card')}
+                className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
+                  paymentMethod === 'card' 
+                    ? 'border-luxury-gold bg-luxury-gold/10 shadow-glow' 
+                    : isDarkMode 
+                      ? 'border-white/10 bg-white/5 hover:border-luxury-gold/50' 
+                      : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/50'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 mr-4 flex items-center justify-center transition-all duration-200 ${
+                  paymentMethod === 'card' 
+                    ? 'border-luxury-gold bg-luxury-gold text-luxury-black' 
+                    : isDarkMode ? 'border-white/20' : 'border-black/20'
+                }`}>
+                  {paymentMethod === 'card' && (
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                      <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                    </svg>
+                  )}
                 </div>
-              </label>
+                <div>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-luxury-black'}`}>Credit / Debit Card</p>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>Visa, Mastercard, RuPay cards supported via secure link.</p>
+                </div>
+              </div>
 
-              <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-                paymentMethod === 'upi' ? 'border-luxury-gold bg-luxury-gold/5' : 'border-white/10 hover:border-white/30'
-              }`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="upi"
-                  checked={paymentMethod === 'upi'}
-                  onChange={() => setPaymentMethod('upi')}
-                  className="mr-4 text-luxury-gold focus:ring-luxury-gold"
-                />
-                <div>
-                  <p className="font-bold text-sm">UPI Payment (GPay, PhonePe, Paytm)</p>
-                  <p className="text-xs opacity-60">Instant payment verification using standard mobile applications.</p>
+              {/* UPI Payment */}
+              <div 
+                onClick={() => setPaymentMethod('upi')}
+                className={`flex items-center p-5 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${
+                  paymentMethod === 'upi' 
+                    ? 'border-luxury-gold bg-luxury-gold/10 shadow-glow' 
+                    : isDarkMode 
+                      ? 'border-white/10 bg-white/5 hover:border-luxury-gold/50' 
+                      : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/50'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 mr-4 flex items-center justify-center transition-all duration-200 ${
+                  paymentMethod === 'upi' 
+                    ? 'border-luxury-gold bg-luxury-gold text-luxury-black' 
+                    : isDarkMode ? 'border-white/20' : 'border-black/20'
+                }`}>
+                  {paymentMethod === 'upi' && (
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                      <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                    </svg>
+                  )}
                 </div>
-              </label>
+                <div>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-luxury-black'}`}>UPI Payment (GPay, PhonePe, Paytm)</p>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>Instant payment verification using standard mobile applications.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

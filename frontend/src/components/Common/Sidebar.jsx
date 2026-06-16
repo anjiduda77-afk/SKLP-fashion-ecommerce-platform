@@ -311,25 +311,37 @@ function Sidebar({ isOpen, onClose }) {
                       className={`overflow-hidden transition-all duration-300 
                         ${expandedSection === sectionIndex ? 'max-h-[400px] opacity-100 mt-4 space-y-2' : 'max-h-0 opacity-0'}`}
                     >
-                      {section.items.map((item) => (
-                        <Link
-                          key={item.label}
-                          to={item.link}
-                          onClick={onClose}
-                          className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors
-                            ${isDarkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-luxury-gold/10 text-slate-800'}`}
-                        >
-                          {item.icon || <FiTrendingUp className="text-luxury-gold mr-2" />}
-                          <span>{t(item.labelKey || item.label, item.label)}</span>
-                          
-                          {/* Live count badges */}
-                          {item.label === 'My Wishlist' && wishlistCount > 0 && (
-                            <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">
-                              {wishlistCount}
-                            </span>
-                          )}
-                        </Link>
-                      ))}
+                      {section.items.map((item) => {
+                        const isHelpline = item.label === 'Customer Support';
+                        const handleClick = (e) => {
+                          if (isHelpline) {
+                            e.preventDefault();
+                            onClose();
+                            window.dispatchEvent(new CustomEvent('open-helpline'));
+                          } else {
+                            onClose();
+                          }
+                        };
+                        return (
+                          <Link
+                            key={item.label}
+                            to={isHelpline ? '#' : item.link}
+                            onClick={handleClick}
+                            className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors
+                              ${isDarkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-luxury-gold/10 text-slate-800'}`}
+                          >
+                            {item.icon || <FiTrendingUp className="text-luxury-gold mr-2" />}
+                            <span>{t(item.labelKey || item.label, item.label)}</span>
+                            
+                            {/* Live count badges */}
+                            {item.label === 'My Wishlist' && wishlistCount > 0 && (
+                              <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white">
+                                {wishlistCount}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

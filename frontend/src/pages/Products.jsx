@@ -186,7 +186,7 @@ function Products() {
               value={searchQuery}
               onChange={handleSearchChange}
               onFocus={() => { if (aiSuggestions.length > 0) setShowSuggestions(true) }}
-              className="bg-transparent border-none p-0 outline-none w-full text-sm placeholder-white/40 focus:ring-0"
+              className={`bg-transparent border-none p-0 outline-none w-full text-sm focus:ring-0 ${isDarkMode ? 'text-white placeholder-white/40' : 'text-luxury-black placeholder-black/45'}`}
             />
             {searchQuery && (
               <button onClick={() => { setSearchQuery(''); setShowSuggestions(false) }}>
@@ -234,7 +234,7 @@ function Products() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className={`text-sm px-4 py-3 rounded-xl border ${isDarkMode ? 'bg-luxury-charcoal border-luxury-mediumGray/30' : 'bg-white border-gray-200'}`}
+            className={`text-sm px-4 py-3 rounded-xl border ${isDarkMode ? 'bg-luxury-charcoal border-luxury-mediumGray/30 text-white' : 'bg-white border-gray-200 text-luxury-black'}`}
           >
             <option value="newest">Newest First</option>
             <option value="priceAsc">Price: Low to High</option>

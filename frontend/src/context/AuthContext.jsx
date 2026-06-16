@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { userService } from '@services/apiServices'
 
 const AuthContext = createContext()
 
@@ -8,19 +9,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState(null)
 
-  // Initialize auth state from localStorage
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user')
-    const savedToken = localStorage.getItem('token')
-
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser))
-      setToken(savedToken)
-      setIsAuthenticated(true)
-    }
-
-    setLoading(false)
-  }, [])
+  const logout = () => {
+    setUser(null)
+    setToken(null)
+    setIsAuthenticated(false)
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+  }
 
   const login = (userData, authToken) => {
     setUser(userData)
@@ -30,13 +25,40 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', authToken)
   }
 
-  const logout = () => {
-    setUser(null)
-    setToken(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
-  }
+  // Initialize auth state from localStorage and verify with API
+  useEffect(() => {
+    const initAuth = async () => {
+      const savedUser = localStorage.getItem('user')
+      const savedToken = localStorage.getItem('token')
+
+      if (savedToken) {
+        try {
+          // Temporarily set credentials in state so interception logic resolves it
+          setToken(savedToken)
+          // Fetch latest user profile from backend
+          const res = await userService.getCurrentUser()
+          if (res.data?.success && res.data?.user) {
+            setUser(res.data.user)
+            setIsAuthenticated(true)
+            localStorage.setItem('user', JSON.stringify(res.data.user))
+          } else {
+            logout()
+          }
+        } catch (err) {
+          console.warn('Failed to verify token on boot, falling back to cached user:', err.message)
+          if (savedUser) {
+            setUser(JSON.parse(savedUser))
+            setToken(savedToken)
+            setIsAuthenticated(true)
+          } else {
+            logout()
+          }
+        }
+      }
+      setLoading(false)
+    }
+    initAuth()
+  }, [])
 
   const updateUser = (updatedData) => {
     const newUser = { ...user, ...updatedData }

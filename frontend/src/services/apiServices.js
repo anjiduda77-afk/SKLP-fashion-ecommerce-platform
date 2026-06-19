@@ -1,9 +1,11 @@
 import apiClient from './apiClient'
+import { createUploadConfig } from './apiClient'
 import adminService from './adminService'
+
 export const authService = {
   // Email Login
-  login: (email, password) =>
-    apiClient.post('/auth/login', { email, password }),
+  login: (email, password, rememberMe) =>
+    apiClient.post('/auth/login', { email, password, rememberMe }),
 
   // Email Register
   register: (userData) =>
@@ -20,6 +22,13 @@ export const authService = {
   verifyOTP: (phone, otp) =>
     apiClient.post('/auth/verify-otp', { phone, otp }),
 
+  // Email Verification
+  verifyEmail: (token) =>
+    apiClient.post('/auth/verify-email', { token }),
+
+  resendVerification: (email) =>
+    apiClient.post('/auth/resend-verification', { email }),
+
   // Forgot Password
   forgotPassword: (email) =>
     apiClient.post('/auth/forgot-password', { email }),
@@ -32,8 +41,16 @@ export const authService = {
     apiClient.post('/auth/refresh-token', { refreshToken }),
 
   // Logout
-  logout: () =>
-    apiClient.post('/auth/logout'),
+  logout: (refreshToken) =>
+    apiClient.post('/auth/logout', { refreshToken }),
+
+  // Logout all devices
+  logoutAll: () =>
+    apiClient.post('/auth/logout-all'),
+
+  // Active sessions
+  getSessions: () =>
+    apiClient.get('/auth/sessions'),
 }
 
 export const userService = {
@@ -194,6 +211,62 @@ export const wishlistService = {
     apiClient.delete('/wishlist'),
 }
 
+export const uploadService = {
+  // Upload product images
+  uploadImages: (files, onUploadProgress) => {
+    const formData = new FormData()
+    files.forEach(file => formData.append('images', file))
+    return apiClient.post('/upload/images', formData, createUploadConfig(onUploadProgress))
+  },
+
+  // Upload avatar
+  uploadAvatar: (file, onUploadProgress) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return apiClient.post('/upload/avatar', formData, createUploadConfig(onUploadProgress))
+  },
+
+  // Delete image
+  deleteImage: (publicId) =>
+    apiClient.delete(`/upload/${encodeURIComponent(publicId)}`),
+}
+
+export const sellerService = {
+  // Dashboard
+  getDashboard: () =>
+    apiClient.get('/seller/dashboard'),
+
+  // Products
+  getProducts: (params) =>
+    apiClient.get('/seller/products', { params }),
+
+  createProduct: (productData) =>
+    apiClient.post('/seller/products', productData),
+
+  updateProduct: (id, productData) =>
+    apiClient.put(`/seller/products/${id}`, productData),
+
+  deleteProduct: (id) =>
+    apiClient.delete(`/seller/products/${id}`),
+
+  deleteProductImage: (productId, imageIndex) =>
+    apiClient.delete(`/seller/products/${productId}/images/${imageIndex}`),
+
+  // Orders
+  getOrders: (params) =>
+    apiClient.get('/seller/orders', { params }),
+
+  dispatchOrder: (id, data) =>
+    apiClient.put(`/seller/orders/${id}/dispatch`, data),
+
+  // Profile
+  getProfile: () =>
+    apiClient.get('/seller/profile'),
+
+  updateProfile: (profileData) =>
+    apiClient.put('/seller/profile', profileData),
+}
+
 export default {
   authService,
   userService,
@@ -201,5 +274,7 @@ export default {
   cartService,
   orderService,
   wishlistService,
+  uploadService,
+  sellerService,
   adminService,
 }

@@ -77,9 +77,20 @@ function OTPLogin() {
     setLoading(true)
     try {
       const response = await authService.verifyOTP(phone, otpString)
-      login(response.data.user, response.data.token)
-      toast.success('Welcome to SKLP! 🎉')
-      navigate('/')
+      login(response.data.user, response.data.token, response.data.refreshToken)
+      
+      const role = response.data.user?.role?.toLowerCase()
+      toast.success(`Welcome back, ${response.data.user?.firstName || 'User'}! 🎉`)
+      
+      if (role === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (role === 'seller') {
+        navigate('/seller/dashboard')
+      } else if (role === 'delivery' || role === 'deliverypartner') {
+        navigate('/delivery/dashboard')
+      } else {
+        navigate('/')
+      }
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Invalid OTP. Please try again.')
       setOtp(['', '', '', '', '', ''])

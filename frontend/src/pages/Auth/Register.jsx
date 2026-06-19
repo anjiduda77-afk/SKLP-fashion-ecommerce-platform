@@ -64,6 +64,9 @@ function Register() {
     password: '',
     confirmPassword: '',
     agreeTerms: false,
+    registerAsSeller: false,
+    storeName: '',
+    storeDescription: '',
   })
 
   const handleChange = (e) => {
@@ -83,16 +86,26 @@ function Register() {
     }
     setLoading(true)
     try {
-      const response = await authService.register({
+      const payload = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-      })
-      login(response.data.user, response.data.token)
+        registerAsSeller: formData.registerAsSeller,
+      }
+      if (formData.registerAsSeller) {
+        payload.storeName = formData.storeName
+        payload.storeDescription = formData.storeDescription
+      }
+      const response = await authService.register(payload)
+      login(response.data.user, response.data.token, response.data.refreshToken)
       toast.success('Account created! Welcome to SKLP 🎉')
-      navigate('/')
+      if (response.data.user?.role?.toLowerCase() === 'seller') {
+        navigate('/seller/dashboard')
+      } else {
+        navigate('/')
+      }
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Registration failed. Please try again.')
     } finally {
@@ -241,6 +254,50 @@ function Register() {
               </div>
               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
                 <p className="text-red-400 text-xs mt-1">Passwords do not match</p>
+              )}
+            </div>
+
+            {/* Register as Seller option */}
+            <div className="space-y-4 border-t border-luxury-mediumGray/20 pt-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="registerAsSeller"
+                  checked={formData.registerAsSeller}
+                  onChange={handleChange}
+                  className="accent-yellow-400 w-4 h-4 cursor-pointer"
+                />
+                <span className="text-sm font-bold text-luxury-gold uppercase tracking-wider">
+                  Register as a Partner Seller
+                </span>
+              </label>
+
+              {formData.registerAsSeller && (
+                <div className="space-y-4 pl-6 animate-fade-in">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Store Name *</label>
+                    <input
+                      type="text"
+                      name="storeName"
+                      value={formData.storeName}
+                      onChange={handleChange}
+                      placeholder="e.g. Sabyasachi Couture"
+                      className="w-full"
+                      required={formData.registerAsSeller}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Store Description</label>
+                    <textarea
+                      name="storeDescription"
+                      value={formData.storeDescription}
+                      onChange={handleChange}
+                      placeholder="Briefly describe your designer brand or collection style..."
+                      className="w-full text-sm p-3.5 rounded-xl border bg-transparent focus:ring-1 focus:ring-luxury-gold outline-none"
+                      rows={3}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 

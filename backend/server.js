@@ -18,6 +18,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import sellerRoutes from './routes/sellerRoutes.js';
 
 const app = express();
 
@@ -85,6 +87,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/seller', sellerRoutes);
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {

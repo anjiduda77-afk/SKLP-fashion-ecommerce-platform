@@ -167,7 +167,7 @@ function Orders() {
                   <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                     <div>
                       <p className="text-xs opacity-60">Grand Total</p>
-                      <p className="text-lg font-bold text-luxury-gold font-mono">₹{order.total.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-luxury-gold font-mono">₹{(order.total || order.totalAmount || 0).toLocaleString()}</p>
                     </div>
                     <FiChevronDown className={`text-luxury-gold transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>

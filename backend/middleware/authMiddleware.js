@@ -34,6 +34,32 @@ export const adminOnly = asyncHandler((req, res, next) => {
   next();
 });
 
+// Verify seller role
+export const sellerOnly = asyncHandler((req, res, next) => {
+  if (!req.user) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  if (req.user.role !== 'seller') {
+    throw new ApiError(403, 'Seller access required');
+  }
+
+  next();
+});
+
+// Verify seller or admin role
+export const sellerOrAdmin = asyncHandler((req, res, next) => {
+  if (!req.user) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  if (req.user.role !== 'seller' && req.user.role !== 'admin') {
+    throw new ApiError(403, 'Seller or Admin access required');
+  }
+
+  next();
+});
+
 // Verify user ownership or admin status
 export const ownerOrAdmin = asyncHandler((req, res, next) => {
   if (!req.user) {

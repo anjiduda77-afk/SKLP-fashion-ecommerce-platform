@@ -7,15 +7,18 @@ import Banner from '../models/Banner.js';
 import Notification from '../models/Notification.js';
 import Review from '../models/Review.js';
 import { ApiError } from '../middleware/errorHandler.js';
+import { uploadMultipleImages, deleteImage } from '../config/cloudinary.js';
 
-// Get Dashboard Metrics
+// ================= ENHANCED DASHBOARD =================
 export const getDashboardMetrics = async (req, res) => {
   try {
     // 1. Core Summary Stats
     const totalUsers = await User.countDocuments({ role: 'customer' });
+    const totalSellers = await User.countDocuments({ role: 'seller' });
     const totalOrders = await Order.countDocuments({});
+    const totalProducts = await Product.countDocuments({ isActive: true });
     
-    // Aggregation for Total Revenue
+    // Revenue Aggregation
     const salesStats = await Order.aggregate([
       { $match: { status: { $nin: ['cancelled', 'returned', 'refunded'] } } },
       { $group: { _id: null, totalSales: { $sum: '$totalAmount' }, avgOrder: { $avg: '$totalAmount' } } }
@@ -24,18 +27,61 @@ export const getDashboardMetrics = async (req, res) => {
     const totalSales = salesStats[0]?.totalSales || 0;
     const avgOrderValue = salesStats[0]?.avgOrder || 0;
 
-    // 2. Inventory Alert count (low stock items)
+    // Today's stats
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayOrders = await Order.countDocuments({ createdAt: { $gte: todayStart } });
+    const todayRevenueAgg = await Order.aggregate([
+      { $match: { createdAt: { $gte: todayStart }, status: { $nin: ['cancelled'] } } },
+      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+    ]);
+    const todayRevenue = todayRevenueAgg[0]?.revenue || 0;
+
+    // This week stats
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    const weeklyNewUsers = await User.countDocuments({ createdAt: { $gte: weekStart } });
+    const weeklyOrders = await Order.countDocuments({ createdAt: { $gte: weekStart } });
+    const weeklyRevenueAgg = await Order.aggregate([
+      { $match: { createdAt: { $gte: weekStart }, status: { $nin: ['cancelled'] } } },
+      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+    ]);
+    const weeklyRevenue = weeklyRevenueAgg[0]?.revenue || 0;
+
+    // Previous week for growth calculation
+    const prevWeekStart = new Date();
+    prevWeekStart.setDate(prevWeekStart.getDate() - 14);
+    const prevWeekRevenueAgg = await Order.aggregate([
+      { $match: { createdAt: { $gte: prevWeekStart, $lt: weekStart }, status: { $nin: ['cancelled'] } } },
+      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+    ]);
+    const prevWeekRevenue = prevWeekRevenueAgg[0]?.revenue || 0;
+    const weeklyGrowth = prevWeekRevenue > 0 
+      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) 
+      : 0;
+
+    // Inventory alerts
     const lowStockCount = await Product.countDocuments({
-      stock: { $lte: 10 }, // standard threshold
+      stock: { $gt: 0, $lte: 10 },
+      isActive: true
+    });
+    const outOfStockCount = await Product.countDocuments({
+      stock: 0,
       isActive: true
     });
 
-    // 3. Return Requests Count
-    const pendingReturnsCount = await Order.countDocuments({
-      status: 'return_requested'
-    });
+    // Pending actions
+    const pendingReturnsCount = await Order.countDocuments({ status: 'return_requested' });
+    const pendingOrdersCount = await Order.countDocuments({ status: 'pending' });
+    const pendingSellersCount = await User.countDocuments({ role: 'seller', 'sellerProfile.isVerified': false });
 
-    // 4. Category Sales (Aggregation)
+    // Order status breakdown
+    const orderStatusBreakdown = await Order.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Category Sales
     const categorySales = await Order.aggregate([
       { $match: { status: { $nin: ['cancelled'] } } },
       { $unwind: '$items' },
@@ -65,7 +111,7 @@ export const getDashboardMetrics = async (req, res) => {
       { $sort: { totalSales: -1 } }
     ]);
 
-    // 5. Monthly Sales Timeline (Aggregation)
+    // Monthly Sales Timeline (Last 30 days)
     const salesTimeline = await Order.aggregate([
       { $match: { status: { $nin: ['cancelled'] } } },
       {
@@ -80,25 +126,48 @@ export const getDashboardMetrics = async (req, res) => {
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-      { $limit: 30 } // Last 30 days
+      { $limit: 30 }
     ]);
 
-    // 6. Recent Orders
+    // Recent Orders
     const recentOrders = await Order.find({})
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(10)
       .populate('userId', 'firstName lastName email')
       .lean();
+
+    // Conversion rate (orders / unique users who visited in last 30 days)
+    const conversionRate = totalUsers > 0 ? Math.round((totalOrders / totalUsers) * 100) : 0;
 
     res.status(200).json({
       success: true,
       metrics: {
+        // Core
         totalUsers,
+        totalSellers,
         totalOrders,
+        totalProducts,
         totalSales,
-        avgOrderValue,
+        avgOrderValue: Math.round(avgOrderValue),
+        // Today
+        todayOrders,
+        todayRevenue,
+        // Weekly
+        weeklyNewUsers,
+        weeklyOrders,
+        weeklyRevenue,
+        weeklyGrowth,
+        // Inventory
         lowStockCount,
+        outOfStockCount,
+        // Pending actions
         pendingReturnsCount,
+        pendingOrdersCount,
+        pendingSellersCount,
+        // Calculated
+        conversionRate,
+        // Breakdowns
+        orderStatusBreakdown: orderStatusBreakdown.map(s => ({ status: s._id, count: s.count })),
         categorySales: categorySales.map(c => ({
           category: c._id,
           quantity: c.totalQuantity,
@@ -111,9 +180,12 @@ export const getDashboardMetrics = async (req, res) => {
         })),
         recentOrders: recentOrders.map(o => ({
           id: o._id,
+          orderNumber: o.orderNumber,
           customer: o.userId ? `${o.userId.firstName} ${o.userId.lastName}` : 'Guest Customer',
+          email: o.userId?.email,
           total: o.totalAmount,
           status: o.status,
+          paymentMethod: o.paymentMethod,
           date: o.createdAt
         }))
       }
@@ -125,16 +197,18 @@ export const getDashboardMetrics = async (req, res) => {
 };
 
 // ================= PRODUCT CRUD =================
-// Get all products (Admin View with full filter)
 export const getAllProducts = async (req, res) => {
-  const { category, search, page = 1, limit = 20 } = req.query;
+  const { category, search, status, page = 1, limit = 20 } = req.query;
   const query = {};
 
   if (category) query.category = category;
+  if (status === 'active') query.isActive = true;
+  else if (status === 'inactive') query.isActive = false;
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
-      { sku: { $regex: search, $options: 'i' } }
+      { sku: { $regex: search, $options: 'i' } },
+      { brand: { $regex: search, $options: 'i' } }
     ];
   }
 
@@ -158,15 +232,37 @@ export const getAllProducts = async (req, res) => {
   });
 };
 
-// Create new Product
+// Create product with image upload support
 export const createProduct = async (req, res) => {
-  const { name, description, shortDescription, category, subcategory, gender, price, originalPrice, discount, stock, lowStockThreshold, images, variants, attributes } = req.body;
+  const {
+    name, description, shortDescription, category, subcategory, gender,
+    price, originalPrice, discount, stock, lowStockThreshold,
+    images, variants, attributes, brand, tags
+  } = req.body;
 
   // Generate unique SKU
   const categoryPrefix = (category || 'GEN').substring(0, 3).toUpperCase();
   const genderPrefix = (gender || 'UNI').substring(0, 1).toUpperCase();
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const sku = `${categoryPrefix}-${genderPrefix}-${randomSuffix}`;
+
+  // Process images from multer file uploads
+  let processedImages = [];
+  if (req.files && req.files.length > 0) {
+    const uploaded = await uploadMultipleImages(
+      req.files.map(f => f.buffer),
+      { folder: 'products', width: 1200 }
+    );
+    processedImages = uploaded.map((img, i) => ({
+      url: img.url,
+      publicId: img.publicId,
+      isMain: i === 0,
+      alt: name,
+    }));
+  } else if (images && images.length > 0) {
+    // Images passed as URL array in body
+    processedImages = images;
+  }
 
   const product = await Product.create({
     name,
@@ -181,10 +277,13 @@ export const createProduct = async (req, res) => {
     stock,
     lowStockThreshold: lowStockThreshold || 10,
     sku,
-    images: images || [],
+    brand,
+    images: processedImages,
     variants: variants || [],
     attributes: attributes || {},
+    tags: tags || [],
     isActive: true,
+    moderationStatus: 'approved',
     createdBy: req.user.id
   });
 
@@ -204,12 +303,32 @@ export const updateProduct = async (req, res) => {
     throw new ApiError(404, 'Product not found');
   }
 
+  // Handle new image uploads
+  if (req.files && req.files.length > 0) {
+    const uploaded = await uploadMultipleImages(
+      req.files.map(f => f.buffer),
+      { folder: 'products', width: 1200 }
+    );
+    const newImages = uploaded.map(img => ({
+      url: img.url,
+      publicId: img.publicId,
+      isMain: false,
+      alt: product.name,
+    }));
+    product.images = [...(product.images || []), ...newImages];
+  }
+
   // Update fields dynamically
   Object.keys(req.body).forEach(key => {
-    if (req.body[key] !== undefined) {
+    if (req.body[key] !== undefined && key !== 'images') {
       product[key] = req.body[key];
     }
   });
+
+  // If images array explicitly provided (for reorder/delete)
+  if (req.body.images && !req.files?.length) {
+    product.images = req.body.images;
+  }
 
   product.updatedBy = req.user.id;
   await product.save();
@@ -221,7 +340,7 @@ export const updateProduct = async (req, res) => {
   });
 };
 
-// Delete Product (Soft delete by default to preserve order history)
+// Delete Product (Soft delete)
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;
   const product = await Product.findById(id);
@@ -229,7 +348,6 @@ export const deleteProduct = async (req, res) => {
     throw new ApiError(404, 'Product not found');
   }
 
-  // Soft delete
   product.isActive = false;
   await product.save();
 
@@ -239,13 +357,61 @@ export const deleteProduct = async (req, res) => {
   });
 };
 
+// ================= BULK OPERATIONS =================
+export const bulkUpdateProducts = async (req, res) => {
+  const { productIds, action } = req.body;
+
+  if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+    throw new ApiError(400, 'Product IDs array is required');
+  }
+
+  let updateData = {};
+  let message = '';
+
+  switch (action) {
+    case 'activate':
+      updateData = { isActive: true };
+      message = `${productIds.length} product(s) activated`;
+      break;
+    case 'deactivate':
+      updateData = { isActive: false };
+      message = `${productIds.length} product(s) deactivated`;
+      break;
+    case 'feature':
+      updateData = { isFeatured: true };
+      message = `${productIds.length} product(s) marked as featured`;
+      break;
+    case 'unfeature':
+      updateData = { isFeatured: false };
+      message = `${productIds.length} product(s) unfeatured`;
+      break;
+    case 'approve':
+      updateData = { moderationStatus: 'approved' };
+      message = `${productIds.length} product(s) approved`;
+      break;
+    default:
+      throw new ApiError(400, `Unknown action: ${action}`);
+  }
+
+  await Product.updateMany(
+    { _id: { $in: productIds } },
+    { $set: { ...updateData, updatedBy: req.user.id } }
+  );
+
+  res.status(200).json({ success: true, message });
+};
+
 // ================= ORDER WORKFLOW =================
-// Get all orders with details
 export const getAllOrders = async (req, res) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = 1, limit = 20, search } = req.query;
   const query = {};
 
   if (status) query.status = status;
+  if (search) {
+    query.$or = [
+      { orderNumber: { $regex: search, $options: 'i' } },
+    ];
+  }
 
   const orders = await Order.find(query)
     .sort({ createdAt: -1 })
@@ -268,7 +434,6 @@ export const getAllOrders = async (req, res) => {
   });
 };
 
-// Update order delivery status
 export const updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status, trackingDetails } = req.body;
@@ -283,7 +448,6 @@ export const updateOrderStatus = async (req, res) => {
     order.trackingDetails = { ...order.trackingDetails, ...trackingDetails };
   }
 
-  // Track status updates in history logs
   order.statusHistory = order.statusHistory || [];
   order.statusHistory.push({
     status,
@@ -293,7 +457,6 @@ export const updateOrderStatus = async (req, res) => {
 
   await order.save();
 
-  // Trigger system notification
   await Notification.create({
     userId: order.userId,
     type: 'order',
@@ -309,7 +472,6 @@ export const updateOrderStatus = async (req, res) => {
   });
 };
 
-// Get order by ID
 export const getOrderById = async (req, res) => {
   const order = await Order.findById(req.params.id)
     .populate('userId', 'firstName lastName email phone')
@@ -326,12 +488,12 @@ export const getOrderById = async (req, res) => {
 };
 
 // ================= USER ACCOUNTS =================
-// Get all users
 export const getAllUsers = async (req, res) => {
-  const { role, search } = req.query;
+  const { role, search, status, page = 1, limit = 20 } = req.query;
   const query = {};
 
   if (role) query.role = role;
+  if (status) query.status = status;
   if (search) {
     query.$or = [
       { firstName: { $regex: search, $options: 'i' } },
@@ -340,19 +502,31 @@ export const getAllUsers = async (req, res) => {
     ];
   }
 
-  const users = await User.find(query).sort({ createdAt: -1 }).lean();
+  const users = await User.find(query)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit))
+    .lean();
+
+  const total = await User.countDocuments(query);
 
   res.status(200).json({
     success: true,
     users: users.map(u => {
       const userObj = { ...u };
       delete userObj.password;
+      delete userObj.refreshTokens;
       return userObj;
-    })
+    }),
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / limit)
+    }
   });
 };
 
-// Change user roles (Promote or suspend accounts)
 export const changeUserRole = async (req, res) => {
   const { id } = req.params;
   const { role, status } = req.body;
@@ -362,7 +536,16 @@ export const changeUserRole = async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
-  if (role) user.role = role;
+  if (role) {
+    user.role = role;
+    // Initialize seller profile if promoting to seller
+    if (role === 'seller' && !user.sellerProfile?.storeName) {
+      user.sellerProfile = {
+        storeName: `${user.firstName}'s Store`,
+        isVerified: false,
+      };
+    }
+  }
   if (status) user.status = status;
 
   await user.save();
@@ -371,6 +554,78 @@ export const changeUserRole = async (req, res) => {
     success: true,
     message: 'User account settings updated successfully',
     user: user.toJSON()
+  });
+};
+
+// ================= SELLER MANAGEMENT =================
+export const getAllSellers = async (req, res) => {
+  const { verified, search } = req.query;
+  const query = { role: 'seller' };
+
+  if (verified === 'true') query['sellerProfile.isVerified'] = true;
+  else if (verified === 'false') query['sellerProfile.isVerified'] = false;
+
+  if (search) {
+    query.$or = [
+      { firstName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { 'sellerProfile.storeName': { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const sellers = await User.find(query)
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Get product counts for each seller
+  const sellerData = await Promise.all(sellers.map(async (seller) => {
+    const productCount = await Product.countDocuments({ createdBy: seller._id });
+    return {
+      _id: seller._id,
+      firstName: seller.firstName,
+      lastName: seller.lastName,
+      email: seller.email,
+      phone: seller.phone,
+      status: seller.status,
+      sellerProfile: seller.sellerProfile,
+      productCount,
+      createdAt: seller.createdAt,
+    };
+  }));
+
+  res.status(200).json({ success: true, sellers: sellerData });
+};
+
+export const verifySeller = async (req, res) => {
+  const { id } = req.params;
+  const { action, notes } = req.body; // 'verify' or 'reject'
+
+  const seller = await User.findById(id);
+  if (!seller || seller.role !== 'seller') {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  if (action === 'verify') {
+    seller.sellerProfile.isVerified = true;
+    seller.sellerProfile.verifiedAt = new Date();
+  } else if (action === 'reject') {
+    seller.sellerProfile.isVerified = false;
+  }
+
+  await seller.save();
+
+  await Notification.create({
+    userId: seller._id,
+    type: 'system',
+    title: `Seller Account ${action === 'verify' ? 'Verified' : 'Rejected'}`,
+    message: action === 'verify'
+      ? 'Congratulations! Your seller account has been verified. You can now list products.'
+      : `Your seller verification was rejected. ${notes || 'Please contact support.'}`,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: `Seller ${action === 'verify' ? 'verified' : 'rejected'} successfully`
   });
 };
 
@@ -396,7 +651,7 @@ export const createCoupon = async (req, res) => {
     minPurchaseAmount: minPurchaseAmount || 0,
     maxDiscountAmount: maxDiscountAmount || null,
     startDate: startDate || new Date(),
-    endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+    endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     maxUses: maxUses || null,
     isActive: true,
     createdBy: req.user.id
@@ -426,7 +681,7 @@ export const deleteCoupon = async (req, res) => {
     throw new ApiError(404, 'Coupon not found');
   }
 
-  coupon.isActive = false; // soft delete
+  coupon.isActive = false;
   await coupon.save();
 
   res.status(200).json({ success: true, message: 'Coupon deactivated successfully' });
@@ -444,7 +699,7 @@ export const getReturnRequests = async (req, res) => {
 
 export const updateReturnStatus = async (req, res) => {
   const { id } = req.params;
-  const { action, adminNotes } = req.body; // 'approve' or 'reject'
+  const { action, adminNotes } = req.body;
 
   const order = await Order.findById(id);
   if (!order) {
@@ -457,7 +712,7 @@ export const updateReturnStatus = async (req, res) => {
     order.paymentDetails.refundStatus = 'refunded';
     order.paymentDetails.refundedAt = new Date();
   } else {
-    order.status = 'delivered'; // revert to original state
+    order.status = 'delivered';
   }
 
   order.statusHistory = order.statusHistory || [];
@@ -469,7 +724,6 @@ export const updateReturnStatus = async (req, res) => {
 
   await order.save();
 
-  // Send Notification
   await Notification.create({
     userId: order.userId,
     type: 'return',
@@ -502,7 +756,7 @@ export const createBanner = async (req, res) => {
     position: position || 'home-hero',
     displayOrder: displayOrder || 0,
     startDate: startDate || new Date(),
-    endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default 1 year
+    endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     isActive: true,
     createdBy: req.user.id
   });

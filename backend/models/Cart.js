@@ -30,6 +30,7 @@ const cartSchema = new mongoose.Schema({
     price: Number,
     discount: Number,
     finalPrice: Number,
+    image: String,
     addedAt: {
       type: Date,
       default: Date.now

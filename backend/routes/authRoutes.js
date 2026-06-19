@@ -16,8 +16,14 @@ router.post('/forgot-password', authRateLimiter, asyncHandler(authController.for
 router.post('/reset-password', asyncHandler(authController.resetPassword))
 router.post('/refresh-token', asyncHandler(authController.refreshToken))
 
+// Email Verification
+router.post('/verify-email', asyncHandler(authController.verifyEmail))
+router.post('/resend-verification', authRateLimiter, asyncHandler(authController.resendVerification))
+
 // Protected Routes
 router.post('/logout', verifyToken, asyncHandler(authController.logout))
+router.post('/logout-all', verifyToken, asyncHandler(authController.logoutAllDevices))
 router.get('/me', verifyToken, asyncHandler(authController.getCurrentUser))
+router.get('/sessions', verifyToken, asyncHandler(authController.getActiveSessions))
 
 export default router

@@ -5,7 +5,7 @@ const orderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
     unique: true,
-    required: true,
+    sparse: true,
     index: true
   },
   userId: {
@@ -24,6 +24,7 @@ const orderSchema = new mongoose.Schema({
       required: true
     },
     productName: String,
+    name: String,
     sku: String,
     quantity: {
       type: Number,
@@ -33,12 +34,13 @@ const orderSchema = new mongoose.Schema({
     price: Number, // Price at time of order
     discount: Number,
     finalPrice: Number,
+    images: [{ url: String, alt: String }],
     variant: {
       size: String,
       color: String,
       material: String
     },
-    image: String
+    image: String,
   }],
 
   // Pricing Details
@@ -70,7 +72,10 @@ const orderSchema = new mongoose.Schema({
   },
   totalAmount: {
     type: Number,
-    required: true,
+    min: 0
+  },
+  total: {
+    type: Number,
     min: 0
   },
 
@@ -94,7 +99,7 @@ const orderSchema = new mongoose.Schema({
   // Payment Information
   paymentMethod: {
     type: String,
-    enum: ['cod', 'upi', 'razorpay', 'phonepe', 'googlepay', 'paytm'],
+    enum: ['cod', 'card', 'upi', 'razorpay', 'phonepe', 'googlepay', 'paytm'],
     required: true
   },
   paymentStatus: {
@@ -113,7 +118,7 @@ const orderSchema = new mongoose.Schema({
   // Order Status
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'packed', 'shipped', 'out-for-delivery', 'delivered', 'returned', 'cancelled', 'refunded'],
+    enum: ['pending', 'confirmed', 'packed', 'shipped', 'out-for-delivery', 'delivered', 'returned', 'return_requested', 'cancelled', 'refunded'],
     default: 'pending',
     index: true
   },
@@ -123,6 +128,15 @@ const orderSchema = new mongoose.Schema({
     notes: String,
     updatedBy: mongoose.Schema.Types.ObjectId
   }],
+  statusHistory: [{
+    status: String,
+    updatedAt: { type: Date, default: Date.now },
+    comment: String
+  }],
+
+  // Return tracking
+  returnRequested: { type: Boolean, default: false },
+  returnReason: String,
 
   // Shipping Information
   shippingMethod: String,
@@ -158,6 +172,9 @@ const orderSchema = new mongoose.Schema({
     approvedAt: Date,
     refundAmount: Number
   },
+
+  // Contact Info
+  phone: String,
 
   // Customer Information
   customerNotes: String,

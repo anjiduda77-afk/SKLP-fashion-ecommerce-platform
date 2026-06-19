@@ -17,6 +17,7 @@ function Login() {
   const [activeTab, setActiveTab] = useState('email') // Email first for testing seeded accounts
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   
   // Email credentials state
   const [emailData, setEmailData] = useState({ email: '', password: '' })
@@ -137,8 +138,8 @@ function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      const response = await authService.login(emailData.email, emailData.password)
-      login(response.data.user, response.data.token)
+      const response = await authService.login(emailData.email, emailData.password, rememberMe)
+      login(response.data.user, response.data.token, response.data.refreshToken)
       handleRoleRedirect(response.data.user)
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Login failed. Please try again.')
@@ -176,7 +177,7 @@ function Login() {
     setLoading(true)
     try {
       const response = await authService.verifyOTP(otpData.phone, otpData.otp)
-      login(response.data.user, response.data.token)
+      login(response.data.user, response.data.token, response.data.refreshToken)
       handleRoleRedirect(response.data.user)
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Invalid OTP. Please try again.')
@@ -190,7 +191,7 @@ function Login() {
     setLoading(true)
     try {
       const response = await authService.googleLogin('google_premium_vip_pass')
-      login(response.data.user, response.data.token)
+      login(response.data.user, response.data.token, response.data.refreshToken)
       handleRoleRedirect(response.data.user)
     } catch (error) {
       toast.error('Google login failed. Please try again.')
@@ -427,7 +428,18 @@ function Login() {
                   </div>
                 </div>
 
-                <div className="text-right">
+                 <div className="flex justify-between items-center my-2 select-none">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded accent-luxury-gold focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                      Remember Me
+                    </span>
+                  </label>
                   <Link to="/forgot-password" className="text-xs text-luxury-gold hover:underline font-semibold">
                     {t.forgotPassword}
                   </Link>

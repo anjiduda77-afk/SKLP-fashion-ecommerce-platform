@@ -73,15 +73,22 @@ export const createOrder = async (req, res) => {
 
   const order = await Order.create({
     userId: req.user.id,
-    items,
+    items: items.map(item => ({
+      ...item,
+      productName: item.name,
+    })),
     shippingAddress,
     paymentMethod,
     couponCode: coupon?.code,
-    discountTotal: couponDiscount,
+    couponDiscount: couponDiscount,
+    discountAmount: couponDiscount,
     subtotal,
     total,
+    totalAmount: total,
     status: 'pending',
     phone,
+    statusTimeline: [{ status: 'pending', timestamp: new Date(), notes: 'Order placed successfully' }],
+    statusHistory: [{ status: 'pending', updatedAt: new Date(), comment: 'Order placed successfully' }],
   })
 
   await Cart.findOneAndUpdate({ userId: req.user.id }, { items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })

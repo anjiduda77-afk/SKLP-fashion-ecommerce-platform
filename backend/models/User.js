@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema({
     select: false // Don't return password by default
   },
   avatar: {
-    type: String,
-    default: null
+    url: { type: String, default: null },
+    publicId: { type: String, default: null }
   },
 
   // Authentication
@@ -54,7 +54,17 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   emailVerificationToken: String,
+  emailVerificationExpiry: Date,
   phoneVerificationToken: String,
+
+  // Refresh Token Management (stored per device)
+  refreshTokens: [{
+    token: { type: String, required: true },
+    device: { type: String, default: 'unknown' },
+    ip: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, required: true }
+  }],
 
   // User Status
   role: {
@@ -70,6 +80,31 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+
+  // Seller Profile (only populated for role === 'seller')
+  sellerProfile: {
+    storeName: { type: String, default: '' },
+    storeDescription: { type: String, default: '' },
+    storeLogo: {
+      url: { type: String, default: null },
+      publicId: { type: String, default: null }
+    },
+    gstNumber: { type: String, default: '' },
+    panNumber: { type: String, default: '' },
+    bankDetails: {
+      accountName: { type: String, default: '' },
+      accountNumber: { type: String, default: '' },
+      ifscCode: { type: String, default: '' },
+      bankName: { type: String, default: '' }
+    },
+    isVerified: { type: Boolean, default: false },
+    verifiedAt: Date,
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    totalProducts: { type: Number, default: 0 },
+    totalSales: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
+    commissionRate: { type: Number, default: 10 }, // percentage
   },
 
   // Addresses
@@ -120,9 +155,12 @@ const userSchema = new mongoose.Schema({
   },
   lockUntil: Date,
   lastLogin: Date,
+  lastLoginIP: { type: String, default: '' },
+  lastLoginDevice: { type: String, default: '' },
   lastPasswordChange: Date,
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorSecret: String,
+  passwordHistory: [{ type: String, select: false }], // Store hashed old passwords
 
   // Statistics
   totalOrders: { type: Number, default: 0 },
@@ -158,6 +196,20 @@ userSchema.pre('save', async function(next) {
   }
 });
 
+// Clean up expired refresh tokens before saving
+userSchema.pre('save', function(next) {
+  if (this.refreshTokens && this.refreshTokens.length > 0) {
+    this.refreshTokens = this.refreshTokens.filter(
+      rt => rt.expiresAt > new Date()
+    );
+    // Keep only the latest 5 refresh tokens (5 devices)
+    if (this.refreshTokens.length > 5) {
+      this.refreshTokens = this.refreshTokens.slice(-5);
+    }
+  }
+  next();
+});
+
 // Method to compare passwords
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
@@ -169,7 +221,10 @@ userSchema.methods.toJSON = function() {
   delete user.password;
   delete user.twoFactorSecret;
   delete user.emailVerificationToken;
+  delete user.emailVerificationExpiry;
   delete user.phoneVerificationToken;
+  delete user.refreshTokens;
+  delete user.passwordHistory;
   return user;
 };
 
@@ -201,9 +256,43 @@ userSchema.methods.resetLoginAttempts = function() {
   return this.save();
 };
 
+// Add a refresh token for a device
+userSchema.methods.addRefreshToken = function(token, device, ip) {
+  if (!this.refreshTokens) this.refreshTokens = [];
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  this.refreshTokens.push({ token, device, ip, expiresAt });
+  return this.save();
+};
+
+// Remove a specific refresh token (on logout)
+userSchema.methods.removeRefreshToken = function(token) {
+  if (!this.refreshTokens) this.refreshTokens = [];
+  this.refreshTokens = this.refreshTokens.filter(rt => rt.token !== token);
+  return this.save();
+};
+
+// Remove all refresh tokens (logout all devices)
+userSchema.methods.removeAllRefreshTokens = function() {
+  this.refreshTokens = [];
+  return this.save();
+};
+
+// Validate password strength
+userSchema.statics.validatePasswordStrength = function(password) {
+  const errors = [];
+  if (password.length < 8) errors.push('Password must be at least 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
+  if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
+  return { isValid: errors.length === 0, errors };
+};
+
 // Indexes for performance
 userSchema.index({ googleId: 1 });
 userSchema.index({ referralCode: 1 });
 userSchema.index({ createdAt: -1 });
+userSchema.index({ role: 1, status: 1 });
+userSchema.index({ 'sellerProfile.isVerified': 1 });
 
 export default mongoose.model('User', userSchema);

@@ -14,7 +14,7 @@ function Login() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const { isDarkMode, toggleTheme, language, changeLanguage } = useTheme()
-  const [activeTab, setActiveTab] = useState('email') // Email first for testing seeded accounts
+  const [activeTab, setActiveTab] = useState('email')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -27,7 +27,7 @@ function Login() {
   const [otpSent, setOtpSent] = useState(false)
   const [otpLoading, setOtpLoading] = useState(false)
 
-  // Simple translations for Indian users
+  // Translations
   const translations = {
     en: {
       title: 'Welcome to SKLP',
@@ -68,7 +68,7 @@ function Login() {
       verifyOtp: 'ధృవీకరించి సైన్ ఇన్ చేయండి',
       otpSentMsg: 'OTP పంపబడింది!',
       otpSentDesc: '+91 కి పంపిన SMS తనిఖీ చేయండి',
-      changeNumber: '← నంబర్ మార్చండి',
+      changeNumber: '← నంబ��్ మార్చండి',
       orText: 'లేదా దీనితో సైన్ ఇన్ చేయండి',
       google: 'Google తో కొనసాగించండి',
       emailMode: 'ఇమెయిల్ & పాస్‌వర్డ్',
@@ -117,20 +117,27 @@ function Login() {
 
   const t = translations[language] || translations.en
 
-  // Redirect based on user role from DB
+  // Redirect based on user role - Handles all 4 account types
   const handleRoleRedirect = (userObj) => {
-    const role = userObj?.role?.toLowerCase()
+    const role = (userObj?.role || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .trim()
+
     toast.success(`Welcome, ${userObj.firstName || 'User'}!`)
-    
-    if (role === 'admin') {
-      navigate('/admin/dashboard')
-    } else if (role === 'seller') {
-      navigate('/seller/dashboard')
-    } else if (role === 'delivery' || role === 'deliverypartner') {
-      navigate('/delivery/dashboard')
-    } else {
-      navigate('/')
+
+    const roleMap = {
+      'admin': '/admin/dashboard',
+      'seller': '/seller/dashboard',
+      'delivery': '/delivery/dashboard',
+      'deliverypartner': '/delivery/dashboard',
+      'deliveryPartner': '/delivery/dashboard',
+      'customer': '/',
+      'user': '/'
     }
+
+    const redirectUrl = roleMap[role] || '/'
+    navigate(redirectUrl)
   }
 
   // Email Login
@@ -251,8 +258,7 @@ function Login() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex rounded-2xl border overflow-hidden mb-6
-          ${isDarkMode ? 'border-white/10' : 'border-black/10'}">
+        <div className={`flex rounded-2xl border overflow-hidden mb-6 ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
           <button
             onClick={() => { setActiveTab('otp'); setOtpSent(false) }}
             className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5
@@ -277,7 +283,7 @@ function Login() {
           </button>
         </div>
 
-        {/* OTP Login (Primary for India) */}
+        {/* OTP Login */}
         <AnimatePresence mode="wait">
           {activeTab === 'otp' && (
             <motion.div
@@ -322,7 +328,6 @@ function Login() {
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOTP} className="space-y-4">
-                  {/* OTP Sent confirmation */}
                   <div className="bg-green-500/10 rounded-2xl border border-green-500/20 p-4 text-sm flex gap-3 items-start">
                     <FiCheckCircle size={18} className="shrink-0 mt-0.5 text-green-500" />
                     <div>
@@ -428,7 +433,7 @@ function Login() {
                   </div>
                 </div>
 
-                 <div className="flex justify-between items-center my-2 select-none">
+                <div className="flex justify-between items-center my-2 select-none">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -492,7 +497,6 @@ function Login() {
             {t.signUp}
           </Link>
         </p>
-
       </motion.div>
     </div>
   )

@@ -1,41 +1,42 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import React from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 
-function ProtectedRoute({ children, requireAdmin = false, allowedRoles = [] }) {
-  const { isAuthenticated, user, loading } = useAuth()
-  const location = useLocation()
+/**
+ * ProtectedRoute Component
+ * Protects routes based on authentication and user roles
+ * Handles all 4 account types: Customer, Admin, Seller, Delivery Partner
+ */
+const ProtectedRoute = ({ allowedRoles = [], children }) => {
+  const { user, isAuthenticated, loading } = useAuth()
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin" />
-          <p className="text-luxury-gold font-semibold">Verifying credentials...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-luxury-gold"></div>
       </div>
     )
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />
   }
 
-  // Backwards compatibility with requireAdmin
-  const roles = [...allowedRoles]
-  if (requireAdmin && !roles.includes('admin')) {
-    roles.push('admin')
-  }
+  // Check if user has required role
+  if (allowedRoles && allowedRoles.length > 0) {
+    const userRole = (user?.role || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .trim()
 
-  // Check if role is allowed
-  if (roles.length > 0 && !roles.includes(user?.role)) {
-    // If not allowed, redirect to correct role-based dashboard/home
-    if (user?.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />
-    } else if (user?.role === 'seller') {
-      return <Navigate to="/seller/dashboard" replace />
-    } else if (user?.role === 'delivery' || user?.role === 'deliveryPartner') {
-      return <Navigate to="/delivery/dashboard" replace />
-    } else {
+    const allowedRolesNorm = allowedRoles.map(r =>
+      r
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .trim()
+    )
+
+    if (!allowedRolesNorm.includes(userRole)) {
       return <Navigate to="/" replace />
     }
   }

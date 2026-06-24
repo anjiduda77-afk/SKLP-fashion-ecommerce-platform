@@ -20,6 +20,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use(compression()); // Compress response data
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:3000',
   process.env.FRONTEND_URL,
   process.env.ADMIN_FRONTEND_URL
 ].filter(Boolean).map(url => url.replace(/\/$/, ''));
@@ -89,6 +91,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/seller', sellerRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {
@@ -112,6 +115,8 @@ const server = app.listen(PORT, () => {
 ║  🚀 Server running on http://localhost:${PORT}  ║
 ║  📍 Environment: ${process.env.NODE_ENV}                ║
 ║  🔐 Security: Enabled                             ║
+║  ✅ Delivery Routes: Active                       ║
+║  ✅ All 4 Account Types: Ready                    ║
 ╚═══════════════════════════════════════════════════╝
   `);
 });

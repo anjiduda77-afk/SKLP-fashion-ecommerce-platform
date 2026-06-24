@@ -1,280 +1,144 @@
-import apiClient from './apiClient'
-import { createUploadConfig } from './apiClient'
-import adminService from './adminService'
+import axios from 'axios'
 
-export const authService = {
-  // Email Login
-  login: (email, password, rememberMe) =>
-    apiClient.post('/auth/login', { email, password, rememberMe }),
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-  // Email Register
-  register: (userData) =>
-    apiClient.post('/auth/register', userData),
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
 
-  // Google OAuth
-  googleLogin: (googleToken) =>
-    apiClient.post('/auth/google-login', { token: googleToken }),
+// Add token to requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
-  // OTP Login
-  sendOTP: (phone) =>
-    apiClient.post('/auth/send-otp', { phone }),
+// Handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken })
+          localStorage.setItem('token', res.data.token)
+          originalRequest.headers.Authorization = `Bearer ${res.data.token}`
+          return apiClient(originalRequest)
+        } catch (err) {
+          localStorage.clear()
+          window.location.href = '/login'
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
-  verifyOTP: (phone, otp) =>
-    apiClient.post('/auth/verify-otp', { phone, otp }),
-
-  // Email Verification
-  verifyEmail: (token) =>
-    apiClient.post('/auth/verify-email', { token }),
-
-  resendVerification: (email) =>
-    apiClient.post('/auth/resend-verification', { email }),
-
-  // Forgot Password
-  forgotPassword: (email) =>
-    apiClient.post('/auth/forgot-password', { email }),
-
-  resetPassword: (token, newPassword) =>
-    apiClient.post('/auth/reset-password', { token, newPassword }),
-
-  // Refresh Token
-  refreshToken: (refreshToken) =>
-    apiClient.post('/auth/refresh-token', { refreshToken }),
-
-  // Logout
-  logout: (refreshToken) =>
-    apiClient.post('/auth/logout', { refreshToken }),
-
-  // Logout all devices
-  logoutAll: () =>
-    apiClient.post('/auth/logout-all'),
-
-  // Active sessions
-  getSessions: () =>
-    apiClient.get('/auth/sessions'),
-}
-
-export const userService = {
-  // Get current user
-  getCurrentUser: () =>
-    apiClient.get('/users/me'),
-
-  // Update profile
-  updateProfile: (userData) =>
-    apiClient.put('/users/profile', userData),
-
-  // Change password
-  changePassword: (oldPassword, newPassword) =>
-    apiClient.put('/users/change-password', { oldPassword, newPassword }),
-
-  // Get addresses
-  getAddresses: () =>
-    apiClient.get('/users/addresses'),
-
-  // Add address
-  addAddress: (addressData) =>
-    apiClient.post('/users/addresses', addressData),
-
-  // Update address
-  updateAddress: (addressId, addressData) =>
-    apiClient.put(`/users/addresses/${addressId}`, addressData),
-
-  // Delete address
-  deleteAddress: (addressId) =>
-    apiClient.delete(`/users/addresses/${addressId}`),
-
-  // Get wishlist
-  getWishlist: () =>
-    apiClient.get('/users/wishlist'),
-
-  // Get recently viewed products
-  getRecentlyViewed: () =>
-    apiClient.get('/users/recently-viewed'),
-}
-
-export const productService = {
-  // Get all products
-  getProducts: (params) =>
-    apiClient.get('/products', { params }),
-
-  // Get product by ID
-  getProduct: (productId) =>
-    apiClient.get(`/products/${productId}`),
-
-  // Search products
-  searchProducts: (query, filters) =>
-    apiClient.get('/products/search', { params: { q: query, ...filters } }),
-
-  // Get featured products
-  getFeaturedProducts: () =>
-    apiClient.get('/products/featured'),
-
-  // Get trending products
-  getTrendingProducts: () =>
-    apiClient.get('/products/trending'),
-
-  // Get related products
-  getRelatedProducts: (productId) =>
-    apiClient.get(`/products/${productId}/related`),
-
-  // Get product reviews
-  getReviews: (productId, params) =>
-    apiClient.get(`/products/${productId}/reviews`, { params }),
-
-  // Add review
-  addReview: (productId, reviewData) =>
-    apiClient.post(`/products/${productId}/reviews`, reviewData),
-
-  // Get product recommendations
-  getRecommendations: () =>
-    apiClient.get('/products/ai/recommendations'),
-
-  // Get similar products
-  getSimilarProducts: (productId) =>
-    apiClient.get(`/products/${productId}/similar`),
-}
-
-export const cartService = {
-  // Get cart
-  getCart: () =>
-    apiClient.get('/cart'),
-
-  // Add to cart
-  addToCart: (productId, quantity, variant) =>
-    apiClient.post('/cart/items', { productId, quantity, variant }),
-
-  // Update cart item
-  updateCartItem: (cartItemId, quantity) =>
-    apiClient.put(`/cart/items/${cartItemId}`, { quantity }),
-
-  // Remove from cart
-  removeFromCart: (cartItemId) =>
-    apiClient.delete(`/cart/items/${cartItemId}`),
-
-  // Clear cart
-  clearCart: () =>
-    apiClient.delete('/cart'),
-
-  // Apply coupon
-  applyCoupon: (couponCode) =>
-    apiClient.post('/cart/coupon', { code: couponCode }),
-
-  // Remove coupon
-  removeCoupon: () =>
-    apiClient.delete('/cart/coupon'),
-}
-
-export const orderService = {
-  // Create order
-  createOrder: (orderData) =>
-    apiClient.post('/orders', orderData),
-
-  // Get orders
-  getOrders: (params) =>
-    apiClient.get('/orders', { params }),
-
-  // Get order by ID
-  getOrder: (orderId) =>
-    apiClient.get(`/orders/${orderId}`),
-
-  // Cancel order
-  cancelOrder: (orderId, reason) =>
-    apiClient.put(`/orders/${orderId}/cancel`, { reason }),
-
-  // Track order
-  trackOrder: (orderId) =>
-    apiClient.get(`/orders/${orderId}/track`),
-
-  // Request return
-  requestReturn: (orderId, items, reason) =>
-    apiClient.post(`/orders/${orderId}/return`, { items, reason }),
-
-  // Get return status
-  getReturnStatus: (orderId) =>
-    apiClient.get(`/orders/${orderId}/return-status`),
-}
-
-export const wishlistService = {
-  // Get wishlist
-  getWishlist: () =>
-    apiClient.get('/wishlist'),
-
-  // Add to wishlist
-  addToWishlist: (productId) =>
-    apiClient.post('/wishlist', { productId }),
-
-  // Remove from wishlist
-  removeFromWishlist: (productId) =>
-    apiClient.delete(`/wishlist/${productId}`),
-
-  // Clear wishlist
-  clearWishlist: () =>
-    apiClient.delete('/wishlist'),
-}
-
-export const uploadService = {
-  // Upload product images
-  uploadImages: (files, onUploadProgress) => {
-    const formData = new FormData()
-    files.forEach(file => formData.append('images', file))
-    return apiClient.post('/upload/images', formData, createUploadConfig(onUploadProgress))
-  },
-
-  // Upload avatar
-  uploadAvatar: (file, onUploadProgress) => {
-    const formData = new FormData()
-    formData.append('avatar', file)
-    return apiClient.post('/upload/avatar', formData, createUploadConfig(onUploadProgress))
-  },
-
-  // Delete image
-  deleteImage: (publicId) =>
-    apiClient.delete(`/upload/${encodeURIComponent(publicId)}`),
-}
-
-export const sellerService = {
+/**
+ * Delivery Partner API Service
+ */
+export const deliveryService = {
   // Dashboard
-  getDashboard: () =>
-    apiClient.get('/seller/dashboard'),
-
-  // Products
-  getProducts: (params) =>
-    apiClient.get('/seller/products', { params }),
-
-  createProduct: (productData) =>
-    apiClient.post('/seller/products', productData),
-
-  updateProduct: (id, productData) =>
-    apiClient.put(`/seller/products/${id}`, productData),
-
-  deleteProduct: (id) =>
-    apiClient.delete(`/seller/products/${id}`),
-
-  deleteProductImage: (productId, imageIndex) =>
-    apiClient.delete(`/seller/products/${productId}/images/${imageIndex}`),
+  getDashboard: () => apiClient.get('/delivery/dashboard'),
 
   // Orders
-  getOrders: (params) =>
-    apiClient.get('/seller/orders', { params }),
+  getAssignedOrders: (params) => apiClient.get('/delivery/orders', { params }),
+  updateOrderStatus: (orderId, data) =>
+    apiClient.put(`/delivery/orders/${orderId}/status`, data),
+  updateDeliveryLocation: (orderId, data) =>
+    apiClient.post(`/delivery/orders/${orderId}/location`, data),
 
-  dispatchOrder: (id, data) =>
-    apiClient.put(`/seller/orders/${id}/dispatch`, data),
+  // Earnings
+  getEarnings: (period = 'month') =>
+    apiClient.get('/delivery/earnings', { params: { period } }),
 
-  // Profile
-  getProfile: () =>
-    apiClient.get('/seller/profile'),
-
-  updateProfile: (profileData) =>
-    apiClient.put('/seller/profile', profileData),
+  // Analytics
+  getAnalytics: () => apiClient.get('/delivery/analytics')
 }
 
-export default {
-  authService,
-  userService,
-  productService,
-  cartService,
-  orderService,
-  wishlistService,
-  uploadService,
-  sellerService,
-  adminService,
+/**
+ * Admin API Service
+ */
+export const adminService = {
+  getDashboard: () => apiClient.get('/admin/dashboard'),
+  getOrders: (params) => apiClient.get('/admin/orders', { params }),
+  getUsers: (params) => apiClient.get('/admin/users', { params }),
+  getProducts: (params) => apiClient.get('/admin/products', { params })
 }
+
+/**
+ * Seller API Service
+ */
+export const sellerService = {
+  getDashboard: () => apiClient.get('/seller/dashboard'),
+  getProducts: (params) => apiClient.get('/seller/products', { params }),
+  getOrders: (params) => apiClient.get('/seller/orders', { params })
+}
+
+/**
+ * Auth API Service
+ */
+export const authService = {
+  login: (email, password, rememberMe) =>
+    apiClient.post('/auth/login', { email, password, rememberMe }),
+  register: (data) => apiClient.post('/auth/register', data),
+  sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
+  verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
+  googleLogin: (token) => apiClient.post('/auth/google', { token }),
+  refreshToken: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken })
+}
+
+/**
+ * User API Service
+ */
+export const userService = {
+  getCurrentUser: () => apiClient.get('/users/me'),
+  updateProfile: (data) => apiClient.put('/users/profile', data),
+  getAddresses: () => apiClient.get('/users/addresses'),
+  addAddress: (data) => apiClient.post('/users/addresses', data),
+  updateAddress: (addressId, data) => apiClient.put(`/users/addresses/${addressId}`, data)
+}
+
+/**
+ * Product API Service
+ */
+export const productService = {
+  getProducts: (params) => apiClient.get('/products', { params }),
+  getProductById: (id) => apiClient.get(`/products/${id}`)
+}
+
+/**
+ * Cart API Service
+ */
+export const cartService = {
+  getCart: () => apiClient.get('/cart'),
+  addToCart: (productId, quantity, variant) =>
+    apiClient.post('/cart/items', { productId, quantity, variant }),
+  updateCartItem: (itemId, quantity) =>
+    apiClient.put(`/cart/items/${itemId}`, { quantity }),
+  removeCartItem: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
+  clearCart: () => apiClient.delete('/cart'),
+  applyCoupon: (code) => apiClient.post('/cart/coupon', { code })
+}
+
+/**
+ * Order API Service
+ */
+export const orderService = {
+  createOrder: (data) => apiClient.post('/orders', data),
+  getOrders: () => apiClient.get('/orders'),
+  getOrderById: (id) => apiClient.get(`/orders/${id}`),
+  trackOrder: (id) => apiClient.get(`/orders/${id}/track`),
+  verifyRazorpayPayment: (data) => apiClient.post('/orders/verify-payment', data),
+  cancelOrder: (id) => apiClient.post(`/orders/${id}/cancel`)
+}
+
+export default apiClient

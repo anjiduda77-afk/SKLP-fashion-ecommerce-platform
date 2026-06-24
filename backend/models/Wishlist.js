@@ -10,7 +10,10 @@ const wishlistSchema = new mongoose.Schema({
   },
 
   items: [{
-    _id: mongoose.Schema.Types.ObjectId,
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: () => new mongoose.Types.ObjectId()
+    },
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',

@@ -15,9 +15,34 @@ export const asyncHandler = (fn) => (req, res, next) => {
 
 // Global error handler middleware
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-  const errors = err.errors || [];
+  let error = err;
+
+  // Mongoose Cast Error (Invalid ObjectId)
+  if (err.name === 'CastError') {
+    error = new ApiError(400, `Invalid ${err.path}: ${err.value}`);
+  }
+
+  // Mongoose Validation Error
+  if (err.name === 'ValidationError') {
+    error = handleValidationError(err);
+  }
+
+  // Mongoose Duplicate Key Error
+  if (err.code === 11000) {
+    error = handleDuplicateKeyError(err);
+  }
+
+  // JWT Errors
+  if (err.name === 'JsonWebTokenError') {
+    error = new ApiError(401, 'Invalid token. Please log in again.');
+  }
+  if (err.name === 'TokenExpiredError') {
+    error = new ApiError(401, 'Your token has expired. Please log in again.');
+  }
+
+  const statusCode = error.statusCode || 500;
+  const message = error.message || 'Internal Server Error';
+  const errors = error.errors || [];
 
   // Log error
   console.error('Error:', {
@@ -26,7 +51,7 @@ export const errorHandler = (err, req, res, next) => {
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 
   res.status(statusCode).json({
@@ -35,9 +60,10 @@ export const errorHandler = (err, req, res, next) => {
     message,
     ...(errors.length > 0 && { errors }),
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 };
+
 
 // MongoDB validation error handler
 export const handleValidationError = (error) => {

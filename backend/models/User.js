@@ -109,7 +109,10 @@ const userSchema = new mongoose.Schema({
 
   // Addresses
   addresses: [{
-    _id: mongoose.Schema.Types.ObjectId,
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: () => new mongoose.Types.ObjectId()
+    },
     type: {
       type: String,
       enum: ['home', 'office', 'other'],

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiPlus, FiSearch, FiEdit2, FiTrash2, FiX, FiSave,
-  FiImage, FiChevronUp, FiChevronDown, FiPackage, FiAlertTriangle,
-  FiUploadCloud, FiStar, FiCheck, FiChevronLeft, FiChevronRight
+  FiChevronUp, FiChevronDown, FiPackage, FiAlertTriangle,
+  FiUploadCloud, FiStar, FiChevronLeft, FiChevronRight
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { uploadService } from '../../services/apiServices'
@@ -374,11 +374,7 @@ function AdminProducts() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState({ total: 0, pages: 1 })
 
-  useEffect(() => {
-    fetchProducts()
-  }, [currentPage])
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
       const res = await adminService.getProducts({ page: currentPage, limit: 20 })
@@ -391,7 +387,11 @@ function AdminProducts() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
   const cardBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'

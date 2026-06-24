@@ -5,8 +5,8 @@ import {
   FiShoppingBag, FiDollarSign, FiInbox, 
   FiPlusCircle, FiList, FiTruck, FiMessageSquare, 
   FiEdit, FiTrash2, FiZap, FiFileText, FiUploadCloud, 
-  FiStar, FiCheck, FiChevronLeft, FiChevronRight, FiSearch, 
-  FiX, FiSettings, FiPercent, FiPackage, FiEye, FiAlertTriangle, FiSave
+  FiStar, FiChevronLeft, FiChevronRight, FiSearch, 
+  FiX, FiSettings
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerService, uploadService } from '@services/apiServices'

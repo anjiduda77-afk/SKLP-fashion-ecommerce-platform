@@ -96,7 +96,10 @@ const productSchema = new mongoose.Schema({
 
   // Variants (Size, Color, etc.)
   variants: [{
-    _id: mongoose.Schema.Types.ObjectId,
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: () => new mongoose.Types.ObjectId()
+    },
     type: {
       type: String,
       enum: ['size', 'color', 'material'],

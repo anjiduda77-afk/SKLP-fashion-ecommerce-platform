@@ -23,7 +23,10 @@ export const adminService = {
   
   // Orders
   getOrders: (params) => apiClient.get('/admin/orders', { params }),
-  updateOrderStatus: (id, statusData) => apiClient.put(`/admin/orders/${id}/status`, statusData),
+  updateOrderStatus: (id, status) => {
+    const data = typeof status === 'string' ? { status } : status
+    return apiClient.put(`/admin/orders/${id}/status`, data)
+  },
   getOrderById: (id) => apiClient.get(`/admin/orders/${id}`),
   
   // Users

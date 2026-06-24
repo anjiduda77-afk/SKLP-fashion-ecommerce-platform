@@ -14,6 +14,7 @@ const calculateOrderTotals = async (cart, coupon) => {
       return {
         productId: item.productId,
         quantity: item.quantity,
+        price: product.price, // Map price correctly to the schema field
         unitPrice: product.price,
         discount: product.discount || 0,
         variant: item.variant,
@@ -25,7 +26,20 @@ const calculateOrderTotals = async (cart, coupon) => {
   )
 
   const subtotal = items.reduce((sum, item) => sum + item.finalPrice, 0)
-  const couponDiscount = coupon ? Math.min(coupon.discountAmount || coupon.discountPercentage || 0, subtotal) : 0
+  
+  let couponDiscount = 0
+  if (coupon) {
+    if (coupon.discountType === 'percentage') {
+      couponDiscount = (subtotal * coupon.discountValue) / 100
+      if (coupon.maxDiscountAmount) {
+        couponDiscount = Math.min(couponDiscount, coupon.maxDiscountAmount)
+      }
+    } else if (coupon.discountType === 'fixed') {
+      couponDiscount = coupon.discountValue
+    }
+    couponDiscount = Math.min(couponDiscount, subtotal)
+  }
+
   const total = subtotal - couponDiscount
 
   return { items, subtotal, couponDiscount, total }
@@ -64,7 +78,7 @@ export const createOrder = async (req, res) => {
     if (!coupon) {
       throw new ApiError(404, 'Coupon not found or inactive')
     }
-    if (coupon.expiryDate && coupon.expiryDate < new Date()) {
+    if (coupon.endDate && coupon.endDate < new Date()) {
       throw new ApiError(410, 'Coupon expired')
     }
   }
@@ -95,6 +109,7 @@ export const createOrder = async (req, res) => {
 
   res.status(201).json({ success: true, message: 'Order created successfully', order })
 }
+
 
 export const updateOrderStatus = async (req, res) => {
   const { status } = req.body

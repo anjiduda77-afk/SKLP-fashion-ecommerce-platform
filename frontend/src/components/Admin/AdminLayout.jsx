@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 import {
-  FiGrid, FiPackage, FiShoppingBag, FiUsers,
+  FiGrid, FiPackage, FiShoppingBag, FiUsers, FiTag, FiRefreshCw, FiBriefcase,
   FiLogOut, FiMenu, FiX, FiChevronRight, FiBell
 } from 'react-icons/fi'
 
@@ -11,6 +11,9 @@ const navItems = [
   { path: '/admin/products', label: 'Products', icon: FiPackage },
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
   { path: '/admin/users', label: 'Users', icon: FiUsers },
+  { path: '/admin/coupons', label: 'Coupons', icon: FiTag },
+  { path: '/admin/returns', label: 'Returns', icon: FiRefreshCw },
+  { path: '/admin/sellers', label: 'Sellers', icon: FiBriefcase },
 ]
 
 function AdminLayout({ children }) {

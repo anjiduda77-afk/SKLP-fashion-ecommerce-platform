@@ -1,6 +1,7 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { verifyToken, sellerOnly } from '../middleware/authMiddleware.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import verifyRole from '../middleware/verifyRole.js';
 import { uploadProductImages, handleMulterError } from '../middleware/uploadMiddleware.js';
 import * as sellerController from '../controllers/sellerController.js';
 
@@ -8,7 +9,7 @@ const router = express.Router();
 
 // All seller routes require authentication + seller role
 router.use(verifyToken);
-router.use(sellerOnly);
+router.use(verifyRole(['seller']));
 
 // Dashboard
 router.get('/dashboard', asyncHandler(sellerController.getSellerDashboard));

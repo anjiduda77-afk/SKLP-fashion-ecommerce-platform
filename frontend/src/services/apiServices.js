@@ -1,46 +1,4 @@
-import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// Add token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// Handle token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken })
-          localStorage.setItem('token', res.data.token)
-          originalRequest.headers.Authorization = `Bearer ${res.data.token}`
-          return apiClient(originalRequest)
-        } catch (err) {
-          localStorage.clear()
-          window.location.href = '/login'
-        }
-      }
-    }
-    return Promise.reject(error)
-  }
-)
+import apiClient, { createUploadConfig } from './apiClient'
 
 /**
  * Delivery Partner API Service
@@ -80,7 +38,25 @@ export const adminService = {
 export const sellerService = {
   getDashboard: () => apiClient.get('/seller/dashboard'),
   getProducts: (params) => apiClient.get('/seller/products', { params }),
-  getOrders: (params) => apiClient.get('/seller/orders', { params })
+  createProduct: (data) => apiClient.post('/seller/products', data),
+  updateProduct: (id, data) => apiClient.put(`/seller/products/${id}`, data),
+  deleteProduct: (id) => apiClient.delete(`/seller/products/${id}`),
+  getOrders: (params) => apiClient.get('/seller/orders', { params }),
+  dispatchOrder: (id, data) => apiClient.put(`/seller/orders/${id}/dispatch`, data),
+  getProfile: () => apiClient.get('/seller/profile'),
+  updateProfile: (data) => apiClient.put('/seller/profile', data)
+}
+
+/**
+ * Upload API Service
+ */
+export const uploadService = {
+  uploadImages: (files, onProgress) => {
+    const formData = new FormData()
+    files.forEach((f) => formData.append('images', f))
+    return apiClient.post('/upload/images', formData, createUploadConfig(onProgress))
+  },
+  deleteImage: (publicId) => apiClient.delete(`/upload/images/${publicId}`)
 }
 
 /**
@@ -92,8 +68,12 @@ export const authService = {
   register: (data) => apiClient.post('/auth/register', data),
   sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
-  googleLogin: (token) => apiClient.post('/auth/google', { token }),
-  refreshToken: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken })
+  googleLogin: (token) => apiClient.post('/auth/google-login', { token }),
+  refreshToken: (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
+  logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
+  logoutAll: () => apiClient.post('/auth/logout-all'),
+  forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword })
 }
 
 /**
@@ -102,9 +82,11 @@ export const authService = {
 export const userService = {
   getCurrentUser: () => apiClient.get('/users/me'),
   updateProfile: (data) => apiClient.put('/users/profile', data),
+  changePassword: (oldPassword, newPassword) => apiClient.put('/users/change-password', { oldPassword, newPassword }),
   getAddresses: () => apiClient.get('/users/addresses'),
   addAddress: (data) => apiClient.post('/users/addresses', data),
-  updateAddress: (addressId, data) => apiClient.put(`/users/addresses/${addressId}`, data)
+  updateAddress: (addressId, data) => apiClient.put(`/users/addresses/${addressId}`, data),
+  deleteAddress: (addressId) => apiClient.delete(`/users/addresses/${addressId}`)
 }
 
 /**
@@ -112,7 +94,8 @@ export const userService = {
  */
 export const productService = {
   getProducts: (params) => apiClient.get('/products', { params }),
-  getProductById: (id) => apiClient.get(`/products/${id}`)
+  getProductById: (id) => apiClient.get(`/products/${id}`),
+  getProduct: (id) => apiClient.get(`/products/${id}`)
 }
 
 /**
@@ -125,6 +108,7 @@ export const cartService = {
   updateCartItem: (itemId, quantity) =>
     apiClient.put(`/cart/items/${itemId}`, { quantity }),
   removeCartItem: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
+  removeFromCart: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
   clearCart: () => apiClient.delete('/cart'),
   applyCoupon: (code) => apiClient.post('/cart/coupon', { code })
 }
@@ -138,7 +122,19 @@ export const orderService = {
   getOrderById: (id) => apiClient.get(`/orders/${id}`),
   trackOrder: (id) => apiClient.get(`/orders/${id}/track`),
   verifyRazorpayPayment: (data) => apiClient.post('/orders/verify-payment', data),
-  cancelOrder: (id) => apiClient.post(`/orders/${id}/cancel`)
+  cancelOrder: (id, reason) => apiClient.put(`/orders/${id}/cancel`, { reason }),
+  requestReturn: (id, items, reason) => apiClient.post(`/orders/${id}/return`, { items, reason })
+}
+
+/**
+ * Wishlist API Service
+ */
+export const wishlistService = {
+  getWishlist: () => apiClient.get('/wishlist'),
+  addToWishlist: (productId) => apiClient.post('/wishlist', { productId }),
+  removeFromWishlist: (productId) => apiClient.delete(`/wishlist/${productId}`),
+  clearWishlist: () => apiClient.delete('/wishlist')
 }
 
 export default apiClient
+

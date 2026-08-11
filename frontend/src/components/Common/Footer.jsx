@@ -2,19 +2,28 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiHelpCircle } from 'react-icons/fi'
+import { FiX, FiHelpCircle, FiShield, FiTruck, FiRefreshCw, FiAward } from 'react-icons/fi'
 import { toast } from 'react-toastify'
+import PolicyModal from './PolicyModal'
 
 function Footer({ isDarkMode }) {
   const { t } = useTranslation()
   const [showHelpline, setShowHelpline] = useState(false)
   const [email, setEmail] = useState('')
+  const [policyModalOpen, setPolicyModalOpen] = useState(false)
+  const [policyTab, setPolicyTab] = useState('shipping')
 
   useEffect(() => {
     const handleOpenHelpline = () => setShowHelpline(true)
     window.addEventListener('open-helpline', handleOpenHelpline)
     return () => window.removeEventListener('open-helpline', handleOpenHelpline)
   }, [])
+
+  const openPolicy = (tab = 'shipping') => {
+    setPolicyTab(tab)
+    setPolicyModalOpen(true)
+    setShowHelpline(false)
+  }
 
   return (
     <>
@@ -30,6 +39,25 @@ function Footer({ isDarkMode }) {
               <h2 className="text-2xl font-serif font-bold text-luxury-gold">SKLP</h2>
               <span className="opacity-50 text-xs">|</span>
               <p className="text-xs opacity-75">{t('footer.allRightsReserved', '© 2024 SKLP. All rights reserved.')}</p>
+            </div>
+
+            {/* Quick Policy triggers */}
+            <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
+              <button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
+                <FiTruck className="text-luxury-gold" /> Shipping Policy
+              </button>
+              <span className="opacity-30">•</span>
+              <button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
+                <FiRefreshCw className="text-luxury-gold" /> Returns & Refunds
+              </button>
+              <span className="opacity-30">•</span>
+              <button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
+                <FiShield className="text-luxury-gold" /> Payment Security
+              </button>
+              <span className="opacity-30">•</span>
+              <button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
+                <FiAward className="text-luxury-gold" /> VIP Plan
+              </button>
             </div>
 
             {/* Helpline settings button & Chatbot trigger */}
@@ -132,18 +160,18 @@ function Footer({ isDarkMode }) {
                     <li><Link to="/" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.home', 'Home')}</Link></li>
                     <li><Link to="/products" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.products', 'Products')}</Link></li>
                     <li><Link to="/profile" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.aboutUs', 'About Us')}</Link></li>
-                    <li><Link to="/profile" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.contact', 'Contact')}</Link></li>
+                    <li><button onClick={() => openPolicy('support')} className="hover:text-luxury-gold transition-colors text-left font-semibold">{t('footer.contact', 'Customer Support')}</button></li>
                   </ul>
                 </div>
 
                 {/* Support Links */}
                 <div>
-                  <h3 className="text-base font-bold text-luxury-gold mb-4 uppercase tracking-wider">{t('footer.support', 'Support')}</h3>
-                  <ul className="space-y-3 text-xs">
-                    <li><Link to="/profile" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.shippingInfo', 'Shipping Info')}</Link></li>
-                    <li><Link to="/profile" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.returns', 'Returns')}</Link></li>
-                    <li><Link to="/profile" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.faq', 'FAQ')}</Link></li>
-                    <li><Link to="/orders" onClick={() => setShowHelpline(false)} className="hover:text-luxury-gold transition-colors block py-1 font-semibold">{t('footer.trackOrder', 'Track Order')}</Link></li>
+                  <h3 className="text-base font-bold text-luxury-gold mb-4 uppercase tracking-wider">{t('footer.support', 'Store Policies')}</h3>
+                  <ul className="space-y-3 text-xs font-semibold">
+                    <li><button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors text-left block py-1">Shipping & Delivery Policy</button></li>
+                    <li><button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors text-left block py-1">15-Day Return Policy</button></li>
+                    <li><button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors text-left block py-1">Payments & Security</button></li>
+                    <li><button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors text-left block py-1">SKLP VIP Elite Plan</button></li>
                   </ul>
                 </div>
 
@@ -168,8 +196,17 @@ function Footer({ isDarkMode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* POLICY MODAL */}
+      <PolicyModal
+        isOpen={policyModalOpen}
+        onClose={() => setPolicyModalOpen(false)}
+        initialTab={policyTab}
+        isDarkMode={isDarkMode}
+      />
     </>
   )
 }
 
 export default Footer
+

@@ -196,6 +196,8 @@ export const getDashboardMetrics = async (req, res) => {
   }
 };
 
+export const getDashboardStats = getDashboardMetrics;
+
 // ================= PRODUCT CRUD =================
 export const getAllProducts = async (req, res) => {
   const { category, search, status, page = 1, limit = 20 } = req.query;

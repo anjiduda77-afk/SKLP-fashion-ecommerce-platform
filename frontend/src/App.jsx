@@ -35,6 +35,9 @@ import AdminDashboard from '@pages/Admin/Dashboard'
 import AdminProducts from '@pages/Admin/Products'
 import AdminOrders from '@pages/Admin/Orders'
 import AdminUsers from '@pages/Admin/Users'
+import AdminCoupons from './pages/Admin/Coupons'
+import AdminReturns from './pages/Admin/Returns'
+import AdminSellers from './pages/Admin/Sellers'
 
 // Seller Pages
 import SellerDashboard from '@pages/Seller/Dashboard'
@@ -102,6 +105,9 @@ function App() {
                   <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminProducts /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminOrders /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
+                  <Route path="/admin/coupons" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminCoupons /></AdminLayout></ProtectedRoute>} />
+                  <Route path="/admin/returns" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminReturns /></AdminLayout></ProtectedRoute>} />
+                  <Route path="/admin/sellers" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminSellers /></AdminLayout></ProtectedRoute>} />
 
                   {/* Seller Routes */}
                   <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['seller']}><SellerDashboard /></ProtectedRoute>} />

@@ -6,7 +6,6 @@ import { orderService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'
-
 function Orders() {
   const { isDarkMode } = useTheme()
   const { isAuthenticated } = useAuth()

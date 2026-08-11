@@ -5,7 +5,7 @@ import {
   FiX, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
-import apiServices from '../../services/apiServices'
+import adminService from '../../services/adminService'
 
 const STATUSES = ['All', 'pending', 'processing', 'shipped', 'delivered', 'cancelled']
 
@@ -28,7 +28,7 @@ function OrderDetail({ order, onClose, onStatusChange }) {
   const handleUpdate = async () => {
     try {
       setSaving(true)
-      const res = await apiServices.adminService.updateOrderStatus(order._id, status)
+      const res = await adminService.updateOrderStatus(order._id, status)
       if (res.data.success) {
         onStatusChange(order._id, status)
         toast.success(`Order status updated to "${status}"`)
@@ -143,7 +143,7 @@ function AdminOrders() {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const res = await apiServices.adminService.getOrders({ limit: 100 })
+      const res = await adminService.getOrders({ limit: 100 })
       if (res.data.success) {
         setOrders(res.data.orders)
       }

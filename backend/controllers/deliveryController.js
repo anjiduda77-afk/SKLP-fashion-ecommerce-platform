@@ -62,21 +62,26 @@ export const getDashboard = async (req, res) => {
 }
 
 /**
- * Get orders assigned to delivery partner
+ * Get orders assigned to delivery partner (or available active orders)
  */
 export const getAssignedOrders = async (req, res) => {
   try {
     const userId = req.user.id
-    const { status, page = 1, limit = 10 } = req.query
+    const { status, page = 1, limit = 20 } = req.query
 
+    // Find orders assigned to this user OR unassigned active orders available for pickup
     const query = {
-      assignedTo: userId
+      $or: [
+        { assignedTo: userId },
+        { assignedTo: { $exists: false } },
+        { assignedTo: null }
+      ]
     }
 
     if (status) {
       query.status = status
     } else {
-      query.status = { $in: ['confirmed', 'out_for_delivery', 'ready_for_pickup'] }
+      query.status = { $in: ['pending', 'confirmed', 'packed', 'out_for_delivery', 'ready_for_pickup'] }
     }
 
     const skip = (page - 1) * limit
@@ -118,10 +123,12 @@ export const updateOrderStatus = async (req, res) => {
     // Validate status
     const validStatuses = [
       'confirmed',
+      'packed',
       'out_for_delivery',
       'ready_for_pickup',
       'delivered',
-      'failed_delivery'
+      'failed_delivery',
+      'cancelled'
     ]
     if (!validStatuses.includes(status)) {
       throw new ApiError(400, `Invalid status: ${status}`)
@@ -133,15 +140,30 @@ export const updateOrderStatus = async (req, res) => {
       throw new ApiError(404, 'Order not found')
     }
 
-    // Verify assignment
-    if (order.assignedTo.toString() !== userId) {
-      throw new ApiError(403, 'Not authorized to update this order')
+    // Auto-assign if not assigned yet
+    if (!order.assignedTo) {
+      order.assignedTo = userId
+    } else if (order.assignedTo.toString() !== userId && req.user.role !== 'admin') {
+      throw new ApiError(403, 'Not authorized to update this order assigned to another delivery agent')
+    }
+
+    // If setting to out_for_delivery, ensure deliveryOTP is generated if missing
+    if (status === 'out_for_delivery' && !order.deliveryOTP) {
+      order.deliveryOTP = Math.floor(100000 + Math.random() * 900000).toString()
+    }
+
+    // If setting to delivered, verify OTP if provided
+    if (status === 'delivered' && otp) {
+      if (order.deliveryOTP && order.deliveryOTP !== otp.trim()) {
+        throw new ApiError(400, 'Invalid door delivery OTP code')
+      }
+      order.paymentStatus = 'completed'
+      order.actualDeliveryDate = new Date()
     }
 
     // Update order
     order.status = status
     if (notes) order.deliveryNotes = notes
-    if (otp) order.deliveryOTP = otp
     order.updatedAt = new Date()
 
     // Track status change
@@ -149,14 +171,15 @@ export const updateOrderStatus = async (req, res) => {
     order.statusHistory.push({
       status,
       updatedAt: new Date(),
-      updatedBy: userId
+      updatedBy: userId,
+      comment: notes || `Status updated to ${status}`
     })
 
     await order.save()
 
     res.status(200).json({
       success: true,
-      message: 'Order status updated',
+      message: 'Order status updated successfully',
       order
     })
   } catch (error) {

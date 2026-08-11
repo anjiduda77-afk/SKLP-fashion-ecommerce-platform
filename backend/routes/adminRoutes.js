@@ -1,13 +1,14 @@
 import express from 'express'
 import { asyncHandler } from '../middleware/errorHandler.js'
-import { verifyToken, adminOnly } from '../middleware/authMiddleware.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
+import verifyRole from '../middleware/verifyRole.js'
 import { uploadProductImages, handleMulterError } from '../middleware/uploadMiddleware.js'
 import * as adminController from '../controllers/adminController.js'
 
 const router = express.Router()
 
 router.use(verifyToken)
-router.use(adminOnly)
+router.use(verifyRole(['admin']))
 
 // Dashboard
 router.get('/dashboard', asyncHandler(adminController.getDashboardMetrics))

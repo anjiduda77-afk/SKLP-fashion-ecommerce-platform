@@ -42,13 +42,43 @@ const recalculateCart = async (cart) => {
 }
 
 export const getCart = async (req, res) => {
-  let cart = await Cart.findOne({ userId: req.user.id })
+  let cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId')
   if (!cart) {
     cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
   } else {
+    // Validate products still exist and are in stock
+    let modified = false
+    const validatedItems = cart.items.filter(item => {
+      const product = item.productId
+      if (!product || product.isActive === false) {
+        modified = true
+        return false
+      }
+      if (product.stock !== undefined && item.quantity > product.stock) {
+        item.quantity = Math.max(0, product.stock)
+        modified = true
+      }
+      return item.quantity > 0
+    })
+
+    if (modified) {
+      // Re-map the populated productId back to just the ID before saving to avoid schema errors
+      // or we can just let mongoose handle it since we modified the document array.
+      // Actually mongoose might struggle with populated docs being saved back directly if modified.
+      // A safer approach:
+      cart.items = validatedItems.map(item => ({
+        ...item.toObject(),
+        productId: item.productId._id
+      }))
+    }
+
     await recalculateCart(cart)
     await cart.save()
   }
+  
+  // Need to populate it again for the frontend if we unpopulated it
+  await cart.populate('items.productId', 'name price discountedPrice isActive stock')
+  
   res.status(200).json({ success: true, cart })
 }
 

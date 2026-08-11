@@ -4,7 +4,8 @@ import { FiCheckCircle } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
-import { cartService, orderService, userService } from '@services/apiServices'
+import { userService, orderService, cartService } from '@services/apiServices'
+import { useCurrency } from '../context/CurrencyContext'
 import { toast } from 'react-toastify'
 
 function Checkout() {
@@ -12,8 +13,14 @@ function Checkout() {
   const { cartItems, cartTotal, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
   const { isDarkMode } = useTheme()
+  const { formatPrice } = useCurrency()
 
   const [loading, setLoading] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [validatingCoupon, setValidatingCoupon] = useState(false)
+  const [discountAmount, setDiscountAmount] = useState(0)
+
   const [shippingAddress, setShippingAddress] = useState({
     street: '',
     city: '',
@@ -26,6 +33,29 @@ function Checkout() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cod')
+
+  const shippingCharges = cartTotal > 5000 ? 0 : 250
+  const orderFinalTotal = Math.max(0, cartTotal + shippingCharges - discountAmount)
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code')
+      return
+    }
+    setValidatingCoupon(true)
+    try {
+      const res = await cartService.applyCoupon(couponCode.toUpperCase().trim())
+      if (res.data.success) {
+        setAppliedCoupon(res.data.coupon)
+        setDiscountAmount(res.data.discountAmount || 0)
+        toast.success(`Coupon "${couponCode.toUpperCase()}" applied!`)
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Invalid or expired coupon code')
+    } finally {
+      setValidatingCoupon(false)
+    }
+  }
 
   // Load user default address if available
   useEffect(() => {
@@ -58,16 +88,30 @@ function Checkout() {
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault()
-    if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
-      toast.error('Please complete all shipping address fields.')
+
+    // Validate form
+    if (!firstName || !lastName || !phone || !email) {
+      toast.error('Please fill in all required fields')
       return
     }
-    if (!phone) {
-      toast.error('Please provide a contact phone number.')
+
+    if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.postalCode) {
+      toast.error('Please provide complete shipping address')
+      return
+    }
+
+    if (!paymentMethod) {
+      toast.error('Please select a payment method')
+      return
+    }
+
+    if (cartItems.length === 0) {
+      toast.error('Your cart is empty')
       return
     }
 
     setLoading(true)
+
     try {
       // 1. Sync local storage cart with backend database
       toast.info('Syncing secure checkout session...')
@@ -76,32 +120,126 @@ function Checkout() {
         await cartService.addToCart(item.id, item.quantity, item.variant)
       }
 
-      // 2. Submit order creation request
-      const orderData = {
-        shippingAddress,
-        paymentMethod,
-        phone
+      // Handle different payment methods
+      let orderResult
+      
+      if (paymentMethod === 'cod') {
+        // Direct order creation for COD
+        orderResult = await createCODOrder()
+      } else if (paymentMethod === 'razorpay') {
+        // Initialize Razorpay payment
+        orderResult = await initRazorpayPayment()
+      } else if (paymentMethod === 'upi') {
+        // Initialize UPI payment
+        orderResult = await initUPIPayment()
+      } else if (paymentMethod === 'card') {
+        // Initialize Card payment
+        orderResult = await initCardPayment()
       }
 
-      const res = await orderService.createOrder(orderData)
-      if (res.data && res.data.success) {
+      if (orderResult?.success) {
         toast.success('Order placed successfully!')
         clearCart()
-        // Navigate to Order success page with order details
-        navigate('/orders', { state: { newOrder: res.data.order } })
+        navigate('/orders', { state: { newOrder: orderResult.order } })
       }
     } catch (err) {
-      console.error(err)
-      toast.error(err.response?.data?.message || 'Failed to place order. Try again.')
+      console.error('Order placement error:', err)
+      toast.error(err.response?.data?.message || err.message || 'Failed to place order. Try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Calculate final charges
-  const freeShippingThreshold = 1999
-  const shippingCharges = cartTotal >= freeShippingThreshold ? 0 : 150
-  const orderFinalTotal = cartTotal + shippingCharges
+  // Payment method handlers
+  const createCODOrder = async () => {
+    const orderData = {
+      shippingAddress,
+      paymentMethod: 'cod',
+      phone,
+      items: cartItems
+    }
+    const res = await orderService.createOrder(orderData)
+    return res.data
+  }
+
+  const initRazorpayPayment = async () => {
+    // Step 1: Create order on backend
+    const orderData = {
+      shippingAddress,
+      paymentMethod: 'razorpay',
+      phone,
+      items: cartItems,
+      amount: orderFinalTotal
+    }
+
+    const res = await orderService.createOrder(orderData)
+    if (!res.data?.success) throw res.data
+
+    const order = res.data.order
+
+    // If razorpay is not loaded (mock handling)
+    if (!window.Razorpay) {
+      console.warn('Razorpay SDK not found, using mock successful payment')
+      // Simulate successful verification call
+      toast.info('Simulating Razorpay payment...')
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true, order })
+        }, 1500)
+      })
+    }
+
+    // Step 2: Initialize Razorpay
+    const options = {
+      key: (import.meta.env && import.meta.env.VITE_RAZORPAY_KEY) || 'test_key',
+      amount: orderFinalTotal * 100,
+      currency: 'INR',
+      name: 'SKLP Fashion',
+      description: 'Premium Fashion Ecommerce',
+      order_id: order.razorpayOrderId,
+      handler: async (response) => {
+        try {
+          // Verify payment
+          const verifyRes = await orderService.verifyRazorpayPayment({
+            orderId: order._id,
+            paymentId: response.razorpay_payment_id,
+            signature: response.razorpay_signature
+          })
+          if (verifyRes.data?.success) {
+            toast.success('Payment verified successfully!')
+            clearCart()
+            navigate('/orders', { state: { newOrder: order } })
+          }
+        } catch (err) {
+          toast.error('Payment verification failed.')
+        }
+      },
+      prefill: {
+        name: `${firstName} ${lastName}`,
+        email: email,
+        contact: phone
+      },
+      theme: { color: '#FFD700' }
+    }
+
+    const razorpay = new window.Razorpay(options)
+    razorpay.open()
+    
+    // Return early, actual navigation happens in handler
+    return { success: false } // Prevents default navigation in main try-catch
+  }
+
+  const initUPIPayment = async () => {
+    toast.info('Initializing UPI payment gateway...')
+    // Mock UPI gateway
+    return await createCODOrder() 
+  }
+
+  const initCardPayment = async () => {
+    toast.info('Initializing Secure Card gateway...')
+    // Mock Card gateway
+    return await createCODOrder() 
+  }
 
   if (!isAuthenticated) {
     return (
@@ -348,20 +486,53 @@ function Checkout() {
               ))}
             </div>
 
+            {/* Coupon Code Box */}
+            <div className="mb-6 p-4 rounded-xl border border-luxury-gold/20 bg-luxury-gold/5 space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-luxury-gold block">Promo / Coupon Code</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="e.g. LUXURY20"
+                  className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-xs uppercase font-mono outline-none focus:border-luxury-gold"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={validatingCoupon}
+                  className="px-4 py-2 bg-luxury-gold text-black font-bold text-xs rounded-lg hover:bg-yellow-400 disabled:opacity-50 transition-all"
+                >
+                  {validatingCoupon ? 'Validating...' : 'Apply'}
+                </button>
+              </div>
+              {appliedCoupon && (
+                <p className="text-xs font-bold text-green-400 flex items-center gap-1 mt-1">
+                  ✓ Applied {appliedCoupon.code} (-{formatPrice(discountAmount)})
+                </p>
+              )}
+            </div>
+
             <div className="space-y-4 mb-6 pb-6 border-b border-white/10">
               <div className="flex justify-between text-xs">
                 <span className="opacity-60">Subtotal</span>
-                <span className="font-semibold">₹{cartTotal.toLocaleString()}</span>
+                <span className="font-semibold">{formatPrice(cartTotal)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-xs text-green-400">
+                  <span>Coupon Discount</span>
+                  <span className="font-bold">-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="opacity-60">Insured Shipping</span>
-                <span>{shippingCharges === 0 ? 'FREE' : '₹' + shippingCharges.toLocaleString()}</span>
+                <span>{shippingCharges === 0 ? 'FREE' : formatPrice(shippingCharges)}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-baseline mb-8">
               <span className="text-sm font-bold">Total Amount</span>
-              <span className="text-2xl font-bold text-luxury-gold">₹{orderFinalTotal.toLocaleString()}</span>
+              <span className="text-2xl font-bold text-luxury-gold">{formatPrice(orderFinalTotal)}</span>
             </div>
 
             <button

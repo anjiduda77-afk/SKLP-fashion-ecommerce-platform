@@ -2,6 +2,7 @@ import Order from '../models/Order.js'
 import Cart from '../models/Cart.js'
 import Product from '../models/Product.js'
 import Coupon from '../models/Coupon.js'
+import User from '../models/User.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 const calculateOrderTotals = async (cart, coupon) => {
@@ -67,6 +68,29 @@ export const getOrderById = async (req, res) => {
 
 export const createOrder = async (req, res) => {
   const { shippingAddress, paymentMethod, couponCode, phone } = req.body
+  
+  // Verify user account status
+  const user = await User.findById(req.user.id)
+  if (!user) throw new ApiError(404, 'User not found')
+  if (user.status === 'suspended') throw new ApiError(403, 'Account suspended. Cannot place orders.')
+  if (user.status === 'deleted') throw new ApiError(403, 'Account deleted')
+
+  // Validate shipping address
+  if (!shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.postalCode) {
+    throw new ApiError(400, 'Invalid shipping address')
+  }
+
+  // Validate payment method
+  const validMethods = ['cod', 'razorpay', 'upi', 'card', 'phonePe']
+  if (!validMethods.includes(paymentMethod)) {
+    throw new ApiError(400, 'Invalid payment method')
+  }
+
+  // Validate phone
+  if (!/^[0-9]{10}$/.test(phone)) {
+    throw new ApiError(400, 'Invalid phone number')
+  }
+
   const cart = await Cart.findOne({ userId: req.user.id }).lean()
   if (!cart || cart.items.length === 0) {
     throw new ApiError(400, 'Cart is empty')

@@ -11,6 +11,7 @@ import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useWishlist } from '@context/WishlistContext'
+import { useCurrency } from '../../context/CurrencyContext'
 import Sidebar from '@components/Common/Sidebar'
 import sklpLogo from '@assets/images/sklp_logo.png'
 
@@ -46,6 +47,7 @@ function Header({ isDarkMode }) {
   const { wishlistCount } = useWishlist()
   const { isAuthenticated, user, logout } = useAuth()
   const { toggleTheme } = useTheme()
+  const { currency, setCurrency, RATES } = useCurrency()
   const navigate = useNavigate()
 
   // Track scrolling to toggle sticky header floating shadow
@@ -186,6 +188,26 @@ function Header({ isDarkMode }) {
             >
               <FiSearch size={20} />
             </button>
+
+            {/* Multi-Currency Switcher */}
+            <div className="relative">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className={`h-11 px-2.5 text-xs font-bold rounded-2xl border cursor-pointer outline-none transition-all duration-300 ${
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10'
+                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
+                }`}
+                title="Select Currency"
+              >
+                {Object.keys(RATES).map((code) => (
+                  <option key={code} value={code} className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>
+                    {RATES[code].symbol} {code}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Theme Toggle Icon with smooth micro-animation */}
             <button

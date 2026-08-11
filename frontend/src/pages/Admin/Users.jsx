@@ -5,19 +5,28 @@ import {
   FiMail, FiPhone, FiCheckCircle, FiSlash, FiEye
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
-import apiServices from '../../services/apiServices'
+import adminService from '../../services/adminService'
 
-const ROLES = ['All', 'customer', 'admin']
+const ROLES = ['All', 'customer', 'admin', 'seller', 'delivery']
 const STATUS_OPTS = ['All', 'active', 'blocked']
 
 // ── User Detail Modal ─────────────────────────────────────────────────────────
-function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
+function UserDetailModal({ user, onClose, onBlock, onChangeRole }) {
   const { isDarkMode } = useTheme()
+  const [selectedRole, setSelectedRole] = useState(user.role || 'customer')
+  const [savingRole, setSavingRole] = useState(false)
   const modalBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
   const textSecondary = isDarkMode ? 'text-luxury-mediumGray' : 'text-gray-500'
 
   const avatarInitial = user.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'
+
+  const handleRoleSubmit = async () => {
+    setSavingRole(true)
+    await onChangeRole(user._id, selectedRole)
+    setSavingRole(false)
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
@@ -37,19 +46,19 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
             <div>
               <p className={`text-lg font-bold ${textPrimary}`}>{user.firstName} {user.lastName}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold border capitalize ${
                   user.role === 'admin'
                     ? 'bg-luxury-gold/10 text-luxury-gold border-luxury-gold/30'
                     : isDarkMode ? 'bg-luxury-darkGray text-luxury-mediumGray border-luxury-darkGray' : 'bg-gray-100 text-gray-600 border-gray-200'
                 }`}>
                   {user.role}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold border capitalize ${
                   user.status === 'active'
                     ? 'bg-green-500/10 text-green-600 border-green-500/20'
                     : 'bg-red-500/10 text-red-600 border-red-500/20'
                 }`}>
-                  {user.status}
+                  {user.status || 'active'}
                 </span>
               </div>
             </div>
@@ -69,25 +78,42 @@ function UserDetailModal({ user, onClose, onBlock, onMakeAdmin }) {
               <span className={textSecondary}>Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
             </div>
           </div>
+
+          {/* Change Role Selection */}
+          <div className="space-y-1.5 pt-2 border-t border-white/10">
+            <label className={`text-xs font-bold uppercase tracking-wider ${textSecondary}`}>Assign Account Role</label>
+            <div className="flex gap-2">
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className={`flex-1 text-xs py-2 px-3 rounded-xl border capitalize ${isDarkMode ? 'bg-luxury-black border-luxury-darkGray text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
+              >
+                <option value="customer">Customer</option>
+                <option value="seller">Seller</option>
+                <option value="delivery">Delivery Partner</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button
+                onClick={handleRoleSubmit}
+                disabled={savingRole || selectedRole === user.role}
+                className="px-4 py-2 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-yellow-400 disabled:opacity-50 transition-all"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            {user.role !== 'admin' && (
-              <button
-                onClick={() => { onMakeAdmin(user._id); onClose() }}
-                className="flex-1 py-2 text-xs font-bold border border-luxury-gold/30 text-luxury-gold rounded-xl hover:bg-luxury-gold/10 transition-all"
-              >
-                Make Admin
-              </button>
-            )}
             <button
               onClick={() => { onBlock(user._id, user.status); onClose() }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+              className={`w-full py-2.5 text-xs font-bold rounded-xl transition-all ${
                 user.status === 'active'
-                  ? 'border border-red-500/30 text-red-500 hover:bg-red-50'
-                  : 'border border-green-500/30 text-green-600 hover:bg-green-50'
+                  ? 'border border-red-500/30 text-red-500 hover:bg-red-500/10'
+                  : 'border border-green-500/30 text-green-600 hover:bg-green-500/10'
               }`}
             >
-              {user.status === 'active' ? 'Block User' : 'Activate User'}
+              {user.status === 'active' ? 'Block Account' : 'Activate Account'}
             </button>
           </div>
         </div>
@@ -113,7 +139,7 @@ function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const res = await apiServices.adminService.getUsers()
+      const res = await adminService.getUsers()
       if (res.data.success) {
         setUsers(res.data.users)
       }
@@ -140,7 +166,7 @@ function AdminUsers() {
   const handleBlock = async (id, currentStatus) => {
     const newStatus = (currentStatus || 'active') === 'active' ? 'blocked' : 'active'
     try {
-      const res = await apiServices.adminService.changeUserRole(id, { status: newStatus })
+      const res = await adminService.changeUserRole(id, { status: newStatus })
       if (res.data.success) {
         setUsers((prev) => prev.map((u) => u._id === id ? { ...u, status: newStatus } : u))
         toast.success(`User ${newStatus === 'active' ? 'activated' : 'blocked'} successfully`)
@@ -150,13 +176,13 @@ function AdminUsers() {
     }
   }
 
-  const handleMakeAdmin = async (id) => {
-    if (!window.confirm("Are you sure you want to grant Admin privileges to this user?")) return
+  const handleChangeRole = async (id, role) => {
+    if (role === 'admin' && !window.confirm("Are you sure you want to grant Admin privileges to this user?")) return
     try {
-      const res = await apiServices.adminService.changeUserRole(id, { role: 'admin' })
+      const res = await adminService.changeUserRole(id, { role })
       if (res.data.success) {
-        setUsers((prev) => prev.map((u) => u._id === id ? { ...u, role: 'admin' } : u))
-        toast.success('User has been granted Admin privileges')
+        setUsers((prev) => prev.map((u) => u._id === id ? { ...u, role } : u))
+        toast.success(`User role updated to ${role}`)
       }
     } catch (error) {
       toast.error('Failed to update user role')
@@ -294,7 +320,7 @@ function AdminUsers() {
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
           onBlock={handleBlock}
-          onMakeAdmin={handleMakeAdmin}
+          onChangeRole={handleChangeRole}
         />
       )}
     </div>

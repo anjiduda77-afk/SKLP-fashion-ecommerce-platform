@@ -121,7 +121,21 @@ const orderSchema = new mongoose.Schema({
   // Order Status
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'packed', 'shipped', 'out-for-delivery', 'delivered', 'returned', 'return_requested', 'cancelled', 'refunded'],
+    enum: [
+      'pending',
+      'confirmed',
+      'packed',
+      'shipped',
+      'ready_for_pickup',
+      'out-for-delivery',
+      'out_for_delivery',
+      'delivered',
+      'failed_delivery',
+      'returned',
+      'return_requested',
+      'cancelled',
+      'refunded'
+    ],
     default: 'pending',
     index: true
   },
@@ -141,7 +155,19 @@ const orderSchema = new mongoose.Schema({
   returnRequested: { type: Boolean, default: false },
   returnReason: String,
 
-  // Shipping Information
+  // Shipping & Delivery Partner Information
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
+  deliveryOTP: String,
+  deliveryNotes: String,
+  deliveryLocation: {
+    type: { type: String, default: 'Point' },
+    coordinates: [Number]
+  },
+  lastLocationUpdate: Date,
   shippingMethod: String,
   trackingNumber: String,
   estimatedDeliveryDate: Date,
@@ -205,7 +231,7 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-generate order number before saving
-orderSchema.pre('save', async function(next) {
+orderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {
     const date = new Date();
     const timestamp = date.getTime();

@@ -6,6 +6,7 @@ import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
 import { useWishlist } from '@context/WishlistContext'
+import { useCurrency } from '../context/CurrencyContext'
 import { toast } from 'react-toastify'
 
 function ProductDetail() {
@@ -13,6 +14,7 @@ function ProductDetail() {
   const { isDarkMode } = useTheme()
   const { addToCart } = useCart()
   const { toggleWishlist, isInWishlist } = useWishlist()
+  const { formatPrice } = useCurrency()
 
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -228,9 +230,9 @@ function ProductDetail() {
 
               {/* Price Details */}
               <div className="flex items-baseline gap-4 mb-8">
-                <span className="text-4xl font-bold text-luxury-gold">₹{product.price.toLocaleString()}</span>
+                <span className="text-4xl font-bold text-luxury-gold">{formatPrice(product.price)}</span>
                 {product.originalPrice && (
-                  <span className="text-lg line-through opacity-40">₹{product.originalPrice.toLocaleString()}</span>
+                  <span className="text-lg line-through opacity-40">{formatPrice(product.originalPrice)}</span>
                 )}
                 {product.discount > 0 && (
                   <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded">

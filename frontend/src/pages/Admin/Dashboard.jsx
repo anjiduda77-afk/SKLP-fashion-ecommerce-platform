@@ -9,7 +9,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, ArcElement, Filler
 } from 'chart.js'
-import apiServices from '../../services/apiServices'
+import adminService from '../../services/adminService'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler)
 
@@ -36,7 +36,7 @@ function AdminDashboard() {
   const fetchMetrics = async () => {
     try {
       setLoading(true)
-      const res = await apiServices.adminService.getDashboardMetrics()
+      const res = await adminService.getDashboardMetrics()
       if (res.data.success) {
         setMetrics(res.data.metrics)
       }

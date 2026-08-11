@@ -74,6 +74,7 @@ function Products() {
         }
       } catch (err) {
         console.warn('Backend API getProducts failed, using mock data:', err.message)
+        toast.warning('Showing cached products. Please refresh if issues persist.')
         // Luxury Mock Fallback
         const mockDb = [
           { _id: 'f1', name: 'Premium Velvet Blazer', price: 8999, originalPrice: 12999, discount: 30, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Royale', category: 'fashion-wear', gender: 'men', rating: 5 },

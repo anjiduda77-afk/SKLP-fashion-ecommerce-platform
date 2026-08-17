@@ -6,6 +6,7 @@ import * as userController from '../controllers/userController.js'
 const router = express.Router()
 
 router.get('/me', verifyToken, asyncHandler(userController.getProfile))
+router.get('/profile', verifyToken, asyncHandler(userController.getProfile))
 router.put('/profile', verifyToken, asyncHandler(userController.updateProfile))
 router.put('/preferences', verifyToken, asyncHandler(userController.updatePreferences))
 router.put('/2fa', verifyToken, asyncHandler(userController.toggleTwoFactor))

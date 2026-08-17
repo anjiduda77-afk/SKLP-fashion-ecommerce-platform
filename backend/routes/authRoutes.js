@@ -26,4 +26,9 @@ router.post('/logout-all', verifyToken, asyncHandler(authController.logoutAllDev
 router.get('/me', verifyToken, asyncHandler(authController.getCurrentUser))
 router.get('/sessions', verifyToken, asyncHandler(authController.getActiveSessions))
 
+// Account Linking (authenticated)
+router.post('/link-phone/send-otp', verifyToken, otpRateLimiter, asyncHandler(authController.sendLinkPhoneOTP))
+router.post('/link-phone/verify', verifyToken, asyncHandler(authController.verifyLinkPhone))
+router.post('/link-email', verifyToken, asyncHandler(authController.linkEmail))
+
 export default router

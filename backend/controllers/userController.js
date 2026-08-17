@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Wishlist from '../models/Wishlist.js';
 import Product from '../models/Product.js';
+import Order from '../models/Order.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import NodeCache from 'node-cache';
 
@@ -32,25 +33,41 @@ export const getProfile = async (req, res) => {
 
 // Update user profile details
 export const updateProfile = async (req, res) => {
-  const { firstName, lastName, phone, avatar, preferences } = req.body;
+  const { firstName, lastName, avatar, preferences, fashionPreferences, phone } = req.body;
   const user = await User.findById(req.user.id);
 
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
 
-  if (firstName) user.firstName = firstName;
-  if (lastName) user.lastName = lastName;
-  if (phone) {
-    const phoneExists = await User.findOne({ phone, _id: { $ne: user._id } });
-    if (phoneExists) {
-      throw new ApiError(409, 'Phone number is already in use by another account');
-    }
-    user.phone = phone;
+  if (firstName !== undefined) user.firstName = firstName.trim() || user.firstName;
+  if (lastName !== undefined) user.lastName = lastName.trim() || user.lastName;
+  
+  // Notice: Phone number updates must go through /api/auth/link-phone OTP flow
+  if (phone && phone !== user.phone) {
+    throw new ApiError(400, 'Mobile number changes require OTP verification via Account & Security.');
   }
-  if (avatar !== undefined) user.avatar = avatar;
+
+  if (avatar !== undefined) {
+    if (typeof avatar === 'string') {
+      user.avatar = { url: avatar, publicId: null };
+    } else {
+      user.avatar = avatar;
+    }
+  }
+
   if (preferences) {
-    user.preferences = { ...user.preferences, ...preferences };
+    user.preferences = {
+      ...(user.preferences?.toObject ? user.preferences.toObject() : user.preferences || {}),
+      ...preferences
+    };
+  }
+
+  if (fashionPreferences) {
+    user.fashionPreferences = {
+      ...(user.fashionPreferences?.toObject ? user.fashionPreferences.toObject() : user.fashionPreferences || {}),
+      ...fashionPreferences
+    };
   }
 
   await user.save();
@@ -58,6 +75,51 @@ export const updateProfile = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Profile updated successfully',
+    user: user.toJSON()
+  });
+};
+
+// Update comprehensive user preferences
+export const updatePreferences = async (req, res) => {
+  const { preferences, fashionPreferences, savedPaymentMethods } = req.body;
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (preferences) {
+    const currentPrefs = user.preferences?.toObject ? user.preferences.toObject() : (user.preferences || {});
+    user.preferences = {
+      ...currentPrefs,
+      ...preferences,
+      notifications: {
+        ...(currentPrefs.notifications || {}),
+        ...(preferences.notifications || {})
+      }
+    };
+  }
+
+  if (fashionPreferences) {
+    const currentFashion = user.fashionPreferences?.toObject ? user.fashionPreferences.toObject() : (user.fashionPreferences || {});
+    user.fashionPreferences = {
+      ...currentFashion,
+      ...fashionPreferences
+    };
+  }
+
+  if (savedPaymentMethods) {
+    const currentPay = user.savedPaymentMethods?.toObject ? user.savedPaymentMethods.toObject() : (user.savedPaymentMethods || {});
+    user.savedPaymentMethods = {
+      ...currentPay,
+      ...savedPaymentMethods
+    };
+  }
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Preferences saved successfully',
     user: user.toJSON()
   });
 };
@@ -89,6 +151,24 @@ export const changePassword = async (req, res) => {
   });
 };
 
+// Toggle 2FA
+export const toggleTwoFactor = async (req, res) => {
+  const { enabled } = req.body;
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  user.twoFactorEnabled = enabled !== undefined ? !!enabled : !user.twoFactorEnabled;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Two-factor authentication ${user.twoFactorEnabled ? 'enabled' : 'disabled'}`,
+    twoFactorEnabled: user.twoFactorEnabled
+  });
+};
+
 // Get user addresses
 export const getAddresses = async (req, res) => {
   const user = await User.findById(req.user.id);
@@ -104,21 +184,28 @@ export const getAddresses = async (req, res) => {
 
 // Add new address
 export const addAddress = async (req, res) => {
-  const { type, street, city, state, postalCode, country, isDefault } = req.body;
+  const { type, label, street, landmark, city, state, postalCode, pincode, country, phone, isDefault } = req.body;
   const user = await User.findById(req.user.id);
   
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
 
+  const effectivePincode = postalCode || pincode || '';
+  const effectiveType = (type || label || 'home').toLowerCase();
+
   const newAddress = {
     _id: new mongoose.Types.ObjectId(),
-    type: type || 'home',
-    street,
-    city,
-    state,
-    postalCode,
-    country,
+    type: ['home', 'office', 'other', 'work'].includes(effectiveType) ? effectiveType : 'home',
+    label: label || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Home'),
+    street: street || '',
+    landmark: landmark || '',
+    city: city || '',
+    state: state || '',
+    postalCode: effectivePincode,
+    pincode: effectivePincode,
+    country: country || 'India',
+    phone: phone || user.phone || '',
     isDefault: !!isDefault
   };
 
@@ -139,6 +226,7 @@ export const addAddress = async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Address added successfully',
+    address: newAddress,
     addresses: user.addresses
   });
 };
@@ -158,12 +246,19 @@ export const updateAddress = async (req, res) => {
   }
 
   // Update address fields
-  const fields = ['type', 'street', 'city', 'state', 'postalCode', 'country', 'isDefault'];
+  const fields = ['type', 'label', 'street', 'landmark', 'city', 'state', 'postalCode', 'pincode', 'country', 'phone', 'isDefault'];
   fields.forEach(field => {
     if (req.body[field] !== undefined) {
       address[field] = req.body[field];
     }
   });
+
+  if (req.body.pincode && !req.body.postalCode) {
+    address.postalCode = req.body.pincode;
+  }
+  if (req.body.postalCode && !req.body.pincode) {
+    address.pincode = req.body.postalCode;
+  }
 
   // Handle defaults
   if (req.body.isDefault) {
@@ -180,6 +275,7 @@ export const updateAddress = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Address updated successfully',
+    address,
     addresses: user.addresses
   });
 };
@@ -198,7 +294,7 @@ export const deleteAddress = async (req, res) => {
     throw new ApiError(404, 'Address not found');
   }
 
-  // Remove the address using Mongoose array filter / pull or pull method
+  // Remove the address
   user.addresses.pull(addressId);
 
   // If deleted address was default, assign a new default if possible
@@ -217,6 +313,122 @@ export const deleteAddress = async (req, res) => {
     success: true,
     message: 'Address removed successfully',
     addresses: user.addresses
+  });
+};
+
+// Manage Saved UPI
+export const addSavedUpi = async (req, res) => {
+  const { upiId, label, isDefault } = req.body;
+  if (!upiId || !/^[\w.-]+@[\w.-]+$/.test(upiId.trim())) {
+    throw new ApiError(400, 'Please enter a valid UPI ID (e.g. name@okhdfcbank)');
+  }
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (!user.savedPaymentMethods) user.savedPaymentMethods = { savedUpi: [] };
+  if (!user.savedPaymentMethods.savedUpi) user.savedPaymentMethods.savedUpi = [];
+
+  if (isDefault) {
+    user.savedPaymentMethods.savedUpi.forEach(u => { u.isDefault = false; });
+  }
+
+  const newUpi = {
+    _id: new mongoose.Types.ObjectId(),
+    upiId: upiId.trim().toLowerCase(),
+    label: label || 'Google Pay / PhonePe',
+    isDefault: !!isDefault || user.savedPaymentMethods.savedUpi.length === 0
+  };
+
+  user.savedPaymentMethods.savedUpi.push(newUpi);
+  await user.save();
+
+  res.status(201).json({
+    success: true,
+    message: 'UPI ID saved successfully',
+    savedUpi: user.savedPaymentMethods.savedUpi
+  });
+};
+
+export const deleteSavedUpi = async (req, res) => {
+  const { upiId } = req.params;
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (user.savedPaymentMethods?.savedUpi) {
+    user.savedPaymentMethods.savedUpi = user.savedPaymentMethods.savedUpi.filter(
+      u => u._id.toString() !== upiId && u.upiId !== upiId
+    );
+    await user.save();
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'UPI ID removed',
+    savedUpi: user.savedPaymentMethods?.savedUpi || []
+  });
+};
+
+// Export user account data
+export const exportUserData = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const orders = await Order.find({ userId: req.user.id }).lean();
+  const wishlist = await Wishlist.findOne({ userId: req.user.id }).populate('items.productId').lean();
+
+  const exportData = {
+    exportDate: new Date().toISOString(),
+    account: {
+      userId: user.customUserId || user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      preferences: user.preferences,
+      fashionPreferences: user.fashionPreferences
+    },
+    addresses: user.addresses || [],
+    orders: orders.map(o => ({
+      orderId: o._id,
+      orderNumber: o.orderNumber,
+      createdAt: o.createdAt,
+      status: o.status,
+      totalAmount: o.totalAmount,
+      items: o.items?.map(it => ({ name: it.name, quantity: it.quantity, price: it.price }))
+    })),
+    wishlistCount: wishlist?.items?.length || 0
+  };
+
+  res.status(200).json({
+    success: true,
+    data: exportData
+  });
+};
+
+// Deactivate Account
+export const deactivateAccount = async (req, res) => {
+  const { reason, password } = req.body;
+  const user = await User.findById(req.user.id).select('+password');
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (password && user.password) {
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) throw new ApiError(401, 'Invalid password');
+  }
+
+  user.status = 'inactive';
+  user.isActive = false;
+  user.accountDeletedAt = new Date();
+  user.accountDeleteReason = reason || 'User requested deactivation';
+  user.refreshTokens = [];
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Your account has been deactivated successfully.'
   });
 };
 

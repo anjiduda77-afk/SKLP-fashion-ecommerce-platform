@@ -16,7 +16,7 @@ function OTPLogin() {
   const inputRefs = useRef([])
 
   const startCountdown = () => {
-    setCountdown(60)
+    setCountdown(10)
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) { clearInterval(timer); return 0 }

@@ -7,6 +7,7 @@ export const RATES = {
   USD: { symbol: '$', rate: 0.012, label: 'USD ($)' },
   EUR: { symbol: '€', rate: 0.011, label: 'EUR (€)' },
   GBP: { symbol: '£', rate: 0.0094, label: 'GBP (£)' },
+  AED: { symbol: 'AED ', rate: 0.044, label: 'AED (د.إ)' },
 }
 
 export function CurrencyProvider({ children }) {

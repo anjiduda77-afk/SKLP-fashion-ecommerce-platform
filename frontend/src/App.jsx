@@ -22,6 +22,8 @@ import Orders from '@pages/Orders'
 import OrderTracking from '@pages/OrderTracking'
 import Wishlist from '@pages/Wishlist'
 import Profile from '@pages/Profile'
+import BecomeSeller from '@pages/BecomeSeller'
+import ShopPage from '@pages/ShopPage'
 import NotFound from '@pages/NotFound'
 
 // Auth Pages
@@ -93,6 +95,8 @@ function App() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/orders/:id/track" element={<OrderTracking />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/become-a-seller" element={<BecomeSeller />} />
+                  <Route path="/shop/:slug" element={<ShopPage />} />
 
                   {/* Auth Routes */}
                   <Route path="/login" element={<Login />} />

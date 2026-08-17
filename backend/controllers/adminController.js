@@ -559,6 +559,70 @@ export const changeUserRole = async (req, res) => {
   });
 };
 
+export const createUserByAdmin = async (req, res) => {
+  const { firstName, lastName, email, phone, password, role, status } = req.body;
+
+  if (!email && !phone) {
+    throw new ApiError(400, 'Either email or phone is required');
+  }
+
+  const existing = await User.findOne({
+    $or: [
+      ...(email ? [{ email: email.toLowerCase() }] : []),
+      ...(phone ? [{ phone }] : [])
+    ]
+  });
+
+  if (existing) {
+    throw new ApiError(409, 'A user with this email or phone already exists');
+  }
+
+  const validRole = ['customer', 'admin', 'seller', 'delivery'].includes(role) ? role : 'customer';
+
+  const user = new User({
+    firstName: firstName || 'User',
+    lastName: lastName || '',
+    email: email ? email.toLowerCase() : undefined,
+    phone: phone || undefined,
+    password: password || 'Sklp@12345',
+    role: validRole,
+    status: status || 'active',
+    isEmailVerified: !!email,
+    isPhoneVerified: !!phone,
+    sellerProfile: validRole === 'seller' ? {
+      storeName: `${firstName || 'User'}'s Store`,
+      isVerified: true,
+      verifiedAt: new Date()
+    } : undefined
+  });
+
+  await user.save();
+
+  res.status(201).json({
+    success: true,
+    message: `${validRole.toUpperCase()} account created successfully`,
+    user: user.toJSON()
+  });
+};
+
+export const deleteUserByAdmin = async (req, res) => {
+  const { id } = req.params;
+
+  if (id === req.user.id) {
+    throw new ApiError(400, 'You cannot delete your own admin account');
+  }
+
+  const user = await User.findByIdAndDelete(id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'User account deleted permanently'
+  });
+};
+
 // ================= SELLER MANAGEMENT =================
 export const getAllSellers = async (req, res) => {
   const { verified, search } = req.query;

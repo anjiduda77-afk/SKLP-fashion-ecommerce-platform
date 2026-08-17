@@ -19,6 +19,20 @@ const cartSchema = new mongoose.Schema({
       ref: 'Product',
       required: true
     },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller'
+    },
+    offerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SellerOffer'
+    },
+    shopName: {
+      type: String,
+      default: 'SKLP Official'
+    },
+    brand: String,
+    productName: String,
     quantity: {
       type: Number,
       required: true,

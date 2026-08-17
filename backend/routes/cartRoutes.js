@@ -13,5 +13,6 @@ router.delete('/items/:itemId', asyncHandler(cartController.removeCartItem))
 router.delete('/', asyncHandler(cartController.clearCart))
 router.post('/coupon', asyncHandler(cartController.applyCoupon))
 router.delete('/coupon', asyncHandler(cartController.removeCoupon))
+router.post('/merge', asyncHandler(cartController.mergeCart))
 
 export default router

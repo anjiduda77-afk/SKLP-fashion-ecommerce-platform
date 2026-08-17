@@ -12,14 +12,16 @@ export const sendOTPMessage = async (phone, otp) => {
     process.env.TWILIO_AUTH_TOKEN &&
     process.env.TWILIO_PHONE_NUMBER;
 
+  const formattedPhone = phone.startsWith('+') ? phone : (phone.length === 10 ? `+91${phone}` : phone);
+
   if (!isTwilioConfigured) {
     console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║             📱  MOCK OTP SENT (SANDBOX LOG)                   ║
 ╠════════════════════════════════════════════════════════════════╣
-║ Phone:   ${phone}
+║ Phone:   ${formattedPhone}
 ║ OTP:     ${otp}
-║ Message: Your SKLP Verification Code is: ${otp}. Valid for 5 mins.
+║ Message: Your SKLP Fashion verification code is: ${otp}. Valid for 5 minutes. Do not share it with anyone.
 ╚════════════════════════════════════════════════════════════════╝
     `);
     return { success: true, mock: true };
@@ -28,9 +30,9 @@ export const sendOTPMessage = async (phone, otp) => {
   try {
     const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     const message = await client.messages.create({
-      body: `Your SKLP Verification Code is: ${otp}. Valid for 5 minutes. Do not share this code with anyone.`,
+      body: `Your SKLP Fashion verification code is: ${otp}. Valid for 5 minutes. Do not share it with anyone.`,
       from: process.env.TWILIO_PHONE_NUMBER,
-      to: phone,
+      to: formattedPhone,
     });
 
     console.log(`✅ OTP SMS sent successfully via Twilio: ${message.sid}`);

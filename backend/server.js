@@ -21,6 +21,9 @@ import wishlistRoutes from './routes/wishlistRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
 import deliveryRoutes from './routes/deliveryRoutes.js';
+import deliveryFeeRoutes from './routes/deliveryFeeRoutes.js';
+import shopRoutes from './routes/shopRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 const app = express();
 
@@ -92,6 +95,9 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/delivery', deliveryRoutes);
+app.use('/api/delivery-fee', deliveryFeeRoutes);
+app.use('/api/shops', shopRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {

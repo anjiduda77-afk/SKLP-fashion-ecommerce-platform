@@ -1,6 +1,7 @@
 import express from 'express'
 import { asyncHandler } from '../middleware/errorHandler.js'
 import * as productController from '../controllers/productController.js'
+import { getProductOffers } from '../controllers/sellerOfferController.js'
 
 const router = express.Router()
 
@@ -9,6 +10,7 @@ router.get('/featured', asyncHandler(productController.getFeaturedProducts))
 router.get('/trending', asyncHandler(productController.getTrendingProducts))
 router.get('/search', asyncHandler(productController.searchProducts))
 router.get('/ai/recommendations', asyncHandler(productController.getAIRecommendations))
+router.get('/:productId/offers', asyncHandler(getProductOffers))
 router.get('/:id', asyncHandler(productController.getProductById))
 router.get('/:id/related', asyncHandler(productController.getRelatedProducts))
 router.get('/:id/similar', asyncHandler(productController.getSimilarProducts))

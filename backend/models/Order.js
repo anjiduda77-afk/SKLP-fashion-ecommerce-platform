@@ -26,6 +26,19 @@ const orderSchema = new mongoose.Schema({
       ref: 'Product',
       required: true
     },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller'
+    },
+    offerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SellerOffer'
+    },
+    shopNameSnapshot: {
+      type: String,
+      default: 'SKLP Official'
+    },
+    brand: String,
     productName: String,
     name: String,
     sku: String,
@@ -44,6 +57,66 @@ const orderSchema = new mongoose.Schema({
       material: String
     },
     image: String,
+  }],
+
+  // ── Multi-Seller Suborders (Each seller sees only their own slice) ──────────
+  sellerSuborders: [{
+    suborderId: {
+      type: String,
+      required: true
+    },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller',
+      required: true
+    },
+    shopNameSnapshot: {
+      type: String,
+      required: true
+    },
+    items: [{
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      productName: String,
+      brand: String,
+      quantity: Number,
+      price: Number,
+      finalPrice: Number,
+      variant: Object,
+      image: String
+    }],
+    subtotal: {
+      type: Number,
+      required: true
+    },
+    commissionRate: {
+      type: Number,
+      default: 5
+    },
+    platformCommission: {
+      type: Number,
+      default: 0
+    },
+    sellerPayout: {
+      type: Number,
+      default: 0
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'returned'],
+      default: 'pending'
+    },
+    trackingDetails: {
+      carrier: String,
+      trackingNumber: String,
+      estimatedDelivery: Date
+    },
+    dispatchedAt: Date,
+    deliveredAt: Date,
+    settlementStatus: {
+      type: String,
+      enum: ['PENDING', 'AVAILABLE', 'PAID', 'HELD', 'CANCELLED'],
+      default: 'PENDING'
+    }
   }],
 
   // Pricing Details
@@ -68,6 +141,27 @@ const orderSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  // ── Distance-Based Delivery ──────────────────────────────────────────────
+  deliveryDistance: {
+    type: Number,         // in kilometres, null if geocoding failed
+    default: null
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  deliveryLabel: {
+    type: String,
+    default: ''           // e.g. "Free delivery within 5 km 🎉"
+  },
+  // ── Platform Fee (5% of subtotal) ───────────────────────────────────────
+  platformFee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // ── Legacy / fallback shipping charge ───────────────────────────────────
   shippingCharge: {
     type: Number,
     default: 0,
@@ -112,6 +206,9 @@ const orderSchema = new mongoose.Schema({
   },
   transactionId: String,
   paymentReference: String,
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  razorpaySignature: String,
   paymentDetails: {
     method: String,
     timestamp: Date,

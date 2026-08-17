@@ -2,113 +2,113 @@ import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import Seller from '../models/Seller.js';
+import SellerOffer from '../models/SellerOffer.js';
+import SellerSettlement from '../models/SellerSettlement.js';
+import Subscription from '../models/Subscription.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { uploadMultipleImages, deleteImage } from '../config/cloudinary.js';
 
 // ================= SELLER DASHBOARD =================
 export const getSellerDashboard = async (req, res) => {
-  const sellerId = req.user.id;
+  const userId = req.user.id;
+  let seller = await Seller.findOne({ userId });
 
-  // Total products by this seller
-  const totalProducts = await Product.countDocuments({ createdBy: sellerId, isActive: true });
-  const outOfStockProducts = await Product.countDocuments({ createdBy: sellerId, isActive: true, stock: 0 });
-  const lowStockProducts = await Product.countDocuments({
-    createdBy: sellerId, isActive: true,
-    stock: { $gt: 0, $lte: 10 }
-  });
+  if (!seller) {
+    // Auto-create seller profile if user has seller role (backward compatibility)
+    const user = await User.findById(userId);
+    const shopName = user?.sellerProfile?.storeName || `${user?.firstName || 'Seller'}'s Store`;
+    const shopSlug = shopName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+    seller = await Seller.create({
+      userId,
+      shopName,
+      shopSlug: `${shopSlug}-${Date.now().toString().slice(-4)}`,
+      verificationStatus: 'verified',
+      sellerStatus: 'active'
+    });
+  }
 
-  // Get seller's product IDs for order queries
-  const sellerProducts = await Product.find({ createdBy: sellerId }).select('_id').lean();
-  const sellerProductIds = sellerProducts.map(p => p._id);
+  // 1. Products & Offers
+  const totalProducts = await Product.countDocuments({ createdBy: userId, isActive: true });
+  const totalOffers = await SellerOffer.countDocuments({ sellerId: seller._id, isActive: true });
+  const outOfStock = await Product.countDocuments({ createdBy: userId, isActive: true, stock: 0 });
 
-  // Orders containing seller's products
-  const ordersWithSellerItems = await Order.find({
-    'items.productId': { $in: sellerProductIds },
-    status: { $nin: ['cancelled'] }
-  }).lean();
+  // 2. Orders & Suborders
+  const orders = await Order.find({
+    'sellerSuborders.sellerId': seller._id
+  }).sort({ createdAt: -1 }).lean();
 
-  let totalRevenue = 0;
-  let totalOrderCount = ordersWithSellerItems.length;
+  let totalSales = 0;
+  let totalPlatformCommission = 0;
+  let totalSellerEarnings = 0;
   let pendingOrders = 0;
   let dispatchedOrders = 0;
   let deliveredOrders = 0;
 
-  ordersWithSellerItems.forEach(order => {
-    // Calculate revenue only from seller's items
-    order.items.forEach(item => {
-      if (sellerProductIds.some(id => id.toString() === item.productId?.toString())) {
-        totalRevenue += (item.finalPrice || item.price || 0) * (item.quantity || 1);
-      }
-    });
+  orders.forEach(order => {
+    const mySuborders = (order.sellerSuborders || []).filter(
+      sub => sub.sellerId?.toString() === seller._id.toString()
+    );
 
-    if (order.status === 'pending' || order.status === 'confirmed') pendingOrders++;
-    else if (order.status === 'shipped' || order.status === 'packed') dispatchedOrders++;
-    else if (order.status === 'delivered') deliveredOrders++;
-  });
+    mySuborders.forEach(sub => {
+      totalSales += sub.subtotal || 0;
+      totalPlatformCommission += sub.platformCommission || 0;
+      totalSellerEarnings += sub.sellerPayout || 0;
 
-  // Weekly revenue (last 7 days)
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const weeklyOrders = ordersWithSellerItems.filter(o => new Date(o.createdAt) >= weekAgo);
-  let weeklyRevenue = 0;
-  weeklyOrders.forEach(order => {
-    order.items.forEach(item => {
-      if (sellerProductIds.some(id => id.toString() === item.productId?.toString())) {
-        weeklyRevenue += (item.finalPrice || item.price || 0) * (item.quantity || 1);
-      }
+      if (sub.status === 'pending' || sub.status === 'confirmed') pendingOrders++;
+      else if (sub.status === 'packed' || sub.status === 'shipped') dispatchedOrders++;
+      else if (sub.status === 'delivered') deliveredOrders++;
     });
   });
 
-  // Top selling products
-  const productSales = {};
-  ordersWithSellerItems.forEach(order => {
-    order.items.forEach(item => {
-      const pid = item.productId?.toString();
-      if (pid && sellerProductIds.some(id => id.toString() === pid)) {
-        if (!productSales[pid]) {
-          productSales[pid] = { name: item.productName || item.name || 'Product', quantity: 0, revenue: 0 };
-        }
-        productSales[pid].quantity += item.quantity || 1;
-        productSales[pid].revenue += (item.finalPrice || item.price || 0) * (item.quantity || 1);
-      }
-    });
-  });
+  // 3. Settlements Summary
+  const settlements = await SellerSettlement.find({ sellerId: seller._id }).lean();
+  const pendingSettlement = settlements
+    .filter(s => s.status === 'PENDING')
+    .reduce((sum, s) => sum + s.sellerPayout, 0);
+  const availableSettlement = settlements
+    .filter(s => s.status === 'AVAILABLE')
+    .reduce((sum, s) => sum + s.sellerPayout, 0);
+  const paidSettlement = settlements
+    .filter(s => s.status === 'PAID')
+    .reduce((sum, s) => sum + s.sellerPayout, 0);
 
-  const topProducts = Object.entries(productSales)
-    .map(([id, data]) => ({ productId: id, ...data }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
-
-  // Get seller profile
-  const seller = await User.findById(sellerId).lean();
+  // 4. Subscription Status
+  const subscription = await Subscription.findOne({ sellerId: seller._id }).lean();
 
   res.status(200).json({
     success: true,
     dashboard: {
       metrics: {
-        totalProducts,
-        outOfStockProducts,
-        lowStockProducts,
-        totalOrders: totalOrderCount,
+        totalProducts: totalProducts + totalOffers,
+        totalOrders: orders.length,
         pendingOrders,
         dispatchedOrders,
         deliveredOrders,
-        totalRevenue,
-        weeklyRevenue,
+        totalSales,
+        platformCommission: totalPlatformCommission,
+        totalEarnings: totalSellerEarnings,
+        pendingSettlement,
+        availableSettlement,
+        paidSettlement,
+        outOfStockProducts: outOfStock,
       },
-      topProducts,
-      sellerProfile: {
-        storeName: seller?.sellerProfile?.storeName || '',
-        isVerified: seller?.sellerProfile?.isVerified || false,
-        rating: seller?.sellerProfile?.rating || 0,
-        commissionRate: seller?.sellerProfile?.commissionRate || 10,
+      seller: {
+        _id: seller._id,
+        shopName: seller.shopName,
+        shopSlug: seller.shopSlug,
+        rating: seller.rating,
+        reviewCount: seller.reviewCount,
+        verificationStatus: seller.verificationStatus,
+        sellerStatus: seller.sellerStatus,
+        currentPlan: seller.currentPlan,
+        trialEndsAt: seller.trialEndsAt
       },
-      recentOrders: weeklyOrders.slice(0, 5).map(o => ({
-        id: o._id,
-        orderNumber: o.orderNumber,
-        status: o.status,
-        totalAmount: o.totalAmount,
-        date: o.createdAt,
-      }))
+      subscription: subscription || {
+        plan: 'trial',
+        status: 'TRIAL',
+        trialEndDate: seller.trialEndsAt
+      }
     }
   });
 };
@@ -333,36 +333,60 @@ export const deleteProductImage = async (req, res) => {
 // ================= SELLER ORDERS =================
 export const getSellerOrders = async (req, res) => {
   const { status, page = 1, limit = 20 } = req.query;
+  const seller = await Seller.findOne({ userId: req.user.id });
 
-  // Get seller's product IDs
-  const sellerProducts = await Product.find({ createdBy: req.user.id }).select('_id').lean();
-  const sellerProductIds = sellerProducts.map(p => p._id);
+  if (!seller) {
+    return res.status(200).json({ success: true, orders: [], pagination: { total: 0, page: 1, limit: 20, pages: 0 } });
+  }
 
   const query = {
-    'items.productId': { $in: sellerProductIds }
+    'sellerSuborders.sellerId': seller._id
   };
-  if (status) query.status = status;
+  if (status && status !== 'ALL') {
+    query['sellerSuborders.status'] = status;
+  }
 
   const orders = await Order.find(query)
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit))
-    .populate('userId', 'firstName lastName email')
+    .populate('userId', 'firstName lastName email phone')
     .lean();
 
   const total = await Order.countDocuments(query);
 
-  // Filter items to only show seller's products
-  const filteredOrders = orders.map(order => ({
-    ...order,
-    items: order.items.filter(item =>
-      sellerProductIds.some(id => id.toString() === item.productId?.toString())
-    )
-  }));
+  // Map to individual seller suborders for privacy & fulfillment
+  const suborderList = [];
+  orders.forEach(order => {
+    const mySuborders = (order.sellerSuborders || []).filter(
+      sub => sub.sellerId?.toString() === seller._id.toString()
+    );
+
+    mySuborders.forEach(sub => {
+      suborderList.push({
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        suborderId: sub.suborderId,
+        customerName: `${order.userId?.firstName || ''} ${order.userId?.lastName || ''}`.trim() || 'Customer',
+        customerPhone: order.phone,
+        shippingAddress: order.shippingAddress,
+        items: sub.items,
+        subtotal: sub.subtotal,
+        commissionRate: sub.commissionRate,
+        platformCommission: sub.platformCommission,
+        sellerPayout: sub.sellerPayout,
+        status: sub.status,
+        trackingDetails: sub.trackingDetails,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        createdAt: order.createdAt
+      });
+    });
+  });
 
   res.status(200).json({
     success: true,
-    orders: filteredOrders,
+    orders: suborderList,
     pagination: {
       total,
       page: Number(page),
@@ -372,44 +396,60 @@ export const getSellerOrders = async (req, res) => {
   });
 };
 
-// Dispatch an order (update status)
+// Dispatch a suborder
 export const dispatchOrder = async (req, res) => {
-  const { id } = req.params;
-  const { trackingNumber, carrier } = req.body;
+  const { id } = req.params; // orderId or suborderId
+  const { trackingNumber, carrier, suborderId } = req.body;
 
-  const order = await Order.findById(id);
+  const seller = await Seller.findOne({ userId: req.user.id });
+  if (!seller) {
+    throw new ApiError(403, 'Seller profile not found');
+  }
+
+  const order = await Order.findOne({
+    $or: [{ _id: id }, { 'sellerSuborders.suborderId': suborderId || id }]
+  });
+
   if (!order) {
     throw new ApiError(404, 'Order not found');
   }
 
-  // Verify seller owns at least one product in this order
-  const sellerProducts = await Product.find({ createdBy: req.user.id }).select('_id').lean();
-  const sellerProductIds = sellerProducts.map(p => p._id.toString());
-  const hasSellerItem = order.items.some(item =>
-    sellerProductIds.includes(item.productId?.toString())
+  const suborder = order.sellerSuborders?.find(
+    sub => sub.sellerId?.toString() === seller._id.toString() &&
+      (!suborderId || sub.suborderId === suborderId)
   );
 
-  if (!hasSellerItem) {
+  if (!suborder) {
     throw new ApiError(403, 'You do not have items in this order');
   }
 
-  order.status = 'shipped';
-  if (trackingNumber) order.trackingNumber = trackingNumber;
-  if (carrier) order.carrier = carrier;
+  suborder.status = 'shipped';
+  suborder.dispatchedAt = new Date();
+  suborder.trackingDetails = {
+    carrier: carrier || 'SKLP Express',
+    trackingNumber: trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
+    estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+  };
+
+  // If all suborders are shipped, update main order status
+  const allShipped = order.sellerSuborders.every(s => ['shipped', 'delivered'].includes(s.status));
+  if (allShipped) {
+    order.status = 'shipped';
+  }
 
   order.statusHistory = order.statusHistory || [];
   order.statusHistory.push({
     status: 'shipped',
     updatedAt: new Date(),
-    comment: `Dispatched by seller ${req.user.id}`
+    comment: `Suborder #${suborder.suborderId} dispatched by ${seller.shopName}`
   });
 
   await order.save();
 
   res.status(200).json({
     success: true,
-    message: 'Order dispatched successfully',
-    order
+    message: 'Suborder dispatched successfully',
+    suborder
   });
 };
 

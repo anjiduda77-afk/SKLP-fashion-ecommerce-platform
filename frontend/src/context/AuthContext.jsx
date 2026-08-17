@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { userService, authService } from '@services/apiServices'
+import { userService, authService, cartService } from '@services/apiServices'
 
 const AuthContext = createContext()
 
@@ -24,6 +24,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
+    localStorage.removeItem('cart')
+    localStorage.removeItem('wishlist')
   }, [])
 
   const logoutAllDevices = useCallback(async () => {
@@ -38,9 +40,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
+    localStorage.removeItem('cart')
+    localStorage.removeItem('wishlist')
   }, [])
 
-  const login = useCallback((userData, authToken, refreshToken) => {
+  // ── Enhanced Login: merge guest cart & wishlist automatically ──
+  const login = useCallback(async (userData, authToken, refreshToken) => {
     setUser(userData)
     setToken(authToken)
     setIsAuthenticated(true)
@@ -49,6 +54,31 @@ export const AuthProvider = ({ children }) => {
     if (refreshToken) {
       localStorage.setItem('refreshToken', refreshToken)
     }
+
+    // Merge guest cart items into server cart
+    try {
+      const guestCartRaw = localStorage.getItem('cart')
+      if (guestCartRaw) {
+        const guestItems = JSON.parse(guestCartRaw)
+        if (Array.isArray(guestItems) && guestItems.length > 0) {
+          // Transform to backend format
+          const mergePayload = guestItems.map(item => ({
+            productId: item.id || item.productId,
+            quantity: item.quantity || 1,
+            variant: item.variant || {}
+          })).filter(item => item.productId)
+
+          if (mergePayload.length > 0) {
+            await cartService.mergeCart(mergePayload)
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Guest cart merge failed (non-critical):', err.message)
+    }
+
+    // Clear guest cart after merge attempt
+    localStorage.removeItem('cart')
   }, [])
 
   // Attempt to silently refresh the token

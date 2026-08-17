@@ -27,11 +27,33 @@ router.get('/orders/:id', asyncHandler(adminController.getOrderById))
 
 // Users
 router.get('/users', asyncHandler(adminController.getAllUsers))
+router.post('/users', asyncHandler(adminController.createUserByAdmin))
 router.put('/users/:id/role', asyncHandler(adminController.changeUserRole))
+router.delete('/users/:id', asyncHandler(adminController.deleteUserByAdmin))
 
-// Sellers
+// Sellers & Applications
 router.get('/sellers', asyncHandler(adminController.getAllSellers))
 router.put('/sellers/:id/verify', asyncHandler(adminController.verifySeller))
+
+// Seller Applications & Anti-Cheating Review
+router.get('/seller-applications', asyncHandler(async (req, res) => {
+  const { getAdminSellerApplications } = await import('../controllers/sellerApplicationController.js')
+  return getAdminSellerApplications(req, res)
+}))
+router.put('/seller-applications/:id/review', asyncHandler(async (req, res) => {
+  const { reviewSellerApplication } = await import('../controllers/sellerApplicationController.js')
+  return reviewSellerApplication(req, res)
+}))
+
+// Marketplace Revenue & Settlements
+router.get('/marketplace-revenue', asyncHandler(async (req, res) => {
+  const { getAdminMarketplaceRevenue } = await import('../controllers/settlementController.js')
+  return getAdminMarketplaceRevenue(req, res)
+}))
+router.put('/settlements/:id/pay', asyncHandler(async (req, res) => {
+  const { markSettlementPaid } = await import('../controllers/settlementController.js')
+  return markSettlementPaid(req, res)
+}))
 
 // Coupons
 router.get('/coupons', asyncHandler(adminController.getCoupons))

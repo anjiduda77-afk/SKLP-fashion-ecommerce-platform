@@ -25,11 +25,16 @@ export const authRateLimiter = rateLimit({
   }
 });
 
-// OTP rate limiter
+// OTP rate limiter - Up to 20 attempts / checks allowed per 5 minutes, resets after 5 minutes
 export const otpRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 3, // 3 attempts per minute
-  message: 'Too many OTP requests, please try again after 1 minute',
+  windowMs: 5 * 60 * 1000, // 5 minutes window
+  max: 20, // Limit to 20 requests per 5 minutes
+  message: {
+    success: false,
+    message: 'Too many OTP attempts (limit: 20). Please try again after 5 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
   keyGenerator: (req) => {
     return req.body.phone || req.ip;
   }

@@ -17,6 +17,8 @@ function ProductDetail() {
   const { formatPrice } = useCurrency()
 
   const [product, setProduct] = useState(null)
+  const [offersData, setOffersData] = useState(null)
+  const [selectedOffer, setSelectedOffer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
   
@@ -41,17 +43,27 @@ function ProductDetail() {
   // Accordion Section
   const [activeTab, setActiveTab] = useState('description')
 
-  // Load product data
+  // Load product & multi-seller offers data
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true)
       try {
-        const res = await productService.getProduct(id)
-        if (res.data && res.data.product) {
-          setProduct(res.data.product)
-          // Pre-select first variant options
-          if (res.data.product.sizes?.length > 0) setSelectedSize(res.data.product.sizes[0])
-          if (res.data.product.colors?.length > 0) setSelectedColor(res.data.product.colors[0])
+        const [prodRes, offersRes] = await Promise.all([
+          productService.getProduct(id),
+          productService.getProductOffers(id).catch(() => ({ data: null }))
+        ])
+
+        if (prodRes.data && prodRes.data.product) {
+          setProduct(prodRes.data.product)
+          if (prodRes.data.product.sizes?.length > 0) setSelectedSize(prodRes.data.product.sizes[0])
+          if (prodRes.data.product.colors?.length > 0) setSelectedColor(prodRes.data.product.colors[0])
+        }
+
+        if (offersRes?.data?.success) {
+          setOffersData(offersRes.data)
+          if (offersRes.data.recommendedOffer) {
+            setSelectedOffer(offersRes.data.recommendedOffer)
+          }
         }
       } catch (err) {
         console.warn('Backend API getProduct failed, using luxury mock details:', err.message)
@@ -311,12 +323,42 @@ function ProductDetail() {
 
             {/* Actions Panel */}
             <div className="space-y-4 pt-6 border-t border-white/10">
+              {/* Seller Trust Information */}
+              <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-luxury-black/60 border-luxury-darkGray' : 'bg-gray-50 border-gray-200'} space-y-2`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold opacity-60">Sold by:</span>
+                    <Link
+                      to={`/shop/${selectedOffer?.sellerId?.shopSlug || 'sklp-official'}`}
+                      className="text-xs font-bold text-luxury-gold hover:underline flex items-center gap-1"
+                    >
+                      {selectedOffer?.sellerId?.shopName || 'SKLP Official Store'}
+                      <FiCheckCircle size={12} className="text-green-500 inline" />
+                    </Link>
+                  </div>
+                  {selectedOffer?.isRecommended && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">
+                      ★ Recommended Seller
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 text-[11px] opacity-75 pt-1">
+                  <span>★ {selectedOffer?.sellerId?.rating || '4.8'} Seller Rating</span>
+                  <span>• 🚚 {selectedOffer?.deliveryDays || 3} Days Delivery</span>
+                  <span>• ↺ {selectedOffer?.returnPolicyDays || 7} Days Return</span>
+                </div>
+              </div>
+
               <div className="flex gap-4">
                 <button
-                  onClick={() => { addToCart(product, quantity, { size: selectedSize, color: selectedColor }); toast.success('Added to Cart!') }}
+                  onClick={() => {
+                    addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
+                    toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'SKLP Official Store'}! 🎉`)
+                  }}
                   className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap"
                 >
-                  <FiShoppingBag size={14} className="shrink-0" /> Add to Shopping Cart
+                  <FiShoppingBag size={14} className="shrink-0" /> Buy Now / Add to Cart
                 </button>
                  <button
                   onClick={() => toggleWishlist(product)}
@@ -344,8 +386,62 @@ function ProductDetail() {
           </div>
         </div>
 
-        {/* ============ TAB DETAILS (Description, Shipping, Returns) ============ */}
-        <section className="mb-20">
+        {/* ============ MULTI-SELLER: OTHER SELLERS ON SKLP ============ */}
+        {offersData?.otherOffers?.length > 0 && (
+          <section className={`rounded-3xl border p-6 md:p-8 ${cardBg} space-y-4 shadow-xl mb-16`}>
+            <div className="flex items-center justify-between border-b pb-4 border-white/10">
+              <div>
+                <h3 className={`text-lg font-serif font-bold ${textPrimary}`}>Other Sellers Selling this Product</h3>
+                <p className={`text-xs ${textSecondary}`}>Compare prices, delivery speeds, and seller ratings from verified merchants.</p>
+              </div>
+              <span className="text-xs font-bold text-luxury-gold px-3 py-1 bg-luxury-gold/10 rounded-full border border-luxury-gold/20">
+                {offersData.otherOffers.length} Other Offers
+              </span>
+            </div>
+
+            <div className="divide-y divide-white/10">
+              {offersData.otherOffers.map((offer) => (
+                <div key={offer._id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Link
+                      to={`/shop/${offer.sellerId?.shopSlug || ''}`}
+                      className={`text-sm font-bold ${textPrimary} hover:text-luxury-gold flex items-center gap-1.5`}
+                    >
+                      {offer.sellerId?.shopName || 'Verified Merchant'}
+                      <FiCheckCircle size={12} className="text-green-500" />
+                    </Link>
+                    <div className="flex items-center gap-3 text-xs opacity-75">
+                      <span className="text-luxury-gold font-bold">★ {offer.sellerId?.rating || '4.5'}</span>
+                      <span>• 🚚 {offer.deliveryDays || 3} Days Delivery</span>
+                      <span>• ↺ {offer.returnPolicyDays || 7} Days Return</span>
+                      {offer.freeDelivery && <span className="text-green-500 font-bold">• Free Delivery</span>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="text-right">
+                      <p className={`text-lg font-bold text-luxury-gold`}>{formatPrice(offer.price)}</p>
+                      {offer.originalPrice > offer.price && (
+                        <p className={`text-xs line-through ${textSecondary}`}>{formatPrice(offer.originalPrice)}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        addToCart(product, quantity, { size: selectedSize, color: selectedColor }, offer._id)
+                        toast.success(`Added from ${offer.sellerId?.shopName || 'Merchant'}! 🎉`)
+                      }}
+                      className="px-4 py-2 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-yellow-400 transition-all"
+                    >
+                      Buy from this seller
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mb-16">
           <div className="flex border-b border-white/10 mb-8">
             {['description', 'specifications', 'shipping'].map(tab => (
               <button

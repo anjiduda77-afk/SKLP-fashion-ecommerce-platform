@@ -4,21 +4,14 @@ import apiClient, { createUploadConfig } from './apiClient'
  * Delivery Partner API Service
  */
 export const deliveryService = {
-  // Dashboard
   getDashboard: () => apiClient.get('/delivery/dashboard'),
-
-  // Orders
   getAssignedOrders: (params) => apiClient.get('/delivery/orders', { params }),
   updateOrderStatus: (orderId, data) =>
     apiClient.put(`/delivery/orders/${orderId}/status`, data),
   updateDeliveryLocation: (orderId, data) =>
     apiClient.post(`/delivery/orders/${orderId}/location`, data),
-
-  // Earnings
   getEarnings: (period = 'month') =>
     apiClient.get('/delivery/earnings', { params: { period } }),
-
-  // Analytics
   getAnalytics: () => apiClient.get('/delivery/analytics')
 }
 
@@ -29,7 +22,15 @@ export const adminService = {
   getDashboard: () => apiClient.get('/admin/dashboard'),
   getOrders: (params) => apiClient.get('/admin/orders', { params }),
   getUsers: (params) => apiClient.get('/admin/users', { params }),
-  getProducts: (params) => apiClient.get('/admin/products', { params })
+  getProducts: (params) => apiClient.get('/admin/products', { params }),
+  getSellers: (params) => apiClient.get('/admin/sellers', { params }),
+  verifySeller: (id, action, notes) => apiClient.put(`/admin/sellers/${id}/verify`, { action, notes }),
+  // Seller Applications & Anti-cheating
+  getSellerApplications: (params) => apiClient.get('/admin/seller-applications', { params }),
+  reviewSellerApplication: (id, data) => apiClient.put(`/admin/seller-applications/${id}/review`, data),
+  // Marketplace Revenue & Settlements
+  getMarketplaceRevenue: () => apiClient.get('/admin/marketplace-revenue'),
+  markSettlementPaid: (id, data) => apiClient.put(`/admin/settlements/${id}/pay`, data)
 }
 
 /**
@@ -44,7 +45,32 @@ export const sellerService = {
   getOrders: (params) => apiClient.get('/seller/orders', { params }),
   dispatchOrder: (id, data) => apiClient.put(`/seller/orders/${id}/dispatch`, data),
   getProfile: () => apiClient.get('/seller/profile'),
-  updateProfile: (data) => apiClient.put('/seller/profile', data)
+  updateProfile: (data) => apiClient.put('/seller/profile', data),
+  // Multi-seller product offers
+  getOffers: () => apiClient.get('/seller/offers'),
+  createOffer: (data) => apiClient.post('/seller/offers', data),
+  // Settlement ledger
+  getSettlements: (params) => apiClient.get('/seller/settlements', { params }),
+  // Subscriptions & Plans
+  getSubscription: () => apiClient.get('/seller/subscription'),
+  selectSubscriptionPlan: (data) => apiClient.post('/seller/subscription/select-plan', data)
+}
+
+/**
+ * Seller Application Service (Become a Seller)
+ */
+export const sellerApplicationService = {
+  checkShopName: (shopName) => apiClient.get('/seller/check-shop-name', { params: { shopName } }),
+  submitApplication: (data) => apiClient.post('/seller/apply', data),
+  getStatus: () => apiClient.get('/seller/application/status')
+}
+
+/**
+ * Public Shop Service
+ */
+export const shopService = {
+  getShop: (slug) => apiClient.get(`/shops/${slug}`),
+  getShopProducts: (slug, params) => apiClient.get(`/shops/${slug}/products`, { params })
 }
 
 /**
@@ -68,12 +94,16 @@ export const authService = {
   register: (data) => apiClient.post('/auth/register', data),
   sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
+  resendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
   googleLogin: (token) => apiClient.post('/auth/google-login', { token }),
   refreshToken: (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   logoutAll: () => apiClient.post('/auth/logout-all'),
   forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
-  resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword })
+  resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
+  sendLinkPhoneOTP: (phone) => apiClient.post('/auth/link-phone/send-otp', { phone }),
+  verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp }),
+  linkEmail: (email) => apiClient.post('/auth/link-email', { email })
 }
 
 /**
@@ -82,11 +112,17 @@ export const authService = {
 export const userService = {
   getCurrentUser: () => apiClient.get('/users/me'),
   updateProfile: (data) => apiClient.put('/users/profile', data),
+  updatePreferences: (data) => apiClient.put('/users/preferences', data),
+  toggleTwoFactor: (enabled) => apiClient.put('/users/2fa', { enabled }),
   changePassword: (oldPassword, newPassword) => apiClient.put('/users/change-password', { oldPassword, newPassword }),
   getAddresses: () => apiClient.get('/users/addresses'),
   addAddress: (data) => apiClient.post('/users/addresses', data),
   updateAddress: (addressId, data) => apiClient.put(`/users/addresses/${addressId}`, data),
-  deleteAddress: (addressId) => apiClient.delete(`/users/addresses/${addressId}`)
+  deleteAddress: (addressId) => apiClient.delete(`/users/addresses/${addressId}`),
+  addSavedUpi: (data) => apiClient.post('/users/upi', data),
+  deleteSavedUpi: (upiId) => apiClient.delete(`/users/upi/${upiId}`),
+  exportUserData: () => apiClient.get('/users/export-data'),
+  deactivateAccount: (data) => apiClient.post('/users/deactivate', data)
 }
 
 /**
@@ -95,7 +131,8 @@ export const userService = {
 export const productService = {
   getProducts: (params) => apiClient.get('/products', { params }),
   getProductById: (id) => apiClient.get(`/products/${id}`),
-  getProduct: (id) => apiClient.get(`/products/${id}`)
+  getProduct: (id) => apiClient.get(`/products/${id}`),
+  getProductOffers: (productId) => apiClient.get(`/products/${productId}/offers`)
 }
 
 /**
@@ -103,14 +140,15 @@ export const productService = {
  */
 export const cartService = {
   getCart: () => apiClient.get('/cart'),
-  addToCart: (productId, quantity, variant) =>
-    apiClient.post('/cart/items', { productId, quantity, variant }),
+  addToCart: (productId, quantity, variant, offerId) =>
+    apiClient.post('/cart/items', { productId, quantity, variant, offerId }),
   updateCartItem: (itemId, quantity) =>
     apiClient.put(`/cart/items/${itemId}`, { quantity }),
   removeCartItem: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
   removeFromCart: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
   clearCart: () => apiClient.delete('/cart'),
-  applyCoupon: (code) => apiClient.post('/cart/coupon', { code })
+  applyCoupon: (code) => apiClient.post('/cart/coupon', { code }),
+  mergeCart: (items) => apiClient.post('/cart/merge', { items })
 }
 
 /**
@@ -127,6 +165,15 @@ export const orderService = {
 }
 
 /**
+ * Delivery Fee Service
+ */
+export const deliveryFeeService = {
+  calculate: (address) => apiClient.post('/delivery-fee/calculate', address),
+  getConfig: () => apiClient.get('/delivery-fee/config'),
+  updateConfig: (data) => apiClient.put('/delivery-fee/config', data)
+}
+
+/**
  * Wishlist API Service
  */
 export const wishlistService = {
@@ -137,4 +184,3 @@ export const wishlistService = {
 }
 
 export default apiClient
-

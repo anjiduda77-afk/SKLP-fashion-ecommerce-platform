@@ -31,7 +31,9 @@ export const adminService = {
   
   // Users
   getUsers: (params) => apiClient.get('/admin/users', { params }),
+  createUser: (userData) => apiClient.post('/admin/users', userData),
   changeUserRole: (id, roleData) => apiClient.put(`/admin/users/${id}/role`, roleData),
+  deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
   
   // Sellers
   getSellers: (params) => apiClient.get('/admin/sellers', { params }),

@@ -39,8 +39,13 @@ export const CartProvider = ({ children }) => {
           const normalizedItems = res.data.cart.items.map(item => {
             const product = item.productId || {}
             return {
+              _id: item._id,
               id: product._id || product,
-              name: product.name || 'Product',
+              name: item.productName || product.name || 'Product',
+              brand: item.brand || product.brand || 'SKLP Fashion',
+              shopName: item.shopName || 'SKLP Official Store',
+              sellerId: item.sellerId,
+              offerId: item.offerId,
               price: item.price,
               originalPrice: product.price || item.price,
               image: item.image || product.images?.[0]?.url || product.thumbnail,
@@ -74,10 +79,13 @@ export const CartProvider = ({ children }) => {
     calculateTotals(cartItems)
   }, [cartItems, calculateTotals])
 
-  const addToCart = async (product, quantity = 1, variant = {}) => {
+  const addToCart = async (product, quantity = 1, variant = {}, offerId = null) => {
     const newItem = {
       id: product._id || product.id,
       name: product.name,
+      brand: product.brand || 'SKLP Fashion',
+      shopName: product.shopName || 'SKLP Official Store',
+      offerId: offerId,
       price: product.discountedPrice || product.price,
       originalPrice: product.price,
       image: product.images?.[0]?.url || product.thumbnail,
@@ -88,7 +96,7 @@ export const CartProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await cartService.addToCart(newItem.id, quantity, variant)
+        await cartService.addToCart(newItem.id, quantity, variant, offerId)
       } catch (err) {
         console.error('Failed to add to backend cart', err)
       }
@@ -96,12 +104,16 @@ export const CartProvider = ({ children }) => {
 
     setCartItems((prevItems) => {
       const existingItem = prevItems.find(
-        (item) => item.id === newItem.id && JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
+        (item) => item.id === newItem.id && 
+          (!offerId || item.offerId === offerId) &&
+          JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
       )
 
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === newItem.id && JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
+          item.id === newItem.id && 
+          (!offerId || item.offerId === offerId) &&
+          JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
             ? { ...item, quantity: item.quantity + quantity }
             : item
         )

@@ -83,7 +83,7 @@ export const getCart = async (req, res) => {
 }
 
 export const addItemToCart = async (req, res) => {
-  const { productId, quantity = 1, variant = {} } = req.body
+  const { productId, offerId, quantity = 1, variant = {} } = req.body
   const product = await Product.findById(productId).lean()
 
   if (!product) {
@@ -95,12 +95,38 @@ export const addItemToCart = async (req, res) => {
     cart = await Cart.create({ userId: req.user.id, items: [] })
   }
 
-  const existingItem = cart.items.find(
-    (item) => item.productId.toString() === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
-  )
+  let sellerId = null
+  let shopName = 'SKLP Official Store'
+  let itemPrice = product.price
+  let itemDiscount = product.discount || 0
 
-  const discountPercent = product.discount || 0
-  const unitFinalPrice = product.price - (product.price * discountPercent / 100)
+  // Resolve Seller Offer if specified
+  if (offerId && !offerId.toString().startsWith('default_')) {
+    const { default: SellerOffer } = await import('../models/SellerOffer.js')
+    const offer = await SellerOffer.findById(offerId).populate('sellerId').lean()
+    if (offer && offer.isActive) {
+      sellerId = offer.sellerId?._id || offer.sellerId
+      shopName = offer.sellerId?.shopName || 'Verified Seller'
+      itemPrice = offer.price
+      itemDiscount = offer.discount || 0
+    }
+  } else {
+    // Default to creator or official seller
+    const { default: Seller } = await import('../models/Seller.js')
+    const creatorSeller = await Seller.findOne({ userId: product.createdBy }).lean()
+    if (creatorSeller) {
+      sellerId = creatorSeller._id
+      shopName = creatorSeller.shopName
+    }
+  }
+
+  const unitFinalPrice = itemPrice - (itemPrice * itemDiscount / 100)
+
+  const existingItem = cart.items.find(
+    (item) => item.productId.toString() === productId && 
+      (!offerId || item.offerId?.toString() === offerId.toString()) &&
+      JSON.stringify(item.variant) === JSON.stringify(variant)
+  )
 
   if (existingItem) {
     existingItem.quantity += quantity
@@ -108,9 +134,14 @@ export const addItemToCart = async (req, res) => {
   } else {
     cart.items.push({
       productId,
+      sellerId,
+      offerId: (offerId && !offerId.toString().startsWith('default_')) ? offerId : undefined,
+      shopName,
+      brand: product.brand || 'SKLP Fashion',
+      productName: product.name,
       quantity,
-      price: product.price,
-      discount: discountPercent,
+      price: itemPrice,
+      discount: itemDiscount,
       finalPrice: unitFinalPrice * quantity,
       variant,
       image: product.images?.[0]?.url || product.thumbnail,
@@ -231,4 +262,70 @@ export const removeCoupon = async (req, res) => {
   await cart.save()
 
   res.status(200).json({ success: true, message: 'Coupon removed successfully', cart })
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MERGE CART — Safely merge guest (localStorage) cart into authenticated user's DB cart
+// ──────────────────────────────────────────────────────────────────────────────
+export const mergeCart = async (req, res) => {
+  const { items: guestItems } = req.body
+
+  if (!guestItems || !Array.isArray(guestItems) || guestItems.length === 0) {
+    // Nothing to merge, just return current cart
+    let cart = await Cart.findOne({ userId: req.user.id })
+    if (!cart) {
+      cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
+    }
+    return res.status(200).json({ success: true, cart, merged: false })
+  }
+
+  let cart = await Cart.findOne({ userId: req.user.id })
+  if (!cart) {
+    cart = await Cart.create({ userId: req.user.id, items: [] })
+  }
+
+  let mergedCount = 0
+
+  for (const guestItem of guestItems) {
+    const { productId, quantity = 1, variant = {} } = guestItem
+    if (!productId) continue
+
+    // Validate product exists
+    const product = await Product.findById(productId).lean()
+    if (!product) continue
+
+    const existingItem = cart.items.find(
+      (item) => item.productId.toString() === productId.toString() && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {})
+    )
+
+    const discountPercent = product.discount || 0
+    const unitFinalPrice = product.price - (product.price * discountPercent / 100)
+
+    if (existingItem) {
+      // Sum quantities (don't add duplicates, merge them)
+      existingItem.quantity = Math.max(existingItem.quantity, quantity)
+      existingItem.finalPrice = unitFinalPrice * existingItem.quantity
+    } else {
+      cart.items.push({
+        productId,
+        quantity,
+        price: product.price,
+        discount: discountPercent,
+        finalPrice: unitFinalPrice * quantity,
+        variant,
+        image: product.images?.[0]?.url || product.thumbnail,
+      })
+      mergedCount++
+    }
+  }
+
+  await recalculateCart(cart)
+  await cart.save()
+
+  res.status(200).json({
+    success: true,
+    cart,
+    merged: true,
+    mergedCount
+  })
 }

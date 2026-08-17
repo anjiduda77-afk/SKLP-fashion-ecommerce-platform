@@ -27,37 +27,39 @@ export const WishlistProvider = ({ children }) => {
     localStorage.setItem('wishlist', JSON.stringify(wishlistItems))
   }, [wishlistItems])
 
-  // Fetch from API when authenticated
+  // Fetch and merge from API when authenticated, clear on logout
   useEffect(() => {
     if (isAuthenticated) {
-      fetchWishlist()
+      const syncUserWishlist = async () => {
+        try {
+          setLoading(true)
+          const response = await wishlistService.getWishlist()
+          if (response?.data?.wishlist?.items) {
+            const serverItems = response.data.wishlist.items.map(item => {
+              if (item.product) {
+                return {
+                  ...item.product,
+                  wishlistId: item._id,
+                  addedAt: item.addedAt
+                }
+              }
+              return null
+            }).filter(Boolean)
+
+            setWishlistItems(serverItems)
+          }
+        } catch (error) {
+          console.warn('Error fetching wishlist:', error.message)
+        } finally {
+          setLoading(false)
+        }
+      }
+      syncUserWishlist()
+    } else {
+      // Clear wishlist state on logout
+      setWishlistItems([])
     }
   }, [isAuthenticated])
-
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true)
-      const response = await wishlistService.getWishlist()
-      if (response?.data?.wishlist?.items) {
-        const items = response.data.wishlist.items.map(item => {
-          if (item.product) {
-            return {
-              ...item.product,
-              wishlistId: item._id,
-              addedAt: item.addedAt
-            }
-          }
-          return null
-        }).filter(Boolean)
-        setWishlistItems(items)
-      }
-    } catch (error) {
-      console.error('Error fetching wishlist:', error)
-      // Use local state if API fails
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const isInWishlist = useCallback(
     (productId) => wishlistItems.some((item) => item._id === productId || item.id === productId),

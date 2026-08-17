@@ -831,49 +831,6 @@ function Login() {
             {t.signUp}
           </Link>
         </p>
-
-        {/* ── Demo Accounts Quick Switcher ── */}
-        <div className="mt-6 pt-5 border-t border-current/10">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-center text-luxury-gold mb-2.5">
-            ⚡ Instant Role Login (Testing)
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: '👑 Admin', email: 'admin@sklp.com', pass: 'AdminPassword123!', role: 'admin' },
-              { label: '🛍️ Customer', email: 'customer@sklp.com', pass: 'CustomerPassword123!', role: 'customer' },
-              { label: '🏪 Seller', email: 'seller@sklp.com', pass: 'SellerPassword123!', role: 'seller' },
-              { label: '🚚 Delivery', email: 'delivery@sklp.com', pass: 'DeliveryPassword123!', role: 'delivery' }
-            ].map((acc) => (
-              <button
-                key={acc.role}
-                type="button"
-                onClick={async () => {
-                  setLoading(true)
-                  try {
-                    const res = await authService.login(acc.email, acc.pass, true)
-                    if (res.data?.success && res.data?.user) {
-                      await login(res.data.user, res.data.token, res.data.refreshToken)
-                      handleRoleRedirect(res.data.user)
-                    }
-                  } catch (err) {
-                    toast.error(err?.response?.data?.message || 'Quick login failed')
-                  } finally {
-                    setLoading(false)
-                  }
-                }}
-                disabled={loading}
-                className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold transition-all text-left flex items-center justify-between ${
-                  isDarkMode
-                    ? 'bg-white/5 border-white/10 hover:border-luxury-gold/50 hover:bg-white/10 text-white'
-                    : 'bg-gray-50 border-gray-200 hover:border-luxury-gold/50 hover:bg-gray-100 text-black'
-                }`}
-              >
-                <span>{acc.label}</span>
-                <span className="text-[9px] opacity-60">1-click →</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </motion.div>
     </div>
   )

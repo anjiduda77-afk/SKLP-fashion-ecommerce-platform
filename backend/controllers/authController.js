@@ -5,7 +5,10 @@ import { OAuth2Client } from 'google-auth-library'
 import User from '../models/User.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { sendEmail } from '../utils/emailService.js'
-import { sendOTPMessage } from '../services/otpService.js'
+import { sendOTPMessage, generateSecureOTP } from '../services/otpService.js'
+
+// Hash OTP with SHA-256 — OTP stored as hash, never plain text
+const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
 
 const generateToken = (user) => {
   const payload = {
@@ -259,7 +262,7 @@ export const googleLogin = async (req, res) => {
   // 3. Strict Production Security: In production, unverified tokens are strictly blocked
   if (!email) {
     if (process.env.NODE_ENV === 'production') {
-      throw new ApiError(401, 'Google authentication verification failed. Invalid or expired Google token.')
+      throw new ApiError(401, 'Google sign-in was unsuccessful. Please try again.')
     }
     // Only in local development / unit testing when no Google credentials configured
     if (googleAuthToken.includes('@')) {
@@ -268,7 +271,7 @@ export const googleLogin = async (req, res) => {
       lastName = 'Customer'
       googleId = 'google_dev_' + Math.random().toString(36).substring(2, 9)
     } else {
-      throw new ApiError(401, 'Google authentication token could not be verified by Google servers.')
+      throw new ApiError(401, 'Google sign-in was unsuccessful. Please try again.')
     }
   }
 
@@ -337,8 +340,9 @@ export const sendOTP = async (req, res) => {
     throw new ApiError(400, 'Please provide a valid 10-digit mobile number')
   }
 
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  // Generate cryptographically secure 6-digit OTP
+  const otp = generateSecureOTP()
+  const otpHash = hashOTP(otp)  // Never store plain text OTP
   const otpExpiry = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
   // Find or prepare — but do NOT create the user yet
@@ -346,38 +350,37 @@ export const sendOTP = async (req, res) => {
   let user = await User.findOne({ phone })
 
   if (user) {
-    // Rate-limit: gentle 10-second cooldown between consecutive OTP sends
-    if (user.lastOtpSentAt && (Date.now() - user.lastOtpSentAt.getTime()) < 10000) {
-      const waitSec = Math.ceil((10000 - (Date.now() - user.lastOtpSentAt.getTime())) / 1000)
+    // Rate-limit: 30-second cooldown between consecutive OTP sends
+    if (user.lastOtpSentAt && (Date.now() - user.lastOtpSentAt.getTime()) < 30000) {
+      const waitSec = Math.ceil((30000 - (Date.now() - user.lastOtpSentAt.getTime())) / 1000)
       throw new ApiError(429, `Please wait ${waitSec} seconds before requesting another OTP`)
     }
 
-    // Max resend protection: 20 per 5 minutes
+    // Max resend protection: 10 per 5 minutes
     const timeSinceFirst = Date.now() - (user.lastOtpSentAt?.getTime() || 0)
     if (timeSinceFirst >= 5 * 60 * 1000) {
       user.phoneOtpResendCount = 0 // Reset after 5 minutes
     }
 
-    if ((user.phoneOtpResendCount || 0) >= 20) {
-      const waitMinutes = Math.ceil((5 * 60 * 1000 - timeSinceFirst) / 60000)
-      throw new ApiError(429, `Maximum OTP limit (20) reached. It will be re-activated in ${waitMinutes > 0 ? waitMinutes : 1} minute(s).`)
+    if ((user.phoneOtpResendCount || 0) >= 10) {
+      throw new ApiError(429, 'Too many attempts. Please try again later.')
     }
 
-    user.phoneOtp = otp
+    user.phoneOtp = otpHash          // Store hash — never plain text
     user.phoneOtpExpiry = otpExpiry
     user.phoneOtpAttempts = 0
     user.phoneOtpResendCount = (user.phoneOtpResendCount || 0) + 1
     user.lastOtpSentAt = new Date()
     await user.save()
   } else {
-    // Store OTP temporarily for new user — create account only after verification
-    // We create a minimal record to store OTP against the phone
+    // Create a minimal record to store OTP hash against the phone
     user = await User.create({
       phone,
       authProvider: 'otp',
+      role: 'customer',
       isPhoneVerified: false,
       isEmailVerified: false,
-      phoneOtp: otp,
+      phoneOtp: otpHash,           // Store hash — never plain text
       phoneOtpExpiry: otpExpiry,
       phoneOtpAttempts: 0,
       phoneOtpResendCount: 1,
@@ -390,9 +393,9 @@ export const sendOTP = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'OTP sent to phone number',
+    message: 'OTP sent to mobile number',
     expiresIn: 300, // 5 minutes in seconds
-    resendAfter: 10  // 10 seconds cooldown
+    resendAfter: 30  // 30 seconds cooldown
   })
 }
 
@@ -400,21 +403,21 @@ export const verifyOTP = async (req, res) => {
   const { phone, otp } = req.body
 
   if (!phone || !otp) {
-    throw new ApiError(400, 'Phone number and OTP are required')
+    throw new ApiError(400, 'Mobile number and OTP are required')
   }
 
   const user = await User.findOne({ phone })
 
   if (!user) {
-    throw new ApiError(400, 'No OTP request found for this phone number')
+    throw new ApiError(400, 'No OTP request found for this mobile number')
   }
 
-  // Check max verification attempts (up to 20 attempts per OTP / 5 minutes)
-  if ((user.phoneOtpAttempts || 0) >= 20) {
+  // Check max verification attempts (up to 5 attempts per OTP)
+  if ((user.phoneOtpAttempts || 0) >= 5) {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()
-    throw new ApiError(429, 'Maximum verification attempts (20) exceeded. Please request a new OTP.')
+    throw new ApiError(429, 'Too many attempts. Please try again later.')
   }
 
   // Check OTP expiry (5 minutes)
@@ -422,15 +425,14 @@ export const verifyOTP = async (req, res) => {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()
-    throw new ApiError(410, 'OTP has expired (valid for 5 minutes). Please request a new one.')
+    throw new ApiError(410, 'OTP expired. Please request a new OTP.')
   }
 
-  // Verify OTP
-  if (user.phoneOtp !== otp) {
+  // Verify OTP by comparing hashes (never compare plain text)
+  if (user.phoneOtp !== hashOTP(otp)) {
     user.phoneOtpAttempts = (user.phoneOtpAttempts || 0) + 1
     await user.save()
-    const remaining = 20 - user.phoneOtpAttempts
-    throw new ApiError(400, `Invalid OTP. ${remaining} attempt(s) remaining before 5-minute timeout.`)
+    throw new ApiError(400, 'Incorrect OTP. Please try again.')
   }
 
   // OTP verified successfully
@@ -716,11 +718,12 @@ export const sendLinkPhoneOTP = async (req, res) => {
     throw new ApiError(409, 'This phone number is already associated with another account')
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const otp = generateSecureOTP()
+  const otpHash = hashOTP(otp)
   const user = await User.findById(req.user.id)
   if (!user) throw new ApiError(404, 'User not found')
 
-  user.phoneOtp = otp
+  user.phoneOtp = otpHash          // Store hash — never plain text
   user.phoneOtpExpiry = new Date(Date.now() + 5 * 60 * 1000)
   user.phoneOtpAttempts = 0
   user.lastOtpSentAt = new Date()
@@ -730,7 +733,7 @@ export const sendLinkPhoneOTP = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `OTP sent to +91 ${phone}`,
+    message: 'OTP sent to your mobile number',
     expiresIn: 300
   })
 }
@@ -742,19 +745,18 @@ export const verifyLinkPhone = async (req, res) => {
   if (!user) throw new ApiError(404, 'User not found')
 
   if (!user.phoneOtpExpiry || user.phoneOtpExpiry < new Date()) {
-    throw new ApiError(410, 'OTP has expired (valid for 5 minutes). Please request a new one.')
+    throw new ApiError(410, 'OTP expired. Please request a new OTP.')
   }
-  if ((user.phoneOtpAttempts || 0) >= 20) {
+  if ((user.phoneOtpAttempts || 0) >= 5) {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()
-    throw new ApiError(429, 'Maximum verification attempts (20) exceeded. Please request a new OTP.')
+    throw new ApiError(429, 'Too many attempts. Please try again later.')
   }
-  if (user.phoneOtp !== otp) {
+  if (user.phoneOtp !== hashOTP(otp)) {
     user.phoneOtpAttempts = (user.phoneOtpAttempts || 0) + 1
     await user.save()
-    const remaining = 20 - user.phoneOtpAttempts
-    throw new ApiError(400, `Invalid OTP. ${remaining} attempt(s) remaining before 5-minute timeout.`)
+    throw new ApiError(400, 'Incorrect OTP. Please try again.')
   }
 
   // Check again in case someone registered this phone in the meantime

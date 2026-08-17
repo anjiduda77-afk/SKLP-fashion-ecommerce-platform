@@ -41,13 +41,15 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal Server Error';
+  const message = (process.env.NODE_ENV === 'production' && statusCode === 500)
+    ? 'Something went wrong. Please try again.'
+    : (error.message || 'Internal Server Error');
   const errors = error.errors || [];
 
-  // Log error
+  // Log error internally
   console.error('Error:', {
     statusCode,
-    message,
+    message: error.message,
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString(),

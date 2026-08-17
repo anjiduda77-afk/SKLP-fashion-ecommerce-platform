@@ -1,22 +1,26 @@
 import { useState, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 import { authService } from '@services/apiServices'
 import { toast } from 'react-toastify'
-import { FiPhone, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
+import { FiPhone, FiArrowLeft, FiArrowRight, FiShield } from 'react-icons/fi'
 
 function OTPLogin() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+  const redirectUrl = new URLSearchParams(location.search).get('redirect') || null
+
   const [step, setStep] = useState(1) // 1: phone, 2: OTP
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [otpError, setOtpError] = useState('')
   const inputRefs = useRef([])
 
-  const startCountdown = () => {
-    setCountdown(10)
+  const startCountdown = (seconds = 30) => {
+    setCountdown(seconds)
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) { clearInterval(timer); return 0 }
@@ -27,21 +31,24 @@ function OTPLogin() {
 
   const handleSendOTP = async (e) => {
     e.preventDefault()
+    const cleanPhone = phone.replace(/\D/g, '')
+    if (!/^[6-9][0-9]{9}$/.test(cleanPhone)) {
+      toast.error('Please enter a valid 10-digit Indian mobile number')
+      return
+    }
     setLoading(true)
+    setOtpError('')
     try {
-      await authService.sendOTP(phone)
+      await authService.sendOTP(cleanPhone)
       setStep(2)
-      setOtp(['1', '2', '3', '4', '5', '6'])
-      startCountdown()
-      toast.success(`OTP sent to ${phone}! Auto-filled 123456 for easy login 🚀`)
-      setTimeout(() => inputRefs.current[5]?.focus(), 100)
+      setOtp(['', '', '', '', '', ''])  // Always start blank — never pre-fill
+      startCountdown(30)
+      toast.success(`OTP sent to +91 ${cleanPhone.slice(0, 5)}XXXXX`)
+      setTimeout(() => inputRefs.current[0]?.focus(), 200)
     } catch (error) {
-      // Dev mode fallback
-      setStep(2)
-      setOtp(['1', '2', '3', '4', '5', '6'])
-      startCountdown()
-      toast.info('OTP mode ready! Auto-filled 123456')
-      setTimeout(() => inputRefs.current[5]?.focus(), 100)
+      const msg = error?.response?.data?.message || 'Something went wrong. Please try again.'
+      toast.error(msg)
+      // Stay on step 1 — do NOT auto-fill or advance to OTP step on failure
     } finally {
       setLoading(false)
     }
@@ -52,7 +59,7 @@ function OTPLogin() {
     const newOtp = [...otp]
     newOtp[index] = value.slice(-1)
     setOtp(newOtp)
-    // Auto focus next
+    setOtpError('')
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus()
     }
@@ -77,28 +84,25 @@ function OTPLogin() {
     e.preventDefault()
     const otpString = otp.join('')
     if (otpString.length < 6) {
-      toast.error('Please enter the complete 6-digit OTP')
+      setOtpError('Please enter the complete 6-digit OTP')
       return
     }
     setLoading(true)
+    setOtpError('')
     try {
-      const response = await authService.verifyOTP(phone, otpString)
-      login(response.data.user, response.data.token, response.data.refreshToken)
-      
-      const role = response.data.user?.role?.toLowerCase()
-      toast.success(`Welcome back, ${response.data.user?.firstName || 'User'}! 🎉`)
-      
-      if (role === 'admin') {
-        navigate('/admin/dashboard')
-      } else if (role === 'seller') {
-        navigate('/seller/dashboard')
-      } else if (role === 'delivery' || role === 'deliverypartner') {
-        navigate('/delivery/dashboard')
-      } else {
-        navigate('/')
-      }
+      const cleanPhone = phone.replace(/\D/g, '')
+      const response = await authService.verifyOTP(cleanPhone, otpString)
+      await login(response.data.user, response.data.token, response.data.refreshToken)
+
+      const user = response.data.user
+      const role = (user?.role || '').toLowerCase()
+      toast.success(`Welcome${user?.firstName && user.firstName !== 'Customer' ? `, ${user.firstName}` : ''}! 🎉`)
+
+      const dest = redirectUrl || (role === 'admin' ? '/admin/dashboard' : role === 'seller' ? '/seller/dashboard' : role === 'delivery' ? '/delivery/dashboard' : '/')
+      navigate(dest)
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Invalid OTP. Please try again.')
+      const msg = error?.response?.data?.message || 'Incorrect OTP. Please try again.'
+      setOtpError(msg)
       setOtp(['', '', '', '', '', ''])
       inputRefs.current[0]?.focus()
     } finally {
@@ -108,13 +112,15 @@ function OTPLogin() {
 
   const handleResend = async () => {
     if (countdown > 0) return
+    setOtpError('')
     try {
-      await authService.sendOTP(phone)
-      startCountdown()
+      const cleanPhone = phone.replace(/\D/g, '')
+      await authService.sendOTP(cleanPhone)
       setOtp(['', '', '', '', '', ''])
-      toast.success('OTP resent!')
-    } catch {
-      toast.error('Failed to resend OTP')
+      startCountdown(30)
+      toast.success('OTP resent to your mobile number')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to resend OTP. Please try again.')
     }
   }
 
@@ -138,8 +144,8 @@ function OTPLogin() {
                 <div className="w-16 h-16 rounded-full bg-luxury-gold/10 border-2 border-luxury-gold/30 flex items-center justify-center mx-auto mb-4">
                   <FiPhone size={28} className="text-luxury-gold" />
                 </div>
-                <h1 className="text-3xl font-serif font-bold mb-2">OTP Login</h1>
-                <p className="opacity-75 text-sm">Enter your mobile number to receive an OTP</p>
+                <h1 className="text-3xl font-serif font-bold mb-2">Mobile Login</h1>
+                <p className="opacity-75 text-sm">Enter your mobile number to receive a one-time password</p>
               </div>
 
               <form onSubmit={handleSendOTP} className="space-y-5">
@@ -158,23 +164,25 @@ function OTPLogin() {
                       maxLength={10}
                       required
                       pattern="\d{10}"
+                      autoFocus
                     />
                   </div>
                   {phone.length > 0 && phone.length < 10 && (
-                    <p className="text-xs text-orange-400 mt-1">Enter 10-digit mobile number</p>
+                    <p className="text-xs text-orange-400 mt-1">Enter complete 10-digit mobile number</p>
                   )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading || phone.length !== 10}
+                  disabled={loading || phone.replace(/\D/g, '').length !== 10}
                   className="w-full py-3 bg-luxury-gold text-luxury-black font-bold rounded-xl hover:bg-luxury-darkGold transition-all duration-200 hover:shadow-glow disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <span className="w-5 h-5 border-2 border-luxury-black border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <>Send OTP <FiArrowRight /></>
+                    <>Sending OTP... <FiArrowRight /></>
                   )}
+                  {!loading && 'Continue'}
                 </button>
               </form>
             </>
@@ -185,16 +193,18 @@ function OTPLogin() {
             <>
               <div className="text-center mb-8">
                 <div className="w-16 h-16 rounded-full bg-luxury-gold/10 border-2 border-luxury-gold/30 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🔐</span>
+                  <FiShield size={28} className="text-luxury-gold" />
                 </div>
-                <h1 className="text-3xl font-serif font-bold mb-2">Enter OTP</h1>
+                <h1 className="text-2xl font-serif font-bold mb-2">Enter OTP</h1>
                 <p className="opacity-75 text-sm">
                   We sent a 6-digit code to{' '}
-                  <span className="text-luxury-gold font-semibold">+91 {phone}</span>
+                  <span className="text-luxury-gold font-semibold">
+                    +91 {phone.replace(/\D/g, '').slice(0, 5)}XXXXX
+                  </span>
                 </p>
                 <button
-                  onClick={() => setStep(1)}
-                  className="text-xs text-luxury-mediumGray hover:text-luxury-gold mt-1 transition-colors"
+                  onClick={() => { setStep(1); setOtp(['', '', '', '', '', '']); setOtpError('') }}
+                  className="text-xs text-luxury-mediumGray hover:text-luxury-gold mt-1 transition-colors underline underline-offset-2"
                 >
                   Change number
                 </button>
@@ -217,10 +227,15 @@ function OTPLogin() {
                         ${digit
                           ? 'border-luxury-gold text-luxury-gold shadow-glow'
                           : 'border-luxury-mediumGray/30 hover:border-luxury-mediumGray'
-                        }`}
+                        } ${otpError ? 'border-red-500' : ''}`}
                     />
                   ))}
                 </div>
+
+                {/* Error message */}
+                {otpError && (
+                  <p className="text-center text-sm text-red-400 font-medium">{otpError}</p>
+                )}
 
                 <button
                   type="submit"
@@ -239,7 +254,7 @@ function OTPLogin() {
 
                 {/* Resend */}
                 <p className="text-center text-sm opacity-75">
-                  Didn't receive code?{' '}
+                  Didn't receive the OTP?{' '}
                   <button
                     type="button"
                     onClick={handleResend}
@@ -250,7 +265,7 @@ function OTPLogin() {
                         : 'text-luxury-gold hover:underline'
                     }`}
                   >
-                    {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
+                    {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
                   </button>
                 </p>
               </form>

@@ -14,7 +14,7 @@ import {
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const OTP_LENGTH = 6
-const RESEND_COOLDOWN = 10 // seconds
+const RESEND_COOLDOWN = 30 // seconds
 
 function Login() {
   const navigate = useNavigate()
@@ -271,11 +271,12 @@ function Login() {
       await authService.sendOTP(cleanPhone)
       setStep('otp')
       setCountdown(RESEND_COOLDOWN)
-      setOtp(Array(OTP_LENGTH).fill(''))
-      toast.success(t.otpSent)
+      setOtp(Array(OTP_LENGTH).fill(''))  // Always blank — never pre-fill OTP
+      toast.success(`OTP sent to +91 ${cleanPhone.slice(0, 5)}XXXXX`)
       setTimeout(() => otpRefs.current[0]?.focus(), 200)
     } catch (error) {
-      const msg = error.response?.data?.message || 'Failed to send OTP. Please try again.'
+      // Stay on phone step — do NOT advance to OTP step on failure
+      const msg = error?.response?.data?.message || 'Something went wrong. Please try again.'
       toast.error(msg)
     } finally {
       setOtpLoading(false)

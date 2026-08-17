@@ -87,4 +87,3 @@ export const sendOTPMessage = async (phone, otp) => {
 };
 
 export default sendOTPMessage;
-export { generateSecureOTP };

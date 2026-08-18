@@ -104,26 +104,7 @@ function Register() {
       return
     }
 
-    if (import.meta.env.DEV) {
-      // Development sandbox mode when VITE_GOOGLE_CLIENT_ID is not configured
-      setLoading(true)
-      try {
-        const response = await authService.googleLogin(`google_user_${Date.now()}@sklp-fashion.com`)
-        if (response.data?.success && response.data?.user) {
-          await login(response.data.user, response.data.token, response.data.refreshToken)
-          toast.info('Signed up with Google (Dev Mode). Add VITE_GOOGLE_CLIENT_ID for Real Google OAuth.')
-          navigate('/')
-        }
-      } catch (error) {
-        toast.error(error?.response?.data?.message || 'Google registration failed.')
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
-
-    // In production, real Google OAuth is strictly required
-    toast.error('Google Sign-Up is currently unavailable. Please register with Mobile OTP or Email.')
+    toast.info('Google Sign-Up requires configuring VITE_GOOGLE_CLIENT_ID in your environment settings.')
   }
 
   const handleChange = (e) => {

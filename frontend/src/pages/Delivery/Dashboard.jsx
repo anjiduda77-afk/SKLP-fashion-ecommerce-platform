@@ -508,17 +508,6 @@ function DeliveryDashboard() {
                     Verify OTP & Complete Delivery 📦
                   </button>
                 </form>
-
-                {/* Simulation helper info */}
-                <div className={`mt-6 p-4 rounded-2xl border text-[11px] leading-relaxed
-                  ${isDarkMode ? 'bg-white/5 border-white/10 text-white/60' : 'bg-gray-50 border-black/5 text-slate-600'}`}
-                >
-                  <div className="flex gap-1.5 items-center font-bold text-luxury-gold mb-1 uppercase tracking-wider text-[10px]">
-                    <FiAlertCircle />
-                    <span>Demo OTP Simulation Codes</span>
-                  </div>
-                  <p>In production, OTPs are texted to the customer's phone upon transit. For testing: {deliveries.map(d => `[${d.customer}: ${d.otp}]`).join(', ')}</p>
-                </div>
               </div>
             )}
 

@@ -237,24 +237,7 @@ function Login() {
       return
     }
 
-    if (import.meta.env.DEV) {
-      // Development sandbox mode when VITE_GOOGLE_CLIENT_ID is not configured
-      setLoading(true)
-      try {
-        const response = await authService.googleLogin('demo_google_customer@sklp-fashion.com')
-        if (response.data?.success && response.data?.user) {
-          await login(response.data.user, response.data.token, response.data.refreshToken)
-          toast.info('Signed in via Google Sandbox (Dev Mode). Add VITE_GOOGLE_CLIENT_ID for Real Google OAuth.')
-          handleRoleRedirect(response.data.user)
-        }
-      } catch (error) {
-        toast.error(error?.response?.data?.message || 'Google login failed')
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
-
+    toast.info('Google Sign-In requires configuring VITE_GOOGLE_CLIENT_ID in your environment settings.')
   }
 
   // ─── SEND MOBILE OTP ───────────────────────────────────────────────────────

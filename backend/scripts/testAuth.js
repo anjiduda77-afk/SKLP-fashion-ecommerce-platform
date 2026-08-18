@@ -1,7 +1,13 @@
 import axios from 'axios'
 import mongoose from 'mongoose'
-import 'dotenv/config'
+import crypto from 'crypto'
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import User from '../models/User.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.join(__dirname, '../.env') })
 
 const API_BASE = 'http://localhost:5000/api'
 const TEST_TIMESTAMP = Date.now()
@@ -79,14 +85,19 @@ async function runAuthTests() {
     assert(sendOtpRes.status === 200, 'Send OTP returns 200 OK')
     assert(sendOtpRes.data.success === true, 'Send OTP success is true')
 
-    // Retrieve the generated OTP from DB to simulate user receiving SMS
+    // In production security, OTP is hashed in DB with SHA-256.
+    // For test assertion, set a known test OTP hash on the record:
+    const testPlainOtp = '789123'
+    const testOtpHash = crypto.createHash('sha256').update(testPlainOtp).digest('hex')
     const otpUser = await User.findOne({ phone: TEST_PHONE })
-    assert(otpUser && otpUser.phoneOtp, 'OTP stored securely for verification')
-    const testOtp = otpUser.phoneOtp
+    assert(otpUser && otpUser.phoneOtp, 'OTP hash stored securely for verification')
+    
+    otpUser.phoneOtp = testOtpHash
+    await otpUser.save()
 
     const verifyOtpRes = await axios.post(`${API_BASE}/auth/verify-otp`, {
       phone: TEST_PHONE,
-      otp: testOtp
+      otp: testPlainOtp
     })
 
     assert(verifyOtpRes.status === 200, 'Verify OTP returns 200 OK')

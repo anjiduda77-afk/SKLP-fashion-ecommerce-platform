@@ -4,8 +4,7 @@ import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import compression from 'compression';
 import morgan from 'morgan';
-import 'dotenv/config';
-import connectDB from './config/database.js';
+import connectDB, { getDBStatus } from './config/database.js';
 import { errorHandler, asyncHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
@@ -36,51 +35,82 @@ app.use(mongoSanitize()); // Data sanitization against NoSQL injection
 app.use(compression()); // Compress response data
 
 // ============== CORS Configuration ==============
-const allowedOrigins = [
+const configuredOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
   process.env.FRONTEND_URL,
-  process.env.ADMIN_FRONTEND_URL
+  process.env.ADMIN_FRONTEND_URL,
+  process.env.CLIENT_URL
 ].filter(Boolean).map(url => url.replace(/\/$/, ''));
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // Server-to-server, mobile, postman, health checks
+  if (configuredOrigins.includes(origin)) return true;
+  // Allow all Vercel production and preview deployment URLs (*.vercel.app)
+  if (origin.endsWith('.vercel.app') || /^https:\/\/[a-zA-Z0-9_\-.]+\.vercel\.app$/.test(origin)) {
+    return true;
+  }
+  // Allow localhost on any port during local development
+  if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+  return false;
+};
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked request from origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
+
+// Explicit preflight handler
+app.options('*', cors());
 
 // ============== Body Parser & Logging ==============
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(morgan('combined'));
-app.use(requestLogger);
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+  app.use(requestLogger);
+}
 
 // ============== Rate Limiting ==============
 app.use('/api/', rateLimiter);
 
-// ============== Health Check ==============
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
+// ============== Health Check Endpoints (For Render / Uptime Monitoring) ==============
+const healthCheckHandler = (req, res) => {
+  const dbStatus = getDBStatus();
+  const isHealthy = dbStatus.isConnected;
+
+  res.status(isHealthy ? 200 : 503).json({ 
+    status: isHealthy ? 'ok' : 'degraded', 
+    service: 'SKLP E-Commerce Backend API',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: `${Math.floor(process.uptime())}s`,
+    environment: process.env.NODE_ENV || 'development'
   });
-});
+};
+
+app.get('/health', healthCheckHandler);
+app.get('/api/health', healthCheckHandler);
 
 // ============== Root Welcome Route ==============
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: "SKLP Backend API Running Successfully 🚀"
+    message: 'SKLP Fashion E-Commerce Backend API Running 🚀',
+    version: '1.0.0',
+    docs: '/api/health'
   });
 });
 

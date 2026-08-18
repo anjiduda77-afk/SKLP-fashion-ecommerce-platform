@@ -2,69 +2,89 @@ import crypto from 'crypto'
 import Order from '../models/Order.js'
 import Payment from '../models/Payment.js'
 import SellerSettlement from '../models/SellerSettlement.js'
-import razorpayInstance, { isRazorpayConfigured } from '../config/razorpay.js'
+import { getRazorpayInstance, isRazorpayConfigured } from '../config/razorpay.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 /**
  * Verify Razorpay payment signature & confirm order
  */
 export const verifyRazorpayPayment = async (req, res) => {
-  const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body
+  const { 
+    orderId, 
+    order_id,
+    razorpayOrderId, 
+    razorpay_order_id,
+    razorpayPaymentId, 
+    razorpay_payment_id,
+    paymentId,
+    razorpaySignature,
+    razorpay_signature,
+    signature
+  } = req.body
 
-  if (!orderId || !razorpayPaymentId) {
-    throw new ApiError(400, 'Order ID and Razorpay payment ID are required')
+  const finalOrderId = orderId || order_id
+  const finalPaymentId = razorpayPaymentId || razorpay_payment_id || paymentId
+  const finalRazorpayOrderId = razorpayOrderId || razorpay_order_id
+  const finalSignature = razorpaySignature || razorpay_signature || signature
+
+  if (!finalOrderId || !finalPaymentId) {
+    throw new ApiError(400, 'Order ID and Razorpay Payment ID are required for verification')
   }
 
-  const order = await Order.findById(orderId)
+  const order = await Order.findById(finalOrderId)
   if (!order) {
     throw new ApiError(404, 'Order not found')
   }
 
   // ── Cryptographic Signature Verification ──────────────────────────────────
   const keySecret = process.env.RAZORPAY_KEY_SECRET
+  const effectiveRzpOrderId = finalRazorpayOrderId || order.razorpayOrderId
 
-  if (isRazorpayConfigured() && razorpayOrderId && razorpaySignature) {
+  if (isRazorpayConfigured() && effectiveRzpOrderId && finalSignature && keySecret) {
     const generatedSignature = crypto
       .createHmac('sha256', keySecret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .update(`${effectiveRzpOrderId}|${finalPaymentId}`)
       .digest('hex')
 
-    if (generatedSignature !== razorpaySignature) {
-      // Mark payment failed
+    if (generatedSignature !== finalSignature) {
+      // Record payment failure audit
       await Payment.create({
         orderId: order._id,
         userId: order.userId,
         amount: order.totalAmount,
         provider: 'razorpay',
         status: 'FAILED',
-        gatewayOrderId: razorpayOrderId,
-        gatewayPaymentId: razorpayPaymentId,
-        gatewaySignature: razorpaySignature
+        gatewayOrderId: effectiveRzpOrderId,
+        gatewayPaymentId: finalPaymentId,
+        gatewaySignature: finalSignature,
+        failureReason: 'Cryptographic signature mismatch'
       })
       throw new ApiError(400, 'Invalid payment signature. Payment verification failed.')
     }
   } else {
-    // In dev / sandbox mock environment
-    console.log(`[Payment] Development/Mock verification for Order #${order._id}`)
+    // Development / mock verification mode
+    console.log(`[Payment] Verified in development/sandbox mode for Order #${order._id}`)
   }
 
-  // Payment is verified
+  // Update order status
   order.paymentStatus = 'completed'
   order.status = 'confirmed'
-  order.transactionId = razorpayPaymentId
-  order.razorpayPaymentId = razorpayPaymentId
-  order.razorpayOrderId = razorpayOrderId || order.razorpayOrderId
-  order.razorpaySignature = razorpaySignature
+  order.transactionId = finalPaymentId
+  order.razorpayPaymentId = finalPaymentId
+  order.razorpayOrderId = effectiveRzpOrderId
+  order.razorpaySignature = finalSignature || 'verified'
   order.paymentDetails = {
     method: 'razorpay',
     timestamp: new Date(),
-    signature: razorpaySignature || 'verified'
+    paymentId: finalPaymentId,
+    signature: finalSignature || 'verified'
   }
 
+  order.statusHistory = order.statusHistory || []
   order.statusHistory.push({
     status: 'confirmed',
     updatedAt: new Date(),
-    comment: `Payment received via Razorpay (Txn: ${razorpayPaymentId})`
+    comment: `Payment received via Razorpay (Txn: ${finalPaymentId})`
   })
 
   // Update seller suborders status
@@ -83,9 +103,9 @@ export const verifyRazorpayPayment = async (req, res) => {
     amount: order.totalAmount,
     provider: 'razorpay',
     status: 'PAID',
-    gatewayOrderId: razorpayOrderId || order.razorpayOrderId,
-    gatewayPaymentId: razorpayPaymentId,
-    gatewaySignature: razorpaySignature,
+    gatewayOrderId: effectiveRzpOrderId,
+    gatewayPaymentId: finalPaymentId,
+    gatewaySignature: finalSignature,
     capturedAt: new Date()
   })
 
@@ -104,7 +124,7 @@ export const handleRazorpayWebhook = async (req, res) => {
   const signature = req.headers['x-razorpay-signature']
 
   if (webhookSecret && signature) {
-    const rawBody = JSON.stringify(req.body)
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)
@@ -119,7 +139,7 @@ export const handleRazorpayWebhook = async (req, res) => {
   const payload = req.body?.payload?.payment?.entity
 
   if (!event || !payload) {
-    return res.status(200).json({ success: true, message: 'Unhandled webhook format' })
+    return res.status(200).json({ success: true, message: 'Unhandled webhook event' })
   }
 
   console.log(`[Razorpay Webhook] Received event: ${event} for payment ${payload.id}`)
@@ -132,6 +152,7 @@ export const handleRazorpayWebhook = async (req, res) => {
         order.paymentStatus = 'completed'
         order.status = 'confirmed'
         order.transactionId = payload.id
+        order.razorpayPaymentId = payload.id
         await order.save()
       }
     }
@@ -146,5 +167,5 @@ export const handleRazorpayWebhook = async (req, res) => {
     }
   }
 
-  res.status(200).json({ success: true, message: 'Webhook processed' })
+  res.status(200).json({ success: true, message: 'Webhook processed successfully' })
 }

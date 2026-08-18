@@ -30,16 +30,39 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', 'react-icons', 'swiper'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('zustand')) {
+              return 'vendor'
+            }
+            if (id.includes('framer-motion')) {
+              return 'motion'
+            }
+            if (id.includes('react-icons')) {
+              return 'icons'
+            }
+            if (id.includes('swiper') || id.includes('embla-carousel') || id.includes('nuka-carousel')) {
+              return 'carousel'
+            }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'charts'
+            }
+            if (id.includes('i18next')) {
+              return 'i18n'
+            }
+            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
+              return 'forms'
+            }
+            return 'libs'
+          }
         },
       },
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
+    include: ['react', 'react-dom', 'react-router-dom', 'axios', 'zustand'],
   },
 })

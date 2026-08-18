@@ -1,0 +1,9 @@
+# Backend Specific Ignores
+node_modules/
+.env
+.env.*
+!.env.example
+logs/
+*.log
+coverage/
+.DS_Store

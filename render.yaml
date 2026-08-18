@@ -1,0 +1,51 @@
+# Render Infrastructure-as-Code Blueprint for SKLP Backend
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: sklp-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: JWT_REFRESH_EXPIRE
+        value: 30d
+      - key: FRONTEND_URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SMS_PROVIDER
+        value: "fast2sms"
+      - key: FAST2SMS_API_KEY
+        sync: false
+      - key: TWOFACTOR_API_KEY
+        sync: false
+      - key: ENABLE_AI_FEATURES
+        value: "true"
+      - key: ENABLE_CHATBOT
+        value: "true"
+      - key: ENABLE_RECOMMENDATIONS
+        value: "true"

@@ -8,6 +8,8 @@ import { userService, orderService, cartService, deliveryFeeService } from '@ser
 import { useCurrency } from '../context/CurrencyContext'
 import { toast } from 'react-toastify'
 
+import { loadRazorpayScript } from '@utils/loadRazorpay'
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DEBOUNCE_MS = 900   // wait 900 ms after address changes before calling API
 const PLATFORM_FEE_DEFAULT = 5  // fallback if backend not yet called
@@ -192,24 +194,35 @@ function Checkout() {
 
       if (paymentMethod === 'cod') {
         orderResult = await createCODOrder()
+        if (orderResult?.success) {
+          toast.success('Order placed successfully! 🎉')
+          clearCart()
+          navigate('/orders', { state: { newOrder: orderResult.order } })
+        }
       } else if (paymentMethod === 'razorpay') {
-        orderResult = await initRazorpayPayment()
+        await initRazorpayPayment()
       } else if (paymentMethod === 'upi') {
         orderResult = await initUPIPayment()
+        if (orderResult?.success) {
+          toast.success('Order placed successfully! 🎉')
+          clearCart()
+          navigate('/orders', { state: { newOrder: orderResult.order } })
+        }
       } else if (paymentMethod === 'card') {
         orderResult = await initCardPayment()
-      }
-
-      if (orderResult?.success) {
-        toast.success('Order placed successfully! 🎉')
-        clearCart()
-        navigate('/orders', { state: { newOrder: orderResult.order } })
+        if (orderResult?.success) {
+          toast.success('Order placed successfully! 🎉')
+          clearCart()
+          navigate('/orders', { state: { newOrder: orderResult.order } })
+        }
       }
     } catch (err) {
       console.error('Order placement error:', err)
       toast.error(err.response?.data?.message || err.message || 'Failed to place order. Please try again.')
     } finally {
-      setLoading(false)
+      if (paymentMethod !== 'razorpay') {
+        setLoading(false)
+      }
     }
   }
 
@@ -228,45 +241,107 @@ function Checkout() {
   }
 
   const initRazorpayPayment = async () => {
+    // 1. Create order on backend first
     const res = await orderService.createOrder(buildOrderPayload('razorpay'))
-    if (!res.data?.success) throw res.data
+    if (!res.data?.success) throw new Error(res.data?.message || 'Failed to create order on server')
 
     const order = res.data.order
+    const rzpOrderId = res.data.razorpayOrderId || order.razorpayOrderId
+    const rzpKeyId = res.data.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder'
 
-    if (!window.Razorpay) {
-      toast.info('Simulating Razorpay payment…')
-      return new Promise((resolve) => setTimeout(() => resolve({ success: true, order }), 1500))
-    }
-
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY || 'test_key',
-      amount: orderFinalTotal * 100,
-      currency: 'INR',
-      name: 'SKLP Fashion',
-      description: 'Premium Fashion Ecommerce',
-      order_id: order.razorpayOrderId,
-      handler: async (response) => {
+    // 2. Ensure Razorpay client script is loaded
+    const isLoaded = await loadRazorpayScript()
+    if (!isLoaded || !window.Razorpay) {
+      console.warn('Razorpay SDK unavailable. Entering simulated test checkout mode.')
+      toast.info('Simulating sandbox payment verification…')
+      setTimeout(async () => {
         try {
           const verifyRes = await orderService.verifyRazorpayPayment({
             orderId: order._id,
-            paymentId: response.razorpay_payment_id,
-            signature: response.razorpay_signature
+            razorpayOrderId: rzpOrderId,
+            razorpayPaymentId: `pay_mock_${Date.now()}`,
+            razorpaySignature: 'mock_signature_sandbox'
           })
           if (verifyRes.data?.success) {
-            toast.success('Payment verified successfully!')
+            toast.success('Payment simulated successfully! Order confirmed. 🎉')
             clearCart()
-            navigate('/orders', { state: { newOrder: order } })
+            navigate('/orders', { state: { newOrder: verifyRes.data.order || order } })
           }
-        } catch (err) {
-          toast.error('Payment verification failed.')
+        } catch (simErr) {
+          toast.error('Simulation verification failed.')
+        } finally {
+          setLoading(false)
         }
-      },
-      prefill: { name: `${firstName} ${lastName}`, email, contact: phone },
-      theme: { color: '#FFD700' }
+      }, 1200)
+      return
     }
 
-    new window.Razorpay(options).open()
-    return { success: false }
+    // 3. Configure Razorpay standard checkout modal
+    const options = {
+      key: rzpKeyId,
+      amount: Math.round((order.totalAmount || orderFinalTotal) * 100),
+      currency: res.data.currency || 'INR',
+      name: 'SKLP Fashion',
+      description: `Order #${order.orderNumber || order._id}`,
+      image: '/vite.svg',
+      order_id: rzpOrderId && !rzpOrderId.includes('mock') && !rzpOrderId.includes('sandbox') ? rzpOrderId : undefined,
+      handler: async (response) => {
+        setLoading(true)
+        try {
+          toast.info('Verifying secure payment…')
+          const verifyRes = await orderService.verifyRazorpayPayment({
+            orderId: order._id,
+            razorpayOrderId: response.razorpay_order_id || rzpOrderId,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature
+          })
+          if (verifyRes.data?.success) {
+            toast.success('Payment verified successfully! Order is confirmed. 🎉')
+            clearCart()
+            navigate('/orders', { state: { newOrder: verifyRes.data.order || order } })
+          } else {
+            toast.error(verifyRes.data?.message || 'Payment verification failed.')
+          }
+        } catch (err) {
+          console.error('Razorpay verification error:', err)
+          toast.error(err.response?.data?.message || 'Payment verification failed. Please contact support.')
+        } finally {
+          setLoading(false)
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setLoading(false)
+          toast.warn('Payment window closed without completing transaction.')
+        }
+      },
+      prefill: {
+        name: `${firstName} ${lastName}`.trim() || user?.name || '',
+        email: email || user?.email || '',
+        contact: phone || user?.phone || ''
+      },
+      notes: {
+        orderId: order._id,
+        orderNumber: order.orderNumber
+      },
+      theme: {
+        color: '#D4AF37'
+      }
+    }
+
+    try {
+      const razorpayInstance = new window.Razorpay(options)
+      razorpayInstance.on('payment.failed', function (response) {
+        console.error('Razorpay payment failed:', response.error)
+        toast.error(`Payment failed: ${response.error.description || 'Transaction declined'}`)
+        setLoading(false)
+      })
+      razorpayInstance.open()
+    } catch (openErr) {
+      console.error('Failed to open Razorpay modal:', openErr)
+      setLoading(false)
+      toast.error('Could not launch payment gateway. Please try again.')
+    }
   }
 
   const initUPIPayment = async () => {

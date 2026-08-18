@@ -298,6 +298,8 @@ export const createOrder = async (req, res) => {
     message: 'Order created successfully',
     order,
     razorpayOrderId,
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY || null,
+    currency: 'INR',
     breakdown: {
       subtotal,
       platformFee,

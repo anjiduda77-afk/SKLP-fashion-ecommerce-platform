@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useTranslation } from 'react-i18next'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { Analytics } from '@vercel/analytics/react'
 
 // Layout Components
 import Header from '@components/Common/Header'
@@ -147,6 +148,9 @@ function App() {
                 pauseOnHover
                 theme={isDarkMode ? 'dark' : 'light'}
               />
+
+              {/* Vercel Analytics */}
+              <Analytics />
             </div>
           </WishlistProvider>
           </CartProvider>

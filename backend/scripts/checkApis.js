@@ -32,7 +32,7 @@ async function testAllApis() {
     const res = await api.get('/health');
     return {
       pass: res.status === 200 && res.data.status === 'ok',
-      detail: `Status ${res.status}, uptime: ${res.data.uptime?.toFixed(1)}s`
+      detail: `Status ${res.status}, uptime: ${res.data.uptime}`
     };
   });
 

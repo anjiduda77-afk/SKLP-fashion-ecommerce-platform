@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -95,6 +95,7 @@ function App() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/orders/:id/track" element={<OrderTracking />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/account" element={<Navigate to="/profile" replace />} />
                   <Route path="/become-a-seller" element={<BecomeSeller />} />
                   <Route path="/shop/:slug" element={<ShopPage />} />
 

@@ -30,6 +30,8 @@ import NotFound from '@pages/NotFound'
 import Login from '@pages/Auth/Login'
 import Register from '@pages/Auth/Register'
 import ForgotPassword from '@pages/Auth/ForgotPassword'
+import ResetPassword from '@pages/Auth/ResetPassword'
+import VerifyEmail from '@pages/Auth/VerifyEmail'
 import OTPLogin from '@pages/Auth/OTPLogin'
 
 // Admin Pages
@@ -37,9 +39,9 @@ import AdminDashboard from '@pages/Admin/Dashboard'
 import AdminProducts from '@pages/Admin/Products'
 import AdminOrders from '@pages/Admin/Orders'
 import AdminUsers from '@pages/Admin/Users'
-import AdminCoupons from './pages/Admin/Coupons'
-import AdminReturns from './pages/Admin/Returns'
-import AdminSellers from './pages/Admin/Sellers'
+import AdminCoupons from '@pages/Admin/Coupons'
+import AdminReturns from '@pages/Admin/Returns'
+import AdminSellers from '@pages/Admin/Sellers'
 
 // Seller Pages
 import SellerDashboard from '@pages/Seller/Dashboard'
@@ -103,6 +105,8 @@ function App() {
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/otp-login" element={<OTPLogin />} />
 
                   {/* Admin Routes */}

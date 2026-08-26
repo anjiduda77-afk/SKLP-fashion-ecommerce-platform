@@ -7,6 +7,17 @@ import { ApiError } from '../middleware/errorHandler.js'
 import { sendEmail } from '../utils/emailService.js'
 import { sendOTPMessage, generateSecureOTP } from '../services/otpService.js'
 
+// Normalize Indian mobile number (+91XXXXXXXXXX, 0XXXXXXXXXX, XXXXXXXXXX -> 10 digits)
+export const normalizeIndianPhone = (rawPhone) => {
+  if (!rawPhone || typeof rawPhone !== 'string') return null
+  const digits = rawPhone.replace(/\D/g, '')
+  const clean10 = digits.slice(-10)
+  if (/^[6-9][0-9]{9}$/.test(clean10)) {
+    return clean10
+  }
+  return null
+}
+
 // Hash OTP with SHA-256 — OTP stored as hash, never plain text
 const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
 
@@ -331,23 +342,22 @@ export const googleLogin = async (req, res) => {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOBILE OTP — Unified Identity Resolution (Flipkart-style)
+// MOBILE OTP — SKLP Fashion Professional Mobile Authentication
 // ──────────────────────────────────────────────────────────────────────────────
 export const sendOTP = async (req, res) => {
   const { phone } = req.body
+  const cleanPhone = normalizeIndianPhone(phone)
 
-  if (!phone || !/^[0-9]{10}$/.test(phone)) {
-    throw new ApiError(400, 'Please provide a valid 10-digit mobile number')
+  if (!cleanPhone) {
+    throw new ApiError(400, 'Please enter a valid 10-digit Indian mobile number')
   }
 
   // Generate cryptographically secure 6-digit OTP
   const otp = generateSecureOTP()
-  const otpHash = hashOTP(otp)  // Never store plain text OTP
+  const otpHash = hashOTP(otp) // Never store plain text OTP
   const otpExpiry = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
-  // Find or prepare — but do NOT create the user yet
-  // User is created only after successful OTP verification (Flipkart-style)
-  let user = await User.findOne({ phone })
+  let user = await User.findOne({ phone: cleanPhone })
 
   if (user) {
     // Rate-limit: 30-second cooldown between consecutive OTP sends
@@ -366,21 +376,23 @@ export const sendOTP = async (req, res) => {
       throw new ApiError(429, 'Too many attempts. Please try again later.')
     }
 
-    user.phoneOtp = otpHash          // Store hash — never plain text
+    user.phoneOtp = otpHash // Store hash — never plain text
     user.phoneOtpExpiry = otpExpiry
     user.phoneOtpAttempts = 0
     user.phoneOtpResendCount = (user.phoneOtpResendCount || 0) + 1
     user.lastOtpSentAt = new Date()
     await user.save()
   } else {
-    // Create a minimal record to store OTP hash against the phone
+    // Create new customer account with default CUSTOMER role
     user = await User.create({
-      phone,
+      phone: cleanPhone,
       authProvider: 'otp',
       role: 'customer',
+      status: 'active',
+      isActive: true,
       isPhoneVerified: false,
       isEmailVerified: false,
-      phoneOtp: otpHash,           // Store hash — never plain text
+      phoneOtp: otpHash,
       phoneOtpExpiry: otpExpiry,
       phoneOtpAttempts: 0,
       phoneOtpResendCount: 1,
@@ -388,25 +400,31 @@ export const sendOTP = async (req, res) => {
     })
   }
 
-  // Send OTP via SMS (or mock in dev)
-  await sendOTPMessage(phone, otp)
+  // Send OTP via Real Indian SMS Provider (Fast2SMS / 2Factor / Twilio)
+  const smsResult = await sendOTPMessage(cleanPhone, otp)
 
   res.status(200).json({
     success: true,
-    message: 'OTP sent to mobile number',
-    expiresIn: 300, // 5 minutes in seconds
-    resendAfter: 30  // 30 seconds cooldown
+    message: smsResult.provider
+      ? `Real SMS dispatched via ${smsResult.provider} to your mobile.`
+      : 'OTP generated. (Check server terminal or enter OTP below in test mode)',
+    deliveryMethod: smsResult.provider ? 'real_sms' : 'sandbox',
+    provider: smsResult.provider || null,
+    expiresIn: 300,
+    resendAfter: 30,
+    ...(process.env.NODE_ENV !== 'production' && { devOtp: otp })
   })
 }
 
 export const verifyOTP = async (req, res) => {
   const { phone, otp } = req.body
+  const cleanPhone = normalizeIndianPhone(phone)
 
-  if (!phone || !otp) {
-    throw new ApiError(400, 'Mobile number and OTP are required')
+  if (!cleanPhone || !otp) {
+    throw new ApiError(400, 'Please enter a valid mobile number and 6-digit OTP')
   }
 
-  const user = await User.findOne({ phone })
+  const user = await User.findOne({ phone: cleanPhone })
 
   if (!user) {
     throw new ApiError(400, 'No OTP request found for this mobile number')
@@ -417,7 +435,7 @@ export const verifyOTP = async (req, res) => {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()
-    throw new ApiError(429, 'Too many attempts. Please try again later.')
+    throw new ApiError(429, 'Too many incorrect attempts. Please request a new OTP.')
   }
 
   // Check OTP expiry (5 minutes)
@@ -425,7 +443,7 @@ export const verifyOTP = async (req, res) => {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()
-    throw new ApiError(410, 'OTP expired. Please request a new OTP.')
+    throw new ApiError(410, 'This OTP has expired. Please request a new OTP.')
   }
 
   // Verify OTP by comparing hashes (never compare plain text)
@@ -435,29 +453,35 @@ export const verifyOTP = async (req, res) => {
     throw new ApiError(400, 'Incorrect OTP. Please try again.')
   }
 
-  // OTP verified successfully
+  // Check account status
   if (user.status === 'suspended' || user.status === 'blocked') {
-    throw new ApiError(403, 'Your account has been suspended or blocked. Please contact support.')
+    throw new ApiError(403, 'Your account has been suspended. Please contact customer support.')
   }
   if (user.status === 'deleted') {
     throw new ApiError(403, 'This account has been deleted.')
   }
 
+  // OTP verified successfully
   user.isPhoneVerified = true
   user.phoneOtp = undefined
   user.phoneOtpExpiry = undefined
   user.phoneOtpAttempts = 0
   user.phoneOtpResendCount = 0
+  user.status = 'active'
+  user.isActive = true
 
-  // If this was a brand-new OTP-only user and name is still default, that's fine
-  // The account is now verified and ready
+  // Ensure role is strictly defined (default: customer)
+  if (!user.role) {
+    user.role = 'customer'
+  }
+
   await user.save()
 
   const { token, refreshToken } = await issueAuthTokens(user, req)
 
   res.status(200).json({
     success: true,
-    message: 'Phone number verified successfully',
+    message: 'Login successful',
     user: user.toJSON(),
     token,
     refreshToken,

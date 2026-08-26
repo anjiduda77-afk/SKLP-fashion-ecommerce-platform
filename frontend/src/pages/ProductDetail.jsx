@@ -8,6 +8,7 @@ import { useTheme } from '@context/ThemeContext'
 import { useWishlist } from '@context/WishlistContext'
 import { useCurrency } from '../context/CurrencyContext'
 import { toast } from 'react-toastify'
+import ProductReviews from '../components/Product/ProductReviews'
 
 function ProductDetail() {
   const { id } = useParams()
@@ -231,13 +232,18 @@ function ProductDetail() {
               <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight">{product.name}</h1>
               
               {/* Review & Ratings */}
-              <div className="flex items-center gap-2 mb-6">
+              <div 
+                onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="flex items-center gap-2 mb-6 cursor-pointer group"
+              >
                 <div className="flex text-luxury-gold">
                   {[...Array(5)].map((_, i) => (
-                    <FiStar key={i} size={14} className={i < (product.rating || 5) ? 'fill-luxury-gold' : 'text-gray-400'} />
+                    <FiStar key={i} size={14} className={i < Math.round(product.rating || 5) ? 'fill-luxury-gold' : 'text-gray-400'} />
                   ))}
                 </div>
-                <span className="text-xs opacity-60">(4.9/5 based on 218 Couture reviews)</span>
+                <span className="text-xs opacity-60 group-hover:text-luxury-gold group-hover:underline transition-colors">
+                  ({(product.rating || 5.0).toFixed(1)}/5 • {product.reviewCount || 0} Couture reviews)
+                </span>
               </div>
 
               {/* Price Details */}
@@ -475,6 +481,15 @@ function ProductDetail() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* ============ PRODUCT REVIEWS SECTION ============ */}
+        <section id="reviews-section" className="mb-16 scroll-mt-24">
+          <ProductReviews
+            productId={product._id || id}
+            productName={product.name}
+            isDarkMode={isDarkMode}
+          />
         </section>
 
         {/* ============ RELATED PRODUCTS ============ */}

@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 
 /**
@@ -8,6 +8,7 @@ import { useAuth } from '@context/AuthContext'
  */
 const ProtectedRoute = ({ allowedRoles = [], children }) => {
   const { user, isAuthenticated, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -18,7 +19,8 @@ const ProtectedRoute = ({ allowedRoles = [], children }) => {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />
+    const returnUrl = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?redirect=${returnUrl}`} replace />
   }
 
   // Check if user has required role

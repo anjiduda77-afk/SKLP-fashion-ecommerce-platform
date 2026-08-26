@@ -3,12 +3,22 @@ import mongoose from 'mongoose';
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 3000; // 3 seconds
 
+let dbError = null;
+
 const connectDB = async () => {
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri) {
-    console.error('❌ MONGODB_URI is not defined in environment variables');
-    process.exit(1);
+    dbError = 'MONGODB_URI is not defined in environment variables';
+    console.error(`❌ ${dbError}`);
+    console.error('   Please configure MONGODB_URI in Render dashboard / .env file');
+    return null;
+  }
+
+  if (mongoUri.includes('<username>') || mongoUri.includes('<password>')) {
+    dbError = 'MONGODB_URI contains unpopulated placeholders (<username> or <password>)';
+    console.error(`❌ ${dbError}`);
+    return null;
   }
 
   const options = {
@@ -25,13 +35,15 @@ const connectDB = async () => {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const connection = await mongoose.connect(mongoUri, options);
+      dbError = null;
       console.log(`✅ MongoDB connected successfully: ${connection.connection.host}`);
       return connection;
     } catch (error) {
+      dbError = error.message;
       console.error(`❌ MongoDB connection attempt ${attempt}/${MAX_RETRIES} failed: ${error.message}`);
 
       if (attempt === MAX_RETRIES) {
-        console.error('❌ All MongoDB connection attempts exhausted. Server will continue running without DB.');
+        console.error('❌ All MongoDB connection attempts exhausted. Server will continue running in degraded mode.');
         console.error('   Fix your MongoDB Atlas IP Access List (whitelist 0.0.0.0/0) or check network credentials.');
         return null;
       }
@@ -58,7 +70,8 @@ export const getDBStatus = () => {
     state: states[stateCode] || 'unknown',
     isConnected: stateCode === 1,
     host: mongoose.connection.host || null,
-    name: mongoose.connection.name || null
+    name: mongoose.connection.name || null,
+    error: stateCode === 1 ? null : (dbError || 'Database not connected')
   };
 };
 

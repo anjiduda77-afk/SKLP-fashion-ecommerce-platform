@@ -30,7 +30,10 @@ export const adminService = {
   reviewSellerApplication: (id, data) => apiClient.put(`/admin/seller-applications/${id}/review`, data),
   // Marketplace Revenue & Settlements
   getMarketplaceRevenue: () => apiClient.get('/admin/marketplace-revenue'),
-  markSettlementPaid: (id, data) => apiClient.put(`/admin/settlements/${id}/pay`, data)
+  markSettlementPaid: (id, data) => apiClient.put(`/admin/settlements/${id}/pay`, data),
+  // Review Moderation
+  getReviews: (params) => apiClient.get('/admin/reviews', { params }),
+  updateReviewStatus: (id, data) => apiClient.put(`/admin/reviews/${id}/status`, data)
 }
 
 /**
@@ -94,13 +97,17 @@ export const authService = {
   register: (data) => apiClient.post('/auth/register', data),
   sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
-  resendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
+  resendOTP: (phone) => apiClient.post('/auth/resend-otp', { phone }),
   googleLogin: (token) => apiClient.post('/auth/google-login', { token }),
   refreshToken: (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   logoutAll: () => apiClient.post('/auth/logout-all'),
   forgotPassword: (email) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
+  verifyEmail: (token) => apiClient.post('/auth/verify-email', { token }),
+  resendVerification: (email) => apiClient.post('/auth/resend-verification', { email }),
+  getSessions: () => apiClient.get('/auth/sessions'),
+  getMe: () => apiClient.get('/auth/me'),
   sendLinkPhoneOTP: (phone) => apiClient.post('/auth/link-phone/send-otp', { phone }),
   verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp }),
   linkEmail: (email) => apiClient.post('/auth/link-email', { email })
@@ -181,6 +188,20 @@ export const wishlistService = {
   addToWishlist: (productId) => apiClient.post('/wishlist', { productId }),
   removeFromWishlist: (productId) => apiClient.delete(`/wishlist/${productId}`),
   clearWishlist: () => apiClient.delete('/wishlist')
+}
+
+/**
+ * Product Reviews API Service
+ */
+export const reviewService = {
+  getReviews: (productId, params) => apiClient.get(`/products/${productId}/reviews`, { params }),
+  checkEligibility: (productId) => apiClient.get(`/products/${productId}/reviews/eligibility`),
+  createOrUpdateReview: (productId, data) => apiClient.post(`/products/${productId}/reviews`, data),
+  deleteReview: (productId, reviewId) => apiClient.delete(`/products/${productId}/reviews/${reviewId}`),
+  voteHelpful: (productId, reviewId, voteType = 'helpful') =>
+    apiClient.post(`/products/${productId}/reviews/${reviewId}/helpful`, { voteType }),
+  replyToReview: (productId, reviewId, data) =>
+    apiClient.post(`/products/${productId}/reviews/${reviewId}/reply`, data)
 }
 
 export default apiClient

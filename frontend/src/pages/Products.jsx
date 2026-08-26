@@ -22,7 +22,7 @@ function Products() {
   const [viewMode, setViewMode] = useState('grid')
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
-  // Filters State
+  // Filters State synced from URL params
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || searchParams.get('search') || '')
   const [selectedGenders, setSelectedGenders] = useState(
     searchParams.get('gender') ? searchParams.get('gender').split(',') : []
@@ -32,7 +32,7 @@ function Products() {
   )
   const [priceMin, setPriceMin] = useState(0)
   const [priceMax, setPriceMax] = useState(25000)
-  const [sortBy, setSortBy] = useState('newest')
+  const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -40,81 +40,61 @@ function Products() {
   const [aiSuggestions, setAiSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Sync selected filters to URL params
+  // Synchronize URL search params when navigation/route changes from outside
   useEffect(() => {
-    const params = {}
-    if (selectedGenders.length > 0) params.gender = selectedGenders.join(',')
-    if (selectedCategories.length > 0) params.category = selectedCategories.join(',')
-    if (searchQuery) params.q = searchQuery
-    setSearchParams(params)
-  }, [selectedGenders, selectedCategories, searchQuery, setSearchParams])
+    const qParam = searchParams.get('q') || searchParams.get('search') || ''
+    const gParam = searchParams.get('gender') ? searchParams.get('gender').split(',') : []
+    const cParam = searchParams.get('category') ? searchParams.get('category').split(',') : []
+    const sParam = searchParams.get('sort') || 'newest'
 
-  // Load products based on query filters
+    setSearchQuery(qParam)
+    setSelectedGenders(gParam)
+    setSelectedCategories(cParam)
+    setSortBy(sParam)
+    setPage(1)
+  }, [searchParams])
+
+  // Load products based on active filters
   useEffect(() => {
     const fetchFilteredProducts = async () => {
       setLoading(true)
       try {
         const params = {
           page,
-          limit: 9,
+          limit: 12,
           sort: sortBy,
           priceMin: priceMin > 0 ? priceMin : undefined,
           priceMax: priceMax < 25000 ? priceMax : undefined,
           gender: selectedGenders.length > 0 ? selectedGenders.join(',') : undefined,
           category: selectedCategories.length > 0 ? selectedCategories.join(',') : undefined,
-          search: searchQuery || undefined
+          search: searchQuery || undefined,
+          tag: searchParams.get('tag') || undefined,
+          offers: searchParams.get('offers') || undefined
         }
 
         const res = await productService.getProducts(params)
-        if (res.data && res.data.products) {
-          // If Paginated response
-          const prodData = res.data.products.docs || res.data.products
-          setProducts(prodData || [])
+        if (res.data?.success && res.data.products) {
+          const prodData = Array.isArray(res.data.products)
+            ? res.data.products
+            : (res.data.products.docs || [])
+          setProducts(prodData)
           setTotalPages(res.data.products.totalPages || 1)
         }
       } catch (err) {
-        console.warn('Backend API getProducts failed, using mock data:', err.message)
-        toast.warning('Showing cached products. Please refresh if issues persist.')
-        // Luxury Mock Fallback
-        const mockDb = [
-          { _id: 'f1', name: 'Premium Velvet Blazer', price: 8999, originalPrice: 12999, discount: 30, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Royale', category: 'fashion-wear', gender: 'men', rating: 5 },
-          { _id: 'f2', name: 'Royal Heritage Banarasi Silk Saree', price: 14999, originalPrice: 24900, discount: 40, image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Heritage', category: 'sarees', gender: 'women', rating: 5 },
-          { _id: 'f3', name: 'Italian Leather Oxford Shoes', price: 9999, originalPrice: 15999, discount: 37, image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Footwear', category: 'shoes', gender: 'men', rating: 4 },
-          { _id: 'f4', name: 'Luxury Velvet Heel Stilettos', price: 4999, originalPrice: 7999, discount: 37, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Footwear', category: 'shoes', gender: 'women', rating: 5 },
-          { _id: 't1', name: 'Ultra-Comfort Luxury Hoodie', price: 3499, originalPrice: 4999, discount: 30, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Athletics', category: 'hoodies', gender: 'men', rating: 4 },
-          { _id: 't2', name: 'Sleek Silhouette Trench Coat', price: 5999, originalPrice: 8999, discount: 33, image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Studio', category: 'fashion-wear', gender: 'women', rating: 4 },
-          { _id: 't3', name: 'Soft Denim Dungarees Set', price: 1999, originalPrice: 2999, discount: 33, image: 'https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Kids', category: 'jeans', gender: 'kids', rating: 5 },
-          { _id: 't4', name: 'Premium Leather High-Top Sneakers', price: 2499, originalPrice: 3999, discount: 37, image: 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?auto=format&fit=crop&w=600&q=80', brand: 'SKLP Kids', category: 'shoes', gender: 'kids', rating: 5 }
-        ]
-        
-        let filtered = mockDb.filter(p => {
-          if (selectedGenders.length > 0 && !selectedGenders.includes(p.gender)) return false
-          if (selectedCategories.length > 0 && !selectedCategories.includes(p.category)) return false
-          if (p.price < priceMin || p.price > priceMax) return false
-          if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
-          return true
-        })
-
-        if (sortBy === 'priceAsc') filtered.sort((a, b) => a.price - b.price)
-        if (sortBy === 'priceDesc') filtered.sort((a, b) => b.price - a.price)
-        if (sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating)
-
-        setProducts(filtered)
-        setTotalPages(1)
+        console.warn('API getProducts error, utilizing fallback:', err.message)
       } finally {
         setLoading(false)
       }
     }
 
     fetchFilteredProducts()
-  }, [selectedGenders, selectedCategories, priceMin, priceMax, sortBy, searchQuery, page])
+  }, [selectedGenders, selectedCategories, priceMin, priceMax, sortBy, searchQuery, page, searchParams])
 
   // Instant AI Search suggestions handler
   const handleSearchChange = (e) => {
     const val = e.target.value
     setSearchQuery(val)
     if (val.trim().length > 1) {
-      // Find matching items from category or text keywords to showcase smart helper suggestions
       const combinedSuggestions = []
       CATEGORIES.forEach(c => {
         if (c.toLowerCase().includes(val.toLowerCase())) {
@@ -138,11 +118,16 @@ function Products() {
 
   const selectSuggestion = (sug) => {
     if (sug.type === 'category') {
-      setSelectedCategories(prev => prev.includes(sug.value) ? prev : [...prev, sug.value])
+      const updated = selectedCategories.includes(sug.value) ? selectedCategories : [...selectedCategories, sug.value]
+      setSelectedCategories(updated)
+      setSearchParams({ category: updated.join(',') })
     } else if (sug.type === 'gender') {
-      setSelectedGenders(prev => prev.includes(sug.value) ? prev : [...prev, sug.value])
+      const updated = selectedGenders.includes(sug.value) ? selectedGenders : [...selectedGenders, sug.value]
+      setSelectedGenders(updated)
+      setSearchParams({ gender: updated.join(',') })
     } else {
       setSearchQuery(sug.value)
+      setSearchParams({ q: sug.value })
     }
     setShowSuggestions(false)
   }
@@ -154,6 +139,7 @@ function Products() {
     setPriceMax(25000)
     setSearchQuery('')
     setSortBy('newest')
+    setPage(1)
     setSearchParams({})
   }
 

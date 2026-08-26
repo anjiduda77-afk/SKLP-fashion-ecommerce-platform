@@ -75,4 +75,9 @@ router.delete('/banners/:id', asyncHandler(adminController.deleteBanner))
 router.get('/notifications', asyncHandler(adminController.getNotifications))
 router.post('/notifications', asyncHandler(adminController.createNotification))
 
+// Product Reviews Moderation
+router.get('/reviews', asyncHandler(adminController.getAdminReviews))
+router.put('/reviews/:id/status', asyncHandler(adminController.updateReviewModerationStatus))
+
 export default router
+

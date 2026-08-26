@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown } from 'react-icons/fi'
+import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown, FiStar } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -201,16 +201,31 @@ function Orders() {
                         {/* Products list */}
                         <div className="space-y-4">
                           <h4 className="text-xs uppercase tracking-wider text-luxury-gold font-bold">Items Purchased</h4>
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex gap-4 items-center bg-luxury-charcoal/50 p-4 border border-white/5 rounded-xl">
-                              <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-12 h-16 object-cover rounded" />
-                              <div className="flex-1">
-                                <h5 className="font-bold text-sm">{item.name}</h5>
-                                <p className="text-[10px] opacity-60">Qty: {item.quantity} | Size: {item.variant?.size || 'Default'} | Color: {item.variant?.color || 'Default'}</p>
+                          {order.items.map((item, idx) => {
+                            const pId = item.productId?._id || item.productId || item._id
+                            return (
+                              <div key={idx} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-luxury-charcoal/50 p-4 border border-white/5 rounded-xl">
+                                <div className="flex gap-4 items-center flex-1">
+                                  <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-12 h-16 object-cover rounded" />
+                                  <div className="flex-1">
+                                    <h5 className="font-bold text-sm">{item.name}</h5>
+                                    <p className="text-[10px] opacity-60">Qty: {item.quantity} | Size: {item.variant?.size || 'Default'} | Color: {item.variant?.color || 'Default'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                  <span className="font-bold font-mono text-sm text-luxury-gold">₹{(item.finalPrice || (item.unitPrice * item.quantity)).toLocaleString()}</span>
+                                  {order.status === 'delivered' && pId && (
+                                    <Link
+                                      to={`/products/${pId}`}
+                                      className="px-3 py-1.5 bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black border border-luxury-gold/30 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                                    >
+                                      <FiStar size={12} className="fill-current" /> Rate & Review
+                                    </Link>
+                                  )}
+                                </div>
                               </div>
-                              <span className="font-bold font-mono text-sm text-luxury-gold">₹{(item.finalPrice || (item.unitPrice * item.quantity)).toLocaleString()}</span>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
 
                         {/* Ship address and actions */}

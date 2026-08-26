@@ -895,3 +895,75 @@ export const createNotification = async (req, res) => {
     count: notifications.length
   });
 };
+
+// ================= REVIEW MODERATION =================
+export const getAdminReviews = async (req, res) => {
+  const { status, rating, productId, search, page = 1, limit = 20 } = req.query;
+  const query = {};
+
+  if (status && ['PENDING', 'APPROVED', 'REJECTED', 'HIDDEN'].includes(status.toUpperCase())) {
+    query.status = status.toUpperCase();
+  }
+  if (rating) query.rating = Number(rating);
+  if (productId) query.productId = productId;
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { comment: { $regex: search, $options: 'i' } },
+      { reviewerName: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const [reviews, total] = await Promise.all([
+    Review.find(query)
+      .populate('productId', 'name brand images price')
+      .populate('userId', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .lean(),
+    Review.countDocuments(query)
+  ]);
+
+  res.status(200).json({
+    success: true,
+    reviews,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / limit)
+    }
+  });
+};
+
+export const updateReviewModerationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, moderationNotes } = req.body;
+
+  if (!status || !['PENDING', 'APPROVED', 'REJECTED', 'HIDDEN'].includes(status.toUpperCase())) {
+    throw new ApiError(400, 'Invalid moderation status. Must be PENDING, APPROVED, REJECTED, or HIDDEN');
+  }
+
+  const review = await Review.findById(id);
+  if (!review) {
+    throw new ApiError(404, 'Review not found');
+  }
+
+  review.status = status.toUpperCase();
+  if (moderationNotes) review.moderationNotes = moderationNotes;
+  review.moderatedBy = req.user.id;
+  review.moderatedAt = new Date();
+  await review.save();
+
+  // Dynamically recalculate the product rating
+  const { recalculateProductRating } = await import('./reviewController.js');
+  await recalculateProductRating(review.productId);
+
+  res.status(200).json({
+    success: true,
+    message: `Review status updated to ${review.status}`,
+    review
+  });
+};
+

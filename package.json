@@ -1,0 +1,33 @@
+{
+  "name": "sklp-fashion-ecommerce",
+  "version": "1.0.0",
+  "description": "SKLP - Premium AI-Powered Fashion Ecommerce Platform",
+  "private": true,
+  "scripts": {
+    "start": "node backend/server.js",
+    "start:backend": "node backend/server.js",
+    "start:frontend": "npm run preview --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm install --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "npm run dev --prefix frontend"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "ecommerce",
+    "fashion",
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "vite"
+  ],
+  "author": "SKLP Team",
+  "license": "PROPRIETARY"
+}

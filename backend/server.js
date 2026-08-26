@@ -27,39 +27,61 @@ import paymentRoutes from './routes/paymentRoutes.js';
 
 const app = express();
 
+// Trust reverse proxy for Render / Cloud hosting (ensures accurate req.ip for rate limiting)
+app.set('trust proxy', 1);
+
 // Connect to Database
 connectDB();
 
 // ============== Security Middleware ==============
-app.use(helmet()); // Set security HTTP headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Set security HTTP headers
 app.use(mongoSanitize()); // Data sanitization against NoSQL injection
 app.use(compression()); // Compress response data
 
 // ============== CORS Configuration ==============
-const configuredOrigins = [
+const rawOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
   process.env.FRONTEND_URL,
   process.env.ADMIN_FRONTEND_URL,
   process.env.CLIENT_URL
-].filter(Boolean).map(url => url.replace(/\/$/, ''));
+];
+
+// Handle comma-separated list of origins in environment variables
+const configuredOrigins = rawOrigins
+  .filter(Boolean)
+  .flatMap(url => (typeof url === 'string' ? url.split(',') : [url]))
+  .map(url => url.trim().toLowerCase().replace(/\/$/, ''))
+  .filter(Boolean);
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true; // Server-to-server, mobile, postman, health checks
-  if (configuredOrigins.includes(origin)) return true;
+  const normOrigin = origin.toLowerCase().trim().replace(/\/$/, '');
+
+  if (configuredOrigins.includes(normOrigin)) return true;
+
   // Allow all Vercel production and preview deployment URLs (*.vercel.app)
-  if (origin.endsWith('.vercel.app') || /^https:\/\/[a-zA-Z0-9_\-.]+\.vercel\.app$/.test(origin)) {
+  if (normOrigin.endsWith('.vercel.app') || /\.vercel\.app$/.test(normOrigin)) {
     return true;
   }
+
+  // Allow Render URLs (*.onrender.com)
+  if (normOrigin.endsWith('.onrender.com') || /\.onrender\.com$/.test(normOrigin)) {
+    return true;
+  }
+
   // Allow localhost on any port during local development
-  if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+  if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normOrigin)) {
     return true;
   }
+
   return false;
 };
 
-app.use(cors({
+const corsMiddleware = cors({
   origin: function (origin, callback) {
     if (isOriginAllowed(origin)) {
       callback(null, true);
@@ -69,12 +91,14 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
-}));
+});
 
-// Explicit preflight handler
-app.options('*', cors());
+app.use(corsMiddleware);
+
+// Explicit preflight handler with identical configuration
+app.options('*', corsMiddleware);
 
 // ============== Body Parser & Logging ==============
 app.use(express.json({ limit: '50mb' }));

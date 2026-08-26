@@ -1,13 +1,11 @@
 import axios from 'axios'
 
-let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+let rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim().replace(/['";]/g, '');
 
 // Robust URL formatting: ensure it ends with /api and has no trailing slashes
-if (API_URL.endsWith('/')) {
-  API_URL = API_URL.slice(0, -1)
-}
+let API_URL = rawUrl.replace(/\/+$/, '');
 if (!API_URL.endsWith('/api')) {
-  API_URL += '/api'
+  API_URL += '/api';
 }
 
 // Create axios instance

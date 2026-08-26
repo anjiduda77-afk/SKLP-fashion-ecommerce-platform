@@ -2,6 +2,7 @@ import SellerOffer from '../models/SellerOffer.js'
 import Seller from '../models/Seller.js'
 import Product from '../models/Product.js'
 import { ApiError } from '../middleware/errorHandler.js'
+import { resolveProductDocument } from './productController.js'
 
 /**
  * Weighted Recommendation Algorithm
@@ -39,13 +40,13 @@ const calculateOfferScore = (offer, allOffers) => {
 export const getProductOffers = async (req, res) => {
   const { productId } = req.params
 
-  const product = await Product.findById(productId).lean()
+  const product = await resolveProductDocument(productId)
   if (!product) {
     throw new ApiError(404, 'Product not found')
   }
 
   // Fetch all active offers from active/verified sellers
-  const offers = await SellerOffer.find({ productId, isActive: true, stock: { $gt: 0 } })
+  const offers = await SellerOffer.find({ productId: product._id, isActive: true, stock: { $gt: 0 } })
     .populate({
       path: 'sellerId',
       select: 'shopName shopSlug logo rating reviewCount verificationStatus shippingPolicy returnPolicy fulfillmentRate cancellationRate'

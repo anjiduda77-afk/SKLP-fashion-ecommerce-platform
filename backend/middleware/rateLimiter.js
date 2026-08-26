@@ -3,13 +3,21 @@ import rateLimit from 'express-rate-limit';
 // General rate limiter
 export const rateLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per 15 minutes
+  message: {
+    success: false,
+    message: 'Too many requests from this IP. Please try again in a few minutes.'
+  },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/health';
+    // Skip rate limiting for health checks, preflights, and root
+    return (
+      req.method === 'OPTIONS' ||
+      req.path === '/' ||
+      req.path === '/health' ||
+      req.path === '/api/health'
+    );
   }
 });
 

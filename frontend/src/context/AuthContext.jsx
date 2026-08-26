@@ -147,6 +147,20 @@ export const AuthProvider = ({ children }) => {
     })
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await userService.getCurrentUser()
+      if (res.data?.success && res.data?.user) {
+        setUser(res.data.user)
+        localStorage.setItem('user', JSON.stringify(res.data.user))
+        return res.data.user
+      }
+    } catch (err) {
+      console.warn('Failed to refresh user:', err.message)
+    }
+    return null
+  }, [])
+
   // Role helpers
   const isAdmin = useCallback(() => user?.role === 'admin', [user])
   const isSeller = useCallback(() => user?.role === 'seller', [user])
@@ -165,10 +179,14 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         token,
         loading,
+        isEmailVerified: Boolean(user?.isEmailVerified),
+        isPhoneVerified: Boolean(user?.isPhoneVerified),
+        customUserId: user?.customUserId || null,
         login,
         logout,
         logoutAllDevices,
         updateUser,
+        refreshUser,
         refreshAuth,
         // Role helpers
         isAdmin,

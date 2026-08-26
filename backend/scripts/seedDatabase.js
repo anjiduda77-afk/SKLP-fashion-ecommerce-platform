@@ -436,6 +436,80 @@ const seed = async () => {
       isPhoneVerified: true
     });
 
+    // 4.1 Seed a Delivered Order for Customer (Grants Verified Purchase Eligibility)
+    console.log('📦 Seeding delivered customer order for review verification...');
+    const deliveredOrder = await Order.create({
+      orderNumber: 'SKLP-ORD-20260826-001',
+      userId: customerUser._id,
+      items: insertedProducts.map(p => ({
+        productId: p._id,
+        name: p.name,
+        brand: p.brand,
+        quantity: 1,
+        price: p.price,
+        finalPrice: p.price,
+        images: p.images
+      })),
+      subtotal: insertedProducts.reduce((sum, p) => sum + p.price, 0),
+      total: insertedProducts.reduce((sum, p) => sum + p.price, 0),
+      totalAmount: insertedProducts.reduce((sum, p) => sum + p.price, 0),
+      paymentMethod: 'razorpay',
+      paymentStatus: 'completed',
+      status: 'delivered',
+      shippingAddress: {
+        street: 'Flat 402, Golden Towers, Gachibowli',
+        city: 'Hyderabad',
+        state: 'Telangana',
+        postalCode: '500032',
+        country: 'India',
+        phone: '9999999999'
+      }
+    });
+
+    // 5. Seed Professional Customer Reviews with Photos & Verified Purchases
+    console.log('✨ Seeding authentic customer reviews & styling feedback...');
+    const sampleReviewers = [
+      { name: 'Priya Sharma', rating: 5, fit: 'true_to_size', title: 'Impeccable velvet finish & flawless stitching!', comment: 'Wore this for an elite evening gala in Mumbai. The fabric weight and bespoke peak lapels are stunning. Highly recommended for party wear!', photos: ['https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=600&q=80'] },
+      { name: 'Aditya Verma', rating: 5, fit: 'true_to_size', title: 'Luxury feel at an unbeatable price', comment: 'The tailoring is crisp and fits like a bespoke customized designer piece. Arrived within 3 business days with luxury packaging.', photos: [] },
+      { name: 'Meera Nambiar', rating: 4, fit: 'true_to_size', title: 'Royal Banarasi silk texture is authentic', comment: 'Intricate zari work and genuine handloom sheen. Very elegant drape. Paired with temple jewelry and got countless compliments.', photos: ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80'] },
+      { name: 'Karan Malhotra', rating: 5, fit: 'true_to_size', title: 'Heavyweight organic cotton hoodie is top-tier', comment: 'The micro-gold emblem branding gives subtle luxury vibes. Extremely warm and structured side ribbing. 10/10 purchase!', photos: [] },
+      { name: 'Sneha Patel', rating: 5, fit: 'true_to_size', title: 'High-end stilettos with comfortable cushioning', comment: 'Usually stilettos hurt after 2 hours, but these had memory foam padding that lasted throughout a 6-hour wedding reception.', photos: ['https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=600&q=80'] },
+      { name: 'Rahul Reddy', rating: 4, fit: 'runs_small', title: 'High quality leather, recommend sizing up half a size', comment: 'Handcrafted patina leather finish is extraordinary. Comfortable after 1 day of breaking in. Looks great with formal suits.', photos: [] }
+    ];
+
+    for (let i = 0; i < insertedProducts.length; i++) {
+      const prod = insertedProducts[i];
+      const revData = sampleReviewers[i % sampleReviewers.length];
+      const reviewDoc = await Review.create({
+        productId: prod._id,
+        userId: customerUser._id,
+        orderId: deliveredOrder._id,
+        rating: revData.rating,
+        title: revData.title,
+        comment: revData.comment,
+        fitFeedback: revData.fit,
+        images: revData.photos.map(url => ({ url, publicId: `seed_rev_${Date.now()}` })),
+        verifiedPurchase: true,
+        status: 'APPROVED',
+        helpfulCount: 12 + (i * 3),
+        helpfulUsers: [adminUser._id],
+        reviewerName: revData.name,
+        sellerResponse: i === 0 ? {
+          message: 'Thank you for choosing SKLP Royale! We are delighted that our bespoke velvet tailoring elevated your evening gala look.',
+          respondedAt: new Date(),
+          respondedByName: 'SKLP Official Store'
+        } : undefined
+      });
+
+      // Update product rating & count
+      await Product.findByIdAndUpdate(prod._id, {
+        rating: revData.rating,
+        reviewCount: 1,
+        reviews: [reviewDoc._id]
+      });
+    }
+    console.log('✅ Seeded customer reviews with authentic photos, fit feedback, and store replies.');
+
     console.log(`
 ================================================================
 🎉                   SKLP DATABASE SEED COMPLETE                 

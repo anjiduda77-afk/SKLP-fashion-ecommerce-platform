@@ -5,8 +5,9 @@ import {
   signInWithPhoneNumber 
 } from 'firebase/auth'
 
-// Firebase Web Configuration — loaded from frontend/.env (VITE_FIREBASE_*)
-// Never hardcode secrets. All values come from environment variables only.
+// Firebase Web Configuration — loaded from environment variables (VITE_FIREBASE_*)
+// In Vercel: add these in Project → Settings → Environment Variables
+// In local dev: add these in frontend/.env
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -16,11 +17,38 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
-// Initialize Firebase App (Singleton safe — prevents double-init in React StrictMode)
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+// Validate that Firebase env vars are set — if missing, disable Firebase gracefully
+// DO NOT throw here — a module-level throw causes a blank white screen
+const FIREBASE_CONFIGURED = !!(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId
+)
 
-// Initialize Firebase Authentication only (no Analytics, no Firestore, no Storage)
-export const auth = getAuth(app)
+if (!FIREBASE_CONFIGURED) {
+  console.warn(
+    '[SKLP Firebase] Firebase environment variables are not configured.\n' +
+    'Phone authentication will be unavailable.\n' +
+    'Add VITE_FIREBASE_* variables to your Vercel project environment settings\n' +
+    'and redeploy, or to frontend/.env for local development.'
+  )
+}
 
-export { RecaptchaVerifier, signInWithPhoneNumber }
+// Initialize Firebase App only when fully configured (Singleton safe)
+let app = null
+let auth = null
+
+if (FIREBASE_CONFIGURED) {
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+    auth = getAuth(app)
+  } catch (err) {
+    console.error('[SKLP Firebase] Initialization error:', err.message)
+    app = null
+    auth = null
+  }
+}
+
+export { auth, RecaptchaVerifier, signInWithPhoneNumber, FIREBASE_CONFIGURED }
 export default app

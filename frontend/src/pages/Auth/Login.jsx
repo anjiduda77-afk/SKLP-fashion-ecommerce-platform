@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { authService } from '@services/apiServices'
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../../config/firebase'
+import { auth, RecaptchaVerifier, signInWithPhoneNumber, FIREBASE_CONFIGURED } from '../../config/firebase'
 import { toast } from 'react-toastify'
 import { 
   FiSmartphone, FiShield, FiLoader, 
@@ -50,6 +50,8 @@ function Login() {
     let isMounted = true
 
     const initVerifier = () => {
+      // Skip initialization if Firebase is not configured in this environment
+      if (!FIREBASE_CONFIGURED || !auth) return
       if (typeof window === 'undefined') return
       
       // If already initialized in ref, reuse it
@@ -167,6 +169,12 @@ function Login() {
     e?.preventDefault()
     if (!isPhoneValid) {
       toast.error('Please enter a valid 10-digit Indian mobile number')
+      return
+    }
+
+    // Guard: Firebase must be configured with real environment variables
+    if (!FIREBASE_CONFIGURED || !auth) {
+      toast.error('Firebase Phone Authentication is not configured for this environment. Please contact support.')
       return
     }
 

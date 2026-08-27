@@ -199,10 +199,12 @@ function AdminDashboard() {
               </thead>
               <tbody>
                 {metrics.recentOrders.map((order) => (
-                  <tr key={order.id} className={`border-b transition-colors ${isDarkMode ? 'border-luxury-darkGray/50 hover:bg-luxury-darkGray/20' : 'border-gray-100 hover:bg-gray-50'}`}>
-                    <td className="px-5 py-3.5 text-sm text-luxury-gold font-mono font-semibold">#{order.id.substring(18)}</td>
+                  <tr key={order.id || order._id} className={`border-b transition-colors ${isDarkMode ? 'border-luxury-darkGray/50 hover:bg-luxury-darkGray/20' : 'border-gray-100 hover:bg-gray-50'}`}>
+                    <td className="px-5 py-3.5 text-sm text-luxury-gold font-mono font-semibold">
+                      {order.orderNumber || (order.id ? `#${String(order.id).slice(-6)}` : '#ORD')}
+                    </td>
                     <td className={`px-5 py-3.5 text-sm font-medium ${textPrimary}`}>{order.customer}</td>
-                    <td className={`px-5 py-3.5 text-sm font-semibold ${textPrimary}`}>₹{order.total.toLocaleString()}</td>
+                    <td className={`px-5 py-3.5 text-sm font-semibold ${textPrimary}`}>₹{(order.total || 0).toLocaleString()}</td>
                     <td className="px-5 py-3.5">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
                         {order.status}

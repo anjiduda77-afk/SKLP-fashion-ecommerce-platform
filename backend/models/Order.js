@@ -221,6 +221,7 @@ const orderSchema = new mongoose.Schema({
     enum: [
       'pending',
       'confirmed',
+      'processing',
       'packed',
       'shipped',
       'ready_for_pickup',

@@ -8,24 +8,15 @@ import SellerSettlement from '../models/SellerSettlement.js';
 import Subscription from '../models/Subscription.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { uploadMultipleImages, deleteImage } from '../config/cloudinary.js';
+import { getOrCreateSellerProfile } from '../utils/sellerHelper.js';
 
 // ================= SELLER DASHBOARD =================
 export const getSellerDashboard = async (req, res) => {
   const userId = req.user.id;
-  let seller = await Seller.findOne({ userId });
+  const seller = await getOrCreateSellerProfile(userId);
 
   if (!seller) {
-    // Auto-create seller profile if user has seller role (backward compatibility)
-    const user = await User.findById(userId);
-    const shopName = user?.sellerProfile?.storeName || `${user?.firstName || 'Seller'}'s Store`;
-    const shopSlug = shopName.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-    seller = await Seller.create({
-      userId,
-      shopName,
-      shopSlug: `${shopSlug}-${Date.now().toString().slice(-4)}`,
-      verificationStatus: 'verified',
-      sellerStatus: 'active'
-    });
+    throw new ApiError(404, 'Seller profile not found');
   }
 
   // 1. Products & Offers

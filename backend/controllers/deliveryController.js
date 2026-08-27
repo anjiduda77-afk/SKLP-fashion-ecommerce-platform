@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import Order from '../models/Order.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
@@ -7,6 +8,7 @@ import { ApiError } from '../middleware/errorHandler.js'
 export const getDashboard = async (req, res) => {
   try {
     const userId = req.user.id
+    const userObjectId = new mongoose.Types.ObjectId(userId)
 
     // Get today's deliveries count
     const today = new Date()
@@ -28,7 +30,7 @@ export const getDashboard = async (req, res) => {
     const completedOrders = await Order.aggregate([
       {
         $match: {
-          assignedTo: userId,
+          assignedTo: userObjectId,
           status: 'delivered'
         }
       },
@@ -235,6 +237,7 @@ export const getEarnings = async (req, res) => {
     const userId = req.user.id
     const { period = 'month' } = req.query
 
+    const userObjectId = new mongoose.Types.ObjectId(userId)
     let dateFilter
     const now = new Date()
 
@@ -249,13 +252,15 @@ export const getEarnings = async (req, res) => {
       dateFilter = { $gte: lastYear }
     }
 
+    const matchStage = {
+      assignedTo: userObjectId,
+      status: 'delivered'
+    }
+    if (dateFilter) matchStage.createdAt = dateFilter
+
     const earnings = await Order.aggregate([
       {
-        $match: {
-          assignedTo: userId,
-          status: 'delivered',
-          createdAt: dateFilter
-        }
+        $match: matchStage
       },
       {
         $group: {
@@ -273,7 +278,7 @@ export const getEarnings = async (req, res) => {
     const pendingEarnings = await Order.aggregate([
       {
         $match: {
-          assignedTo: userId,
+          assignedTo: userObjectId,
           status: 'out_for_delivery'
         }
       },
@@ -309,10 +314,11 @@ export const getEarnings = async (req, res) => {
 export const getAnalytics = async (req, res) => {
   try {
     const userId = req.user.id
+    const userObjectId = new mongoose.Types.ObjectId(userId)
 
     const stats = await Order.aggregate([
       {
-        $match: { assignedTo: userId }
+        $match: { assignedTo: userObjectId }
       },
       {
         $group: {

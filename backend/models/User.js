@@ -49,8 +49,13 @@ const userSchema = new mongoose.Schema({
   // Authentication
   authProvider: {
     type: String,
-    enum: ['email', 'google', 'otp'],
-    default: 'email'
+    enum: ['email', 'google', 'otp', 'firebase'],
+    default: 'firebase'
+  },
+  firebaseUid: {
+    type: String,
+    sparse: true,
+    unique: true
   },
   googleId: String,
   isEmailVerified: {

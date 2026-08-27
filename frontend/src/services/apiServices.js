@@ -92,6 +92,7 @@ export const uploadService = {
  * Auth API Service
  */
 export const authService = {
+  firebaseLogin: (idToken) => apiClient.post('/auth/firebase-login', { idToken }),
   login: (email, password, rememberMe) =>
     apiClient.post('/auth/login', { email, password, rememberMe }),
   register: (data) => apiClient.post('/auth/register', data),

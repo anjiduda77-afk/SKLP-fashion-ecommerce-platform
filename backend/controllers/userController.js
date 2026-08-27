@@ -437,16 +437,28 @@ export const getWishlist = async (req, res) => {
   let wishlist = await Wishlist.findOne({ userId: req.user.id }).populate('items.productId');
   
   if (!wishlist) {
-    wishlist = await Wishlist.create({
-      userId: req.user.id,
-      items: [],
-      totalItems: 0
-    });
+    try {
+      wishlist = await Wishlist.create({
+        userId: req.user.id,
+        items: [],
+        totalItems: 0
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        wishlist = await Wishlist.findOne({ userId: req.user.id }).populate('items.productId');
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (!wishlist) {
+    return res.status(200).json({ success: true, wishlist: { items: [], totalItems: 0 } });
   }
 
   // Filter out any products that were deleted but still referenced in wishlist items
-  const validItems = wishlist.items.filter(item => item.productId !== null);
-  if (validItems.length !== wishlist.items.length) {
+  const validItems = (wishlist.items || []).filter(item => item.productId !== null);
+  if (validItems.length !== (wishlist.items || []).length) {
     wishlist.items = validItems;
     wishlist.totalItems = validItems.length;
     await wishlist.save();
@@ -455,13 +467,13 @@ export const getWishlist = async (req, res) => {
   res.status(200).json({
     success: true,
     wishlist: {
-      items: wishlist.items.map(item => ({
+      items: (wishlist.items || []).map(item => ({
         _id: item._id,
         addedAt: item.addedAt,
         notes: item.notes,
         product: item.productId // mapped as product object on frontend
       })),
-      totalItems: wishlist.totalItems
+      totalItems: wishlist.totalItems || 0
     }
   });
 };
@@ -477,11 +489,19 @@ export const addToWishlist = async (req, res) => {
 
   let wishlist = await Wishlist.findOne({ userId: req.user.id });
   if (!wishlist) {
-    wishlist = await Wishlist.create({
-      userId: req.user.id,
-      items: [],
-      totalItems: 0
-    });
+    try {
+      wishlist = await Wishlist.create({
+        userId: req.user.id,
+        items: [],
+        totalItems: 0
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        wishlist = await Wishlist.findOne({ userId: req.user.id });
+      } else {
+        throw err;
+      }
+    }
   }
 
   const alreadyInWishlist = wishlist.items.some(item => item.productId.toString() === productId);

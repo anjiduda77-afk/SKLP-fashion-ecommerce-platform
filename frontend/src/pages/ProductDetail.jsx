@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck } from 'react-icons/fi'
+import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck, FiCheckCircle } from 'react-icons/fi'
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
@@ -16,6 +16,10 @@ function ProductDetail() {
   const { addToCart } = useCart()
   const { toggleWishlist, isInWishlist } = useWishlist()
   const { formatPrice } = useCurrency()
+
+  const cardBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
+  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'
+  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-600'
 
   const [product, setProduct] = useState(null)
   const [offersData, setOffersData] = useState(null)
@@ -55,9 +59,17 @@ function ProductDetail() {
         ])
 
         if (prodRes.data && prodRes.data.product) {
-          setProduct(prodRes.data.product)
-          if (prodRes.data.product.sizes?.length > 0) setSelectedSize(prodRes.data.product.sizes[0])
-          if (prodRes.data.product.colors?.length > 0) setSelectedColor(prodRes.data.product.colors[0])
+          const prod = prodRes.data.product
+          const sizes = prod.sizes?.length > 0
+            ? prod.sizes
+            : (prod.variants?.find(v => v.type === 'size')?.options || (prod.category !== 'accessories' && prod.category !== 'shoes' ? ['S', 'M', 'L', 'XL'] : prod.category === 'shoes' ? ['UK 7', 'UK 8', 'UK 9', 'UK 10'] : []))
+          const colors = prod.colors?.length > 0
+            ? prod.colors
+            : (prod.variants?.find(v => v.type === 'color')?.options || (prod.attributes?.color ? [prod.attributes.color] : []))
+
+          setProduct({ ...prod, sizes, colors })
+          if (sizes.length > 0) setSelectedSize(sizes[0])
+          if (colors.length > 0) setSelectedColor(colors[0])
         }
 
         if (offersRes?.data?.success) {

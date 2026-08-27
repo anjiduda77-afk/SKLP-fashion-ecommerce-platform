@@ -1,8 +1,10 @@
 import SellerOffer from '../models/SellerOffer.js'
 import Seller from '../models/Seller.js'
+import User from '../models/User.js'
 import Product from '../models/Product.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { resolveProductDocument } from './productController.js'
+import { getOrCreateSellerProfile } from '../utils/sellerHelper.js'
 
 /**
  * Weighted Recommendation Algorithm
@@ -113,9 +115,9 @@ export const getProductOffers = async (req, res) => {
  */
 export const createOrUpdateSellerOffer = async (req, res) => {
   const userId = req.user.id
-  const seller = await Seller.findOne({ userId })
+  const seller = await getOrCreateSellerProfile(userId)
   if (!seller) {
-    throw new ApiError(403, 'Approved seller account required to create offers')
+    throw new ApiError(404, 'Seller profile not found')
   }
 
   if (seller.sellerStatus === 'suspended') {
@@ -179,9 +181,9 @@ export const createOrUpdateSellerOffer = async (req, res) => {
  */
 export const getMyOffers = async (req, res) => {
   const userId = req.user.id
-  const seller = await Seller.findOne({ userId })
+  const seller = await getOrCreateSellerProfile(userId)
   if (!seller) {
-    throw new ApiError(403, 'Seller profile not found')
+    throw new ApiError(404, 'Seller profile not found')
   }
 
   const offers = await SellerOffer.find({ sellerId: seller._id })

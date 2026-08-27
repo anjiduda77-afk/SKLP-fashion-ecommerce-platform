@@ -1,16 +1,18 @@
 import SellerSettlement from '../models/SellerSettlement.js'
 import Seller from '../models/Seller.js'
+import User from '../models/User.js'
 import Subscription from '../models/Subscription.js'
 import Order from '../models/Order.js'
 import { ApiError } from '../middleware/errorHandler.js'
+import { getOrCreateSellerProfile } from '../utils/sellerHelper.js'
 
 /**
  * Seller: Get payout ledger and earnings breakdown
  */
 export const getSellerSettlements = async (req, res) => {
-  const seller = await Seller.findOne({ userId: req.user.id })
+  const seller = await getOrCreateSellerProfile(req.user.id)
   if (!seller) {
-    throw new ApiError(403, 'Seller profile not found')
+    throw new ApiError(404, 'Seller profile not found')
   }
 
   const { status, page = 1, limit = 20 } = req.query

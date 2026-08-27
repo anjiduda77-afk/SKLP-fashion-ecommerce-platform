@@ -1,6 +1,8 @@
 import Subscription from '../models/Subscription.js'
 import Seller from '../models/Seller.js'
+import User from '../models/User.js'
 import { ApiError } from '../middleware/errorHandler.js'
+import { getOrCreateSellerProfile } from '../utils/sellerHelper.js'
 
 export const SELLER_PLANS = [
   {
@@ -62,9 +64,9 @@ export const SELLER_PLANS = [
  * Get available plans and current seller subscription
  */
 export const getSubscriptionInfo = async (req, res) => {
-  const seller = await Seller.findOne({ userId: req.user.id })
+  const seller = await getOrCreateSellerProfile(req.user.id)
   if (!seller) {
-    throw new ApiError(403, 'Seller profile not found')
+    throw new ApiError(404, 'Seller profile not found')
   }
 
   let subscription = await Subscription.findOne({ sellerId: seller._id })
@@ -95,9 +97,9 @@ export const getSubscriptionInfo = async (req, res) => {
 export const selectSubscriptionPlan = async (req, res) => {
   const { planId, paymentMethod = 'razorpay' } = req.body
 
-  const seller = await Seller.findOne({ userId: req.user.id })
+  const seller = await getOrCreateSellerProfile(req.user.id)
   if (!seller) {
-    throw new ApiError(403, 'Seller profile not found')
+    throw new ApiError(404, 'Seller profile not found')
   }
 
   const selectedPlan = SELLER_PLANS.find(p => p.id === planId)

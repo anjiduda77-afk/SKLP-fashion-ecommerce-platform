@@ -21,25 +21,27 @@ export const rateLimiter = rateLimit({
   }
 });
 
-// Strict rate limiter for auth endpoints
+// Strict rate limiter for auth endpoints (Generous limit for smooth customer login & testing)
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
-  message: 'Too many login attempts, please try again after 15 minutes',
+  max: 100, // 100 attempts per 15 minutes
+  message: {
+    success: false,
+    message: 'Too many login attempts. Please try again after a few minutes.'
+  },
   skipSuccessfulRequests: true,
   keyGenerator: (req) => {
-    // Use email as key for more effective rate limiting
-    return req.body.email || req.ip;
+    return req.body.email || req.body.phone || req.ip;
   }
 });
 
-// OTP rate limiter - Up to 20 attempts / checks allowed per 5 minutes, resets after 5 minutes
+// OTP rate limiter - Up to 100 requests allowed per 5 minutes
 export const otpRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes window
-  max: 20, // Limit to 20 requests per 5 minutes
+  max: 100, // Limit to 100 requests per 5 minutes
   message: {
     success: false,
-    message: 'Too many OTP attempts (limit: 20). Please try again after 5 minutes.'
+    message: 'Too many OTP attempts. Please try again after 2 minutes.'
   },
   standardHeaders: true,
   legacyHeaders: false,

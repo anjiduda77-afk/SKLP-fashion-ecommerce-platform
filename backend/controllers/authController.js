@@ -6,6 +6,7 @@ import User from '../models/User.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { sendEmail } from '../utils/emailService.js'
 import { sendOTPMessage, generateSecureOTP } from '../services/otpService.js'
+import { verifyFirebaseIdToken } from '../config/firebaseAdmin.js'
 
 // Normalize Indian mobile number (+91XXXXXXXXXX, 0XXXXXXXXXX, XXXXXXXXXX -> 10 digits)
 export const normalizeIndianPhone = (rawPhone) => {
@@ -342,7 +343,88 @@ export const googleLogin = async (req, res) => {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOBILE OTP — SKLP Fashion Professional Mobile Authentication
+// FIREBASE PHONE AUTHENTICATION — Google-Verified Mobile Identity Resolution
+// ──────────────────────────────────────────────────────────────────────────────
+export const firebaseLogin = async (req, res) => {
+  const authHeader = req.headers.authorization
+  const idToken = req.body.idToken || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null)
+
+  if (!idToken) {
+    throw new ApiError(400, 'Firebase ID Token is required')
+  }
+
+  let decodedToken
+  try {
+    decodedToken = await verifyFirebaseIdToken(idToken)
+  } catch (err) {
+    console.error('[AUTH] Firebase Token Verification Failed:', err.message)
+    throw new ApiError(401, 'Invalid or expired Firebase authentication token')
+  }
+
+  const { uid, phone_number } = decodedToken
+
+  if (!phone_number && !uid) {
+    throw new ApiError(400, 'Verified phone number or UID missing from Firebase token')
+  }
+
+  // Extract clean 10-digit Indian phone number (e.g. +916301568113 -> 6301568113)
+  const cleanPhone = phone_number ? normalizeIndianPhone(phone_number) : null
+
+  // Resolve user: search by firebaseUid OR verified phone number
+  const query = []
+  if (uid) query.push({ firebaseUid: uid })
+  if (cleanPhone) query.push({ phone: cleanPhone })
+
+  let user = await User.findOne({ $or: query })
+
+  if (user) {
+    // Check account status
+    if (user.status === 'suspended' || user.status === 'blocked') {
+      throw new ApiError(403, 'Your account has been suspended or blocked. Please contact support.')
+    }
+    if (user.status === 'deleted') {
+      throw new ApiError(403, 'This account has been deleted.')
+    }
+
+    // Link Firebase UID and verify phone if not already linked
+    if (uid && user.firebaseUid !== uid) {
+      user.firebaseUid = uid
+    }
+    if (cleanPhone && !user.phone) {
+      user.phone = cleanPhone
+    }
+    user.isPhoneVerified = true
+    user.authProvider = user.authProvider || 'firebase'
+  } else {
+    // Automatically create new CUSTOMER account with default customer role
+    user = await User.create({
+      firstName: 'Customer',
+      lastName: cleanPhone ? cleanPhone.slice(-4) : 'User',
+      phone: cleanPhone || undefined,
+      firebaseUid: uid,
+      authProvider: 'firebase',
+      role: 'customer',
+      status: 'active',
+      isActive: true,
+      isPhoneVerified: true,
+      isEmailVerified: false
+    })
+  }
+
+  // Issue Application JWT & Refresh Token
+  const { token: authToken, refreshToken: rToken } = await issueAuthTokens(user, req)
+
+  res.status(200).json({
+    success: true,
+    message: 'Firebase mobile login successful',
+    user: user.toJSON(),
+    token: authToken,
+    refreshToken: rToken
+  })
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MOBILE OTP — Legacy Backend Endpoints (Preserved for compatibility)
 // ──────────────────────────────────────────────────────────────────────────────
 export const sendOTP = async (req, res) => {
   const { phone } = req.body
@@ -366,16 +448,31 @@ export const sendOTP = async (req, res) => {
       throw new ApiError(429, `Please wait ${waitSec} seconds before requesting another OTP`)
     }
 
-    // Max resend protection: 10 per 5 minutes
+    // Max resend protection: 50 per 5 minutes
     const timeSinceFirst = Date.now() - (user.lastOtpSentAt?.getTime() || 0)
     if (timeSinceFirst >= 5 * 60 * 1000) {
       user.phoneOtpResendCount = 0 // Reset after 5 minutes
     }
 
-    if ((user.phoneOtpResendCount || 0) >= 10) {
+    if ((user.phoneOtpResendCount || 0) >= 50) {
       throw new ApiError(429, 'Too many attempts. Please try again later.')
     }
+  }
 
+  // 1. Dispatch OTP via Real External SMS Provider FIRST
+  let smsResult
+  try {
+    smsResult = await sendOTPMessage(cleanPhone, otp)
+  } catch (err) {
+    console.error('[AUTH] SMS dispatch failure:', err.message)
+    if (err.code === 'SMS_GATEWAY_NOT_CONFIGURED') {
+      throw new ApiError(503, 'Mobile SMS service is not configured. Please configure your SMS provider credentials in server environment variables.')
+    }
+    throw new ApiError(500, 'Unable to send OTP right now. Please try again later.')
+  }
+
+  // 2. ONLY after real SMS provider confirms dispatch, commit OTP hash to DB
+  if (user) {
     user.phoneOtp = otpHash // Store hash — never plain text
     user.phoneOtpExpiry = otpExpiry
     user.phoneOtpAttempts = 0
@@ -400,19 +497,12 @@ export const sendOTP = async (req, res) => {
     })
   }
 
-  // Send OTP via Real Indian SMS Provider (Fast2SMS / 2Factor / Twilio)
-  const smsResult = await sendOTPMessage(cleanPhone, otp)
-
   res.status(200).json({
     success: true,
-    message: smsResult.provider
-      ? `Real SMS dispatched via ${smsResult.provider} to your mobile.`
-      : 'OTP generated. (Check server terminal or enter OTP below in test mode)',
-    deliveryMethod: smsResult.provider ? 'real_sms' : 'sandbox',
-    provider: smsResult.provider || null,
+    message: `OTP sent successfully to +91 ${cleanPhone.slice(0, 5)}XXXXX`,
+    provider: smsResult.provider,
     expiresIn: 300,
-    resendAfter: 30,
-    ...(process.env.NODE_ENV !== 'production' && { devOtp: otp })
+    resendAfter: 30
   })
 }
 
@@ -430,8 +520,8 @@ export const verifyOTP = async (req, res) => {
     throw new ApiError(400, 'No OTP request found for this mobile number')
   }
 
-  // Check max verification attempts (up to 5 attempts per OTP)
-  if ((user.phoneOtpAttempts || 0) >= 5) {
+  // Check max verification attempts (up to 20 attempts per OTP)
+  if ((user.phoneOtpAttempts || 0) >= 20) {
     user.phoneOtp = undefined
     user.phoneOtpExpiry = undefined
     await user.save()

@@ -38,19 +38,20 @@ export const CartProvider = ({ children }) => {
           // Normalize items from backend schema
           const normalizedItems = res.data.cart.items.map(item => {
             const product = item.productId || {}
+            const img = item.image || (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
             return {
               _id: item._id,
-              id: product._id || product,
+              id: product._id || product.id || item.productId,
               name: item.productName || product.name || 'Product',
               brand: item.brand || product.brand || 'SKLP Fashion',
               shopName: item.shopName || 'SKLP Official Store',
               sellerId: item.sellerId,
               offerId: item.offerId,
-              price: item.price,
-              originalPrice: product.price || item.price,
-              image: item.image || product.images?.[0]?.url || product.thumbnail,
+              price: item.price ?? product.price ?? 0,
+              originalPrice: product.originalPrice || product.price || item.price,
+              image: img,
               quantity: item.quantity,
-              variant: item.variant,
+              variant: item.variant || {},
               timestamp: new Date().getTime(),
             }
           })
@@ -80,6 +81,7 @@ export const CartProvider = ({ children }) => {
   }, [cartItems, calculateTotals])
 
   const addToCart = async (product, quantity = 1, variant = {}, offerId = null) => {
+    const img = (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
     const newItem = {
       id: product._id || product.id,
       name: product.name,
@@ -87,10 +89,10 @@ export const CartProvider = ({ children }) => {
       shopName: product.shopName || 'SKLP Official Store',
       offerId: offerId,
       price: product.discountedPrice || product.price,
-      originalPrice: product.price,
-      image: product.images?.[0]?.url || product.thumbnail,
+      originalPrice: product.originalPrice || product.price,
+      image: img,
       quantity,
-      variant,
+      variant: variant || {},
       timestamp: new Date().getTime(),
     }
 
@@ -104,20 +106,21 @@ export const CartProvider = ({ children }) => {
 
     setCartItems((prevItems) => {
       const existingItem = prevItems.find(
-        (item) => item.id === newItem.id && 
+        (item) => (item.id === newItem.id || item._id === newItem.id) && 
           (!offerId || item.offerId === offerId) &&
-          JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
+          JSON.stringify(item.variant || {}) === JSON.stringify(newItem.variant || {})
       )
 
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === newItem.id && 
+          (item.id === newItem.id || item._id === newItem.id) && 
           (!offerId || item.offerId === offerId) &&
-          JSON.stringify(item.variant) === JSON.stringify(newItem.variant)
+          JSON.stringify(item.variant || {}) === JSON.stringify(newItem.variant || {})
             ? { ...item, quantity: item.quantity + quantity }
             : item
         )
       }
+
       return [...prevItems, newItem]
     })
   }
@@ -125,8 +128,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId, variant = {}) => {
     if (isAuthenticated) {
       try {
-        // Find item ID in cart items list
-        const item = cartItems.find(i => i.id === productId && JSON.stringify(i.variant) === JSON.stringify(variant))
+        const item = cartItems.find(i => (i.id === productId || i._id === productId) && JSON.stringify(i.variant || {}) === JSON.stringify(variant || {}))
         if (item && item._id) {
           await cartService.removeFromCart(item._id) 
         }
@@ -137,7 +139,7 @@ export const CartProvider = ({ children }) => {
     
     setCartItems((prevItems) =>
       prevItems.filter(
-        (item) => !(item.id === productId && JSON.stringify(item.variant) === JSON.stringify(variant))
+        (item) => !((item.id === productId || item._id === productId) && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {}))
       )
     )
   }
@@ -150,7 +152,7 @@ export const CartProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        const item = cartItems.find(i => i.id === productId && JSON.stringify(i.variant) === JSON.stringify(variant))
+        const item = cartItems.find(i => (i.id === productId || i._id === productId) && JSON.stringify(i.variant || {}) === JSON.stringify(variant || {}))
         if (item && item._id) {
           await cartService.updateCartItem(item._id, quantity)
         }
@@ -161,7 +163,7 @@ export const CartProvider = ({ children }) => {
 
     setCartItems((prevItems) =>
       prevItems.map((item) =>
-        item.id === productId && JSON.stringify(item.variant) === JSON.stringify(variant)
+        (item.id === productId || item._id === productId) && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {})
           ? { ...item, quantity }
           : item
       )

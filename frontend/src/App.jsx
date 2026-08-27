@@ -102,13 +102,13 @@ function App() {
                   <Route path="/become-a-seller" element={<BecomeSeller />} />
                   <Route path="/shop/:slug" element={<ShopPage />} />
 
-                  {/* Auth Routes */}
+                  {/* Auth Routes — Pure Mobile OTP Login & Registration */}
                   <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/verify-email" element={<VerifyEmail />} />
-                  <Route path="/otp-login" element={<OTPLogin />} />
+                  <Route path="/register" element={<Navigate to="/login" replace />} />
+                  <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
+                  <Route path="/reset-password" element={<Navigate to="/login" replace />} />
+                  <Route path="/verify-email" element={<Navigate to="/login" replace />} />
+                  <Route path="/otp-login" element={<Navigate to="/login" replace />} />
 
                   {/* Admin Routes */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />

@@ -110,9 +110,10 @@ export const createOrder = async (req, res) => {
     throw new ApiError(400, 'Invalid payment method')
   }
 
-  // Validate phone
-  if (!/^[0-9]{10}$/.test(phone)) {
-    throw new ApiError(400, 'Invalid phone number')
+  // Validate phone (support +91 and spaces/formatting by taking last 10 digits)
+  const cleanPhone = phone ? String(phone).replace(/\D/g, '').slice(-10) : ''
+  if (!/^[0-9]{10}$/.test(cleanPhone)) {
+    throw new ApiError(400, 'Invalid phone number - please provide a valid 10-digit mobile number')
   }
 
   const cart = await Cart.findOne({ userId: req.user.id }).lean()

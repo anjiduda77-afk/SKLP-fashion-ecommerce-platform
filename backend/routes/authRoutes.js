@@ -7,6 +7,7 @@ import { verifyToken, verifyRefreshToken } from '../middleware/authMiddleware.js
 const router = express.Router()
 
 // Public Routes (Rate Limited)
+router.post('/firebase-login', authRateLimiter, asyncHandler(authController.firebaseLogin))
 router.post('/register', authRateLimiter, asyncHandler(authController.register))
 router.post('/login', authRateLimiter, asyncHandler(authController.login))
 router.post('/google-login', asyncHandler(authController.googleLogin))

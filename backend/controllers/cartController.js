@@ -44,8 +44,18 @@ const recalculateCart = async (cart) => {
 export const getCart = async (req, res) => {
   let cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId')
   if (!cart) {
-    cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
-  } else {
+    try {
+      cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
+    } catch (err) {
+      if (err.code === 11000) {
+        cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId')
+      } else {
+        throw err
+      }
+    }
+  }
+  
+  if (cart) {
     // Validate products still exist and are in stock
     let modified = false
     const validatedItems = cart.items.filter(item => {

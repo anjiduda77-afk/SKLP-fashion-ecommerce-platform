@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { 
-  FiCheckCircle, FiAlertCircle, FiClock, FiUploadCloud, 
-  FiBriefcase, FiShoppingBag, FiDollarSign, FiShield, 
-  FiArrowRight, FiArrowLeft, FiCheck, FiX, FiFileText
+  FiCheckCircle, FiAlertCircle, FiClock, 
+  FiBriefcase, FiShoppingBag, FiShield, 
+  FiArrowRight, FiArrowLeft, FiCheck
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerApplicationService, uploadService } from '@services/apiServices'

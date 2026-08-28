@@ -33,7 +33,6 @@ import Register from '@pages/Auth/Register'
 import ForgotPassword from '@pages/Auth/ForgotPassword'
 import ResetPassword from '@pages/Auth/ResetPassword'
 import VerifyEmail from '@pages/Auth/VerifyEmail'
-import OTPLogin from '@pages/Auth/OTPLogin'
 
 // Admin Pages
 import AdminDashboard from '@pages/Admin/Dashboard'
@@ -102,12 +101,12 @@ function App() {
                   <Route path="/become-a-seller" element={<BecomeSeller />} />
                   <Route path="/shop/:slug" element={<ShopPage />} />
 
-                  {/* Auth Routes — Pure Mobile OTP Login & Registration */}
+                  {/* Auth Routes */}
                   <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Navigate to="/login" replace />} />
-                  <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
-                  <Route path="/reset-password" element={<Navigate to="/login" replace />} />
-                  <Route path="/verify-email" element={<Navigate to="/login" replace />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/otp-login" element={<Navigate to="/login" replace />} />
 
                   {/* Admin Routes */}

@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FiStar,
   FiCheckCircle,
   FiThumbsUp,
-  FiThumbsDown,
   FiCamera,
   FiFilter,
   FiEdit3,
@@ -13,8 +12,7 @@ import {
   FiImage,
   FiMessageSquare,
   FiUploadCloud,
-  FiAward,
-  FiChevronDown
+  FiAward
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { useAuth } from '@context/AuthContext'

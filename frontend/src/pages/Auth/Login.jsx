@@ -1,18 +1,37 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useCallback } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { authService } from '@services/apiServices'
-import { auth, RecaptchaVerifier, signInWithPhoneNumber, FIREBASE_CONFIGURED } from '../../config/firebase'
+import { auth, googleProvider, signInWithPopup, FIREBASE_CONFIGURED } from '../../config/firebase'
 import { toast } from 'react-toastify'
 import { 
-  FiSmartphone, FiShield, FiLoader, 
-  FiEdit2, FiCheckCircle, FiLock 
+  FiMail, FiLock, FiEye, FiEyeOff, 
+  FiLoader, FiArrowRight, FiShield 
 } from 'react-icons/fi'
+import { FcGoogle } from 'react-icons/fc'
 
-const OTP_LENGTH = 6
-const RESEND_COOLDOWN = 10 // seconds
+// Helper to map Firebase Google Auth error codes to user-friendly messages
+const getFirebaseGoogleErrorMessage = (error) => {
+  if (!error) return 'Google sign-in failed. Please try again.'
+  switch (error.code) {
+    case 'auth/popup-closed-by-user':
+      return 'Google sign-in was cancelled before completion.'
+    case 'auth/popup-blocked':
+      return 'Popup was blocked by your browser. Please allow popups for this site.'
+    case 'auth/unauthorized-domain':
+      return 'Domain not authorized in Firebase Console. Please add this domain in Firebase Authentication settings.'
+    case 'auth/cancelled-popup-request':
+      return 'Previous sign-in request was cancelled.'
+    case 'auth/network-request-failed':
+      return 'Network connection error. Please check your internet connection.'
+    case 'auth/operation-not-allowed':
+      return 'Google Sign-In is not enabled in Firebase Console. Please enable Google provider.'
+    default:
+      return error.message || 'Unable to sign in with Google. Please try again.'
+  }
+}
 
 function Login() {
   const navigate = useNavigate()
@@ -23,103 +42,18 @@ function Login() {
   // Preserved destination after successful verification
   const redirectUrl = new URLSearchParams(location.search).get('redirect') || null
 
-  // Flow step: 'phone' -> 'otp'
-  const [step, setStep] = useState('phone')
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''))
+  // Email / Password Form State
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [otpLoading, setOtpLoading] = useState(false)
-  const [countdown, setCountdown] = useState(0)
-  const [otpError, setOtpError] = useState('')
-  
-  const otpRefs = useRef([])
-  const confirmationResultRef = useRef(null)
-  const recaptchaVerifierRef = useRef(null)
-
-  // Format mobile number for display: "+91 98765 43210"
-  const formattedPhoneDisplay = (raw) => {
-    const digits = raw.replace(/\D/g, '').slice(-10)
-    if (digits.length === 10) {
-      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
-    }
-    return `+91 ${digits}`
-  }
-
-  // ── Initialize RecaptchaVerifier Exactly Once in useEffect with StrictMode Guard ──
-  useEffect(() => {
-    let isMounted = true
-
-    const initVerifier = () => {
-      // Skip initialization if Firebase is not configured in this environment
-      if (!FIREBASE_CONFIGURED || !auth) return
-      if (typeof window === 'undefined') return
-      
-      // If already initialized in ref, reuse it
-      if (recaptchaVerifierRef.current) return
-
-      const container = document.getElementById('recaptcha-container')
-      if (!container) return
-
-      try {
-        // Clear any leftover DOM nodes from previous mounts/StrictMode
-        container.innerHTML = ''
-
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {
-            // reCAPTCHA solved automatically by invisible mode
-          },
-          'expired-callback': () => {
-            toast.warn('Security verification expired. Please try again.')
-          }
-        })
-
-        if (isMounted) {
-          recaptchaVerifierRef.current = verifier
-        }
-      } catch (err) {
-        console.warn('Firebase RecaptchaVerifier initialization notice:', err.message)
-      }
-    }
-
-    initVerifier()
-
-    return () => {
-      isMounted = false
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear()
-        } catch (e) {
-          // ignore
-        }
-        recaptchaVerifierRef.current = null
-      }
-      const container = document.getElementById('recaptcha-container')
-      if (container) {
-        container.innerHTML = ''
-      }
-    }
-  }, [])
-
-  // 30s Countdown timer for resending OTP
-  useEffect(() => {
-    if (countdown <= 0) return
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [countdown])
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   // Redirect handler after verified login
   const handleRedirectAfterLogin = useCallback((userObj) => {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
-    toast.success(`Welcome${name ? `, ${name}` : ''}! 🎉`)
+    toast.success(`Welcome back${name ? `, ${name}` : ''}! 🎉`)
 
     if (redirectUrl) {
       navigate(redirectUrl)
@@ -138,185 +72,63 @@ function Login() {
     }
   }, [navigate, redirectUrl])
 
-  // Handle phone input change (digits only, max 10)
-  const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-    setPhone(val)
-  }
-
-  const isPhoneValid = /^[6-9][0-9]{9}$/.test(phone)
-
-  // Helper to ensure RecaptchaVerifier is available
-  const getOrCreateVerifier = () => {
-    if (recaptchaVerifierRef.current) {
-      return recaptchaVerifierRef.current
-    }
-    const container = document.getElementById('recaptcha-container')
-    if (container) container.innerHTML = ''
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {},
-      'expired-callback': () => {
-        toast.warn('Security verification expired. Please try again.')
-      }
-    })
-    recaptchaVerifierRef.current = verifier
-    return verifier
-  }
-
-  // ── Step 1: Request Real Firebase SMS OTP ───────────────────────────────────
-  const handleSendOTP = async (e) => {
-    e?.preventDefault()
-    if (!isPhoneValid) {
-      toast.error('Please enter a valid 10-digit Indian mobile number')
-      return
-    }
-
-    // Guard: Firebase must be configured with real environment variables
-    if (!FIREBASE_CONFIGURED || !auth) {
-      toast.error('Firebase Phone Authentication is not configured for this environment. Please contact support.')
+  // ── 1. Email & Password Login Handler ──────────────────────────────────────
+  const handleEmailLogin = async (e) => {
+    e.preventDefault()
+    if (!email.trim() || !password) {
+      toast.error('Please enter both email and password.')
       return
     }
 
     setLoading(true)
-    setOtpError('')
     try {
-      // 1. Reuse existing single RecaptchaVerifier instance
-      const appVerifier = getOrCreateVerifier()
-
-      // 2. Format international E.164 phone number: +91XXXXXXXXXX
-      const formattedE164 = `+91${phone}`
-
-      // 3. Initiate Firebase Phone Authentication
-      const confirmationResult = await signInWithPhoneNumber(auth, formattedE164, appVerifier)
-      confirmationResultRef.current = confirmationResult
-
-      setStep('otp')
-      setCountdown(RESEND_COOLDOWN)
-      setOtp(Array(OTP_LENGTH).fill(''))
-      toast.success(`Real OTP SMS dispatched to ${formattedPhoneDisplay(phone)} via Firebase!`)
-      setTimeout(() => otpRefs.current[0]?.focus(), 250)
-    } catch (error) {
-      console.error('Firebase Phone Auth Error:', error)
-      let userMsg = 'Unable to send SMS OTP. Please try again later.'
-      if (error.code === 'auth/invalid-phone-number') {
-        userMsg = 'Invalid phone number format.'
-      } else if (error.code === 'auth/quota-exceeded') {
-        userMsg = 'SMS quota reached. Please try again later.'
-      } else if (error.code === 'auth/too-many-requests') {
-        userMsg = 'Too many attempts. Please wait a few moments.'
-      } else if (error.code === 'auth/captcha-check-failed') {
-        userMsg = 'Security verification failed. Please refresh and try again.'
-      } else if (error.message) {
-        userMsg = error.message
+      const res = await authService.login(email.trim().toLowerCase(), password, rememberMe)
+      if (res.data?.success && res.data?.token) {
+        const { user: userObj, token: authToken, refreshToken } = res.data
+        login(userObj, authToken, refreshToken)
+        handleRedirectAfterLogin(userObj)
+      } else {
+        throw new Error(res.data?.message || 'Login failed')
       }
-      toast.error(userMsg)
+    } catch (err) {
+      console.error('Email login error:', err)
+      const msg = err.response?.data?.message || 'Invalid email or password.'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  // ── Step 2: OTP Input Handlers ──────────────────────────────────────────────
-  const handleOtpChange = (index, value) => {
-    const digit = value.replace(/\D/g, '').slice(-1)
-    const newOtp = [...otp]
-    newOtp[index] = digit
-    setOtp(newOtp)
-    setOtpError('')
+  // ── 2. Google Login with Firebase Popup ────────────────────────────────────
+  const handleGoogleLogin = async () => {
+    if (googleLoading || loading) return
 
-    if (digit && index < OTP_LENGTH - 1) {
-      otpRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace') {
-      if (!otp[index] && index > 0) {
-        otpRefs.current[index - 1]?.focus()
-      } else {
-        const newOtp = [...otp]
-        newOtp[index] = ''
-        setOtp(newOtp)
-      }
-    }
-  }
-
-  const handleOtpPaste = (e) => {
-    e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
-    if (pasted.length === OTP_LENGTH) {
-      setOtp(pasted.split(''))
-      otpRefs.current[OTP_LENGTH - 1]?.focus()
-    }
-  }
-
-  // ── Step 3: Verify Firebase OTP & Exchange for Application JWT ──────────────
-  const handleVerifyOTP = async (e) => {
-    e?.preventDefault()
-    const otpString = otp.join('')
-    if (otpString.length < OTP_LENGTH) {
-      setOtpError('Please enter the complete 6-digit OTP')
+    if (!FIREBASE_CONFIGURED || !auth || !googleProvider) {
+      toast.error('Google Sign-In is not configured. Please check Firebase configuration.')
       return
     }
 
-    if (!confirmationResultRef.current) {
-      setOtpError('Verification session expired. Please request a new OTP.')
-      return
-    }
-
-    setOtpLoading(true)
-    setOtpError('')
+    setGoogleLoading(true)
     try {
-      // 1. Confirm OTP with Firebase Client SDK
-      const userCredential = await confirmationResultRef.current.confirm(otpString)
-      
-      // 2. Obtain cryptographically signed Firebase ID Token
-      const firebaseIdToken = await userCredential.user.getIdToken()
+      const userCredential = await signInWithPopup(auth, googleProvider)
+      const idToken = await userCredential.user.getIdToken()
 
-      // 3. Authenticate with Node.js backend using verified Firebase ID Token
-      const res = await authService.firebaseLogin(firebaseIdToken)
+      // Authenticate with backend using verified Firebase ID token
+      const res = await authService.firebaseLogin(idToken)
 
       if (res.data?.success && res.data?.token) {
         const { user: userObj, token: authToken, refreshToken } = res.data
         login(userObj, authToken, refreshToken)
         handleRedirectAfterLogin(userObj)
       } else {
-        throw new Error(res.data?.message || 'Authentication failed on server')
+        throw new Error(res.data?.message || 'Google authentication failed on server')
       }
     } catch (error) {
-      console.error('Firebase OTP Verification Error:', error)
-      let msg = 'Invalid or expired OTP. Please try again.'
-      if (error.code === 'auth/invalid-verification-code') {
-        msg = 'Incorrect 6-digit OTP. Please check your SMS and try again.'
-      } else if (error.code === 'auth/code-expired') {
-        msg = 'This OTP has expired. Please click Resend OTP.'
-      } else if (error.response?.data?.message) {
-        msg = error.response.data.message
-      }
-      setOtpError(msg)
+      console.error('Google Sign-In error:', error)
+      const msg = getFirebaseGoogleErrorMessage(error)
       toast.error(msg)
     } finally {
-      setOtpLoading(false)
-    }
-  }
-
-  // ── Resend OTP ──────────────────────────────────────────────────────────────
-  const handleResendOTP = async () => {
-    if (countdown > 0 || otpLoading) return
-    try {
-      const appVerifier = getOrCreateVerifier()
-      const formattedE164 = `+91${phone}`
-      const confirmationResult = await signInWithPhoneNumber(auth, formattedE164, appVerifier)
-      confirmationResultRef.current = confirmationResult
-
-      setCountdown(RESEND_COOLDOWN)
-      setOtp(Array(OTP_LENGTH).fill(''))
-      setOtpError('')
-      toast.success(`New OTP SMS sent to ${formattedPhoneDisplay(phone)}`)
-      otpRefs.current[0]?.focus()
-    } catch (error) {
-      console.error('Firebase Resend Error:', error)
-      toast.error(error.message || 'Failed to resend OTP. Please try again.')
+      setGoogleLoading(false)
     }
   }
 
@@ -325,19 +137,16 @@ function Login() {
     ? 'bg-[#0e0e0e]/95 border-white/10 text-white shadow-[0_12px_45px_rgba(0,0,0,0.6)]'
     : 'bg-white/95 border-gray-200/80 text-gray-900 shadow-[0_12px_45px_rgba(0,0,0,0.06)]'
 
-  const inputClass = `w-full text-sm py-4 rounded-2xl focus:ring-2 focus:ring-amber-400/50 outline-none bg-transparent border transition-all duration-200 ${
+  const inputClass = `w-full text-sm py-3.5 pl-10 pr-10 rounded-2xl focus:ring-2 focus:ring-amber-400/50 outline-none bg-transparent border transition-all duration-200 ${
     isDarkMode
-      ? 'border-white/15 text-white placeholder:text-white/30 focus:border-amber-400/50'
-      : 'border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-amber-500/50'
+      ? 'border-white/15 text-white placeholder:text-white/30 focus:border-amber-400/50 bg-white/5'
+      : 'border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-amber-500/50 bg-gray-50'
   }`
 
-  const primaryBtn = 'w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-bold text-sm uppercase tracking-wider rounded-2xl hover:from-amber-400 hover:to-yellow-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]'
+  const primaryBtn = 'w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-bold text-sm uppercase tracking-wider rounded-2xl hover:from-amber-400 hover:to-yellow-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]'
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4">
-      {/* Exactly single container for Firebase reCAPTCHA */}
-      <div id="recaptcha-container"></div>
-
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -347,201 +156,156 @@ function Login() {
         <div className={`p-8 md:p-10 rounded-3xl border backdrop-blur-xl ${cardBg}`}>
           {/* Header Brand */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 mb-3 font-serif font-black text-xl">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 mb-3 font-serif font-black text-xl shadow-inner">
               S
             </div>
             <h2 className="text-xs uppercase tracking-[0.25em] font-bold text-amber-500">
               SKLP Fashion
             </h2>
             <h1 className="text-2xl font-serif font-bold tracking-tight mt-1">
-              {step === 'phone' ? 'Mobile Sign In' : 'Verify Mobile OTP'}
+              Welcome Back
             </h1>
             <p className="text-xs opacity-65 mt-1.5 leading-relaxed">
-              {step === 'phone'
-                ? 'Enter your 10-digit mobile number to receive a real SMS OTP.'
-                : `Enter the 6-digit OTP sent to ${formattedPhoneDisplay(phone)}`}
+              Sign in with your email or Google to continue shopping luxury fashion.
             </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            {/* ── STEP 1: MOBILE NUMBER INPUT ── */}
-            {step === 'phone' && (
-              <motion.form
-                key="phone-step"
-                initial={{ opacity: 0, x: -15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 15 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleSendOTP}
-                className="space-y-6"
-              >
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-75">
-                    Mobile Number
-                  </label>
-                  <div className="relative flex items-center">
-                    {/* Country Code Pill */}
-                    <div className={`flex items-center gap-1.5 px-3.5 py-3.5 rounded-l-2xl border-y border-l text-xs font-bold ${
-                      isDarkMode
-                        ? 'border-white/15 bg-white/5 text-amber-400'
-                        : 'border-gray-200 bg-gray-50 text-amber-600'
-                    }`}>
-                      <span>🇮🇳</span>
-                      <span>+91</span>
-                    </div>
-
-                    {/* Phone Input */}
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={10}
-                      value={phone}
-                      onChange={handlePhoneChange}
-                      placeholder="Enter 10-digit mobile number"
-                      className={`${inputClass} rounded-l-none pl-3 font-semibold tracking-wider`}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                  {phone.length > 0 && !isPhoneValid && (
-                    <p className="text-[11px] text-amber-500 mt-1.5 font-medium">
-                      Please enter a valid 10-digit Indian number starting with 6, 7, 8, or 9
-                    </p>
-                  )}
-                </div>
-
-                {/* Submit / Get OTP Button */}
-                <button
-                  type="submit"
-                  disabled={!isPhoneValid || loading}
-                  className={primaryBtn}
-                >
-                  {loading ? (
-                    <>
-                      <FiLoader size={16} className="animate-spin" /> Requesting SMS OTP...
-                    </>
-                  ) : (
-                    'CONTINUE'
-                  )}
-                </button>
-
-                {/* Terms of Service Notice */}
-                <p className="text-[11px] text-center opacity-60 leading-relaxed pt-2">
-                  By continuing, you agree to SKLP Fashion's{' '}
-                  <span className="text-amber-500 underline cursor-pointer">Terms of Service</span> and{' '}
-                  <span className="text-amber-500 underline cursor-pointer">Privacy Policy</span>.
-                </p>
-
-                {/* Security Badge */}
-                <div className="flex items-center justify-center gap-2 pt-2 text-[11px] font-bold text-amber-500/80">
-                  <FiShield size={13} />
-                  <span>Google Firebase Verified Real SMS Authentication</span>
-                </div>
-              </motion.form>
+          {/* ── GOOGLE SIGN-IN BUTTON ── */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || loading}
+            className={`w-full py-3.5 px-4 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 shadow-sm active:scale-[0.98] mb-6 ${
+              isDarkMode
+                ? 'border-white/15 bg-white/5 hover:bg-white/10 text-white hover:border-amber-400/40'
+                : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800 hover:border-amber-500/40'
+            }`}
+          >
+            {googleLoading ? (
+              <>
+                <FiLoader size={18} className="animate-spin text-amber-500" />
+                <span>Connecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <FcGoogle size={20} />
+                <span>Continue with Google</span>
+              </>
             )}
+          </button>
 
-            {/* ── STEP 2: 6-DIGIT OTP VERIFICATION ── */}
-            {step === 'otp' && (
-              <motion.form
-                key="otp-step"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleVerifyOTP}
-                className="space-y-6"
-              >
-                {/* Change Phone Button */}
-                <div className="flex items-center justify-between p-3 rounded-2xl border border-current/10 text-xs">
-                  <div className="flex items-center gap-2 font-mono font-bold">
-                    <FiSmartphone className="text-amber-500" />
-                    <span>{formattedPhoneDisplay(phone)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep('phone')
-                      setOtp(Array(OTP_LENGTH).fill(''))
-                      setOtpError('')
-                    }}
-                    className="flex items-center gap-1 font-bold text-amber-500 hover:underline"
-                  >
-                    <FiEdit2 size={12} /> Change Number
-                  </button>
-                </div>
+          {/* ── DIVIDER ── */}
+          <div className="relative flex items-center justify-center mb-6">
+            <div className="border-t border-current/10 w-full"></div>
+            <span className="bg-transparent px-3 text-[11px] uppercase tracking-widest font-bold opacity-50 absolute">
+              or sign in with email
+            </span>
+          </div>
 
-                {/* 6 OTP Input Boxes */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-3 opacity-75 text-center">
-                    Enter 6-Digit SMS OTP
-                  </label>
-                  <div className="flex justify-between gap-2">
-                    {otp.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => (otpRefs.current[index] = el)}
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                        onPaste={handleOtpPaste}
-                        className={`w-12 h-14 text-center text-xl font-bold font-mono rounded-2xl border outline-none transition-all duration-200 ${
-                          isDarkMode
-                            ? 'border-white/15 bg-white/5 text-white focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40'
-                            : 'border-gray-200 bg-gray-50 text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40'
-                        } ${otpError ? 'border-red-500 text-red-500' : ''}`}
-                      />
-                    ))}
-                  </div>
+          {/* ── EMAIL & PASSWORD FORM ── */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            {/* Email Input */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
+                Email Address
+              </label>
+              <div className="relative flex items-center">
+                <FiMail className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className={inputClass}
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
 
-                  {otpError && (
-                    <p className="text-xs text-red-400 text-center font-medium mt-3">
-                      {otpError}
-                    </p>
-                  )}
-                </div>
-
-                {/* Verify Button */}
-                <button
-                  type="submit"
-                  disabled={otp.join('').length < OTP_LENGTH || otpLoading}
-                  className={primaryBtn}
+            {/* Password Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider opacity-75">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-amber-500 font-semibold hover:underline"
                 >
-                  {otpLoading ? (
-                    <>
-                      <FiLoader size={16} className="animate-spin" /> Verifying with Firebase...
-                    </>
-                  ) : (
-                    'VERIFY OTP'
-                  )}
+                  Forgot Password?
+                </Link>
+              </div>
+              <div className="relative flex items-center">
+                <FiLock className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className={inputClass}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-gray-400 hover:text-amber-500 transition-colors"
+                >
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                 </button>
+              </div>
+            </div>
 
-                {/* Resend OTP & Timer */}
-                <div className="text-center pt-2">
-                  {countdown > 0 ? (
-                    <p className="text-xs opacity-65 font-medium">
-                      Resend OTP in{' '}
-                      <span className="text-amber-500 font-bold font-mono">
-                        00:{countdown < 10 ? `0${countdown}` : countdown}
-                      </span>
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleResendOTP}
-                      className="text-xs font-bold text-amber-500 hover:underline uppercase tracking-wider"
-                    >
-                      RESEND OTP
-                    </button>
-                  )}
-                </div>
-              </motion.form>
-            )}
-          </AnimatePresence>
+            {/* Remember Me */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs opacity-80">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-400/50"
+                />
+                <span>Remember me for 30 days</span>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading || googleLoading}
+              className={`${primaryBtn} mt-2`}
+            >
+              {loading ? (
+                <>
+                  <FiLoader size={16} className="animate-spin" /> Signing In...
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <FiArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* ── FOOTER: CREATE ACCOUNT LINK ── */}
+          <div className="mt-8 pt-6 border-t border-current/10 text-center">
+            <p className="text-xs opacity-75">
+              Don't have an account yet?{' '}
+              <Link
+                to="/register"
+                className="font-bold text-amber-500 hover:underline inline-flex items-center gap-1 ml-1"
+              >
+                Create an Account
+              </Link>
+            </p>
+          </div>
+
+          {/* Security Badge */}
+          <div className="flex items-center justify-center gap-1.5 pt-4 text-[11px] font-medium opacity-50">
+            <FiShield size={12} className="text-amber-500" />
+            <span>256-bit SSL Encrypted & Google Firebase Secured</span>
+          </div>
         </div>
       </motion.div>
     </div>

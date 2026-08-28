@@ -3,7 +3,7 @@ import { useTheme } from '@context/ThemeContext'
 import {
   FiSearch, FiUsers, FiShield, FiUser,
   FiMail, FiPhone, FiCheckCircle, FiSlash, FiEye,
-  FiPlus, FiTrash2, FiX, FiCheck, FiShoppingBag, FiTruck, FiKey
+  FiPlus, FiTrash2, FiX, FiShoppingBag, FiTruck
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import adminService from '../../services/adminService'

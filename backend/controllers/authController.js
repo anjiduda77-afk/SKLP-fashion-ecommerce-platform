@@ -343,7 +343,7 @@ export const googleLogin = async (req, res) => {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// FIREBASE PHONE AUTHENTICATION — Google-Verified Mobile Identity Resolution
+// FIREBASE GOOGLE AUTHENTICATION — Google-Verified Identity Resolution
 // ──────────────────────────────────────────────────────────────────────────────
 export const firebaseLogin = async (req, res) => {
   const authHeader = req.headers.authorization
@@ -361,21 +361,31 @@ export const firebaseLogin = async (req, res) => {
     throw new ApiError(401, 'Invalid or expired Firebase authentication token')
   }
 
-  const { uid, phone_number } = decodedToken
+  const { uid, email, name, picture, phone_number } = decodedToken
 
-  if (!phone_number && !uid) {
-    throw new ApiError(400, 'Verified phone number or UID missing from Firebase token')
+  if (!email && !uid && !phone_number) {
+    throw new ApiError(400, 'Verified identity or UID missing from Firebase token')
   }
 
-  // Extract clean 10-digit Indian phone number (e.g. +916301568113 -> 6301568113)
+  const searchEmail = email ? email.toLowerCase().trim() : null
   const cleanPhone = phone_number ? normalizeIndianPhone(phone_number) : null
 
-  // Resolve user: search by firebaseUid OR verified phone number
+  // Resolve user: search by firebaseUid OR email OR verified phone
   const query = []
   if (uid) query.push({ firebaseUid: uid })
+  if (searchEmail) query.push({ email: searchEmail })
   if (cleanPhone) query.push({ phone: cleanPhone })
 
   let user = await User.findOne({ $or: query })
+
+  // Parse first and last name from display name
+  let firstName = 'Customer'
+  let lastName = 'User'
+  if (name) {
+    const parts = name.trim().split(' ')
+    firstName = parts[0] || 'Customer'
+    lastName = parts.slice(1).join(' ') || 'User'
+  }
 
   if (user) {
     // Check account status
@@ -386,28 +396,42 @@ export const firebaseLogin = async (req, res) => {
       throw new ApiError(403, 'This account has been deleted.')
     }
 
-    // Link Firebase UID and verify phone if not already linked
+    // Link Firebase UID and profile details if not already linked
     if (uid && user.firebaseUid !== uid) {
       user.firebaseUid = uid
     }
-    if (cleanPhone && !user.phone) {
-      user.phone = cleanPhone
+    if (searchEmail && !user.email) {
+      user.email = searchEmail
     }
-    user.isPhoneVerified = true
-    user.authProvider = user.authProvider || 'firebase'
+    if (decodedToken.email_verified || searchEmail) {
+      user.isEmailVerified = true
+    }
+    if (picture && (!user.avatar || !user.avatar.url)) {
+      user.avatar = { url: picture, publicId: null }
+    }
+    if ((!user.firstName || user.firstName === 'Customer') && firstName !== 'Customer') {
+      user.firstName = firstName
+    }
+    if ((!user.lastName || user.lastName === 'User') && lastName !== 'User') {
+      user.lastName = lastName
+    }
+    user.authProvider = user.authProvider || 'google'
+    await user.save()
   } else {
     // Automatically create new CUSTOMER account with default customer role
     user = await User.create({
-      firstName: 'Customer',
-      lastName: cleanPhone ? cleanPhone.slice(-4) : 'User',
+      firstName,
+      lastName,
+      email: searchEmail || undefined,
       phone: cleanPhone || undefined,
       firebaseUid: uid,
-      authProvider: 'firebase',
+      authProvider: 'google',
       role: 'customer',
       status: 'active',
       isActive: true,
-      isPhoneVerified: true,
-      isEmailVerified: false
+      isEmailVerified: Boolean(decodedToken.email_verified || searchEmail),
+      isPhoneVerified: false,
+      avatar: picture ? { url: picture, publicId: null } : undefined
     })
   }
 
@@ -416,7 +440,7 @@ export const firebaseLogin = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Firebase mobile login successful',
+    message: 'Google login successful',
     user: user.toJSON(),
     token: authToken,
     refreshToken: rToken
@@ -465,13 +489,18 @@ export const sendOTP = async (req, res) => {
     smsResult = await sendOTPMessage(cleanPhone, otp)
   } catch (err) {
     console.error('[AUTH] SMS dispatch failure:', err.message)
-    if (err.code === 'SMS_GATEWAY_NOT_CONFIGURED') {
-      throw new ApiError(503, 'Mobile SMS service is not configured. Please configure your SMS provider credentials in server environment variables.')
+    if (process.env.NODE_ENV === 'development' || process.env.OTP_MODE === 'development') {
+      console.log(`\n=========================================\n[SKLP DEV OTP] Real OTP for +91${cleanPhone}: ${otp}\n=========================================\n`)
+      smsResult = { provider: 'Development Mode', devOtp: otp }
+    } else {
+      if (err.code === 'SMS_GATEWAY_NOT_CONFIGURED') {
+        throw new ApiError(503, 'Mobile SMS service is not configured. Please configure your SMS provider credentials in server environment variables.')
+      }
+      throw new ApiError(500, 'Unable to send OTP right now. Please try again later.')
     }
-    throw new ApiError(500, 'Unable to send OTP right now. Please try again later.')
   }
 
-  // 2. ONLY after real SMS provider confirms dispatch, commit OTP hash to DB
+  // 2. ONLY after SMS provider or dev mode confirms dispatch, commit OTP hash to DB
   if (user) {
     user.phoneOtp = otpHash // Store hash — never plain text
     user.phoneOtpExpiry = otpExpiry
@@ -499,8 +528,9 @@ export const sendOTP = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: `OTP sent successfully to +91 ${cleanPhone.slice(0, 5)}XXXXX`,
+    message: `OTP dispatched to +91 ${cleanPhone.slice(0, 5)}XXXXX`,
     provider: smsResult.provider,
+    devOtp: (process.env.NODE_ENV === 'development' || process.env.OTP_MODE === 'development') ? otp : undefined,
     expiresIn: 300,
     resendAfter: 30
   })

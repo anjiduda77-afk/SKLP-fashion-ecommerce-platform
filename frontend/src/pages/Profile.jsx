@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useCurrency } from '@context/CurrencyContext'
@@ -11,8 +9,8 @@ import {
   FiUser, FiMail, FiPhone, FiLock, FiMapPin,
   FiEdit2, FiTrash2, FiPlus, FiSave, FiX, FiEye, FiEyeOff,
   FiCheckCircle, FiShield, FiSmartphone, FiGlobe, FiMoon, FiSun,
-  FiBell, FiCreditCard, FiDownload, FiAlertTriangle, FiSliders,
-  FiTag, FiTruck, FiClock, FiKey, FiLogOut, FiCheck, FiRefreshCw
+  FiBell, FiCreditCard, FiDownload, FiAlertTriangle,
+  FiTag, FiTruck, FiCheck
 } from 'react-icons/fi'
 
 const TABS = [
@@ -412,7 +410,6 @@ function Profile() {
   const { user, updateUser, isAuthenticated, loading: authLoading, logout } = useAuth()
   const { isDarkMode, toggleTheme, language, changeLanguage } = useTheme()
   const { currency, setCurrency, RATES } = useCurrency()
-  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState('profile')

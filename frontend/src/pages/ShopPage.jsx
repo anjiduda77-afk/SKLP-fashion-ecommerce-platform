@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useTheme } from '@context/ThemeContext'
 import { useCart } from '@context/CartContext'
 import { 
   FiShoppingBag, FiStar, FiShield, FiTruck, 
-  FiRotateCcw, FiCheckCircle, FiSearch, FiSliders, FiHeart
+  FiRotateCcw, FiCheckCircle, FiSearch
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { shopService } from '@services/apiServices'
@@ -21,11 +20,7 @@ function ShopPage() {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('products')
 
-  useEffect(() => {
-    fetchShopData()
-  }, [slug])
-
-  const fetchShopData = async () => {
+  const fetchShopData = useCallback(async () => {
     try {
       setLoading(true)
       const [shopRes, productsRes] = await Promise.all([
@@ -40,7 +35,11 @@ function ShopPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [slug])
+
+  useEffect(() => {
+    fetchShopData()
+  }, [fetchShopData])
 
   const cardBg = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900'

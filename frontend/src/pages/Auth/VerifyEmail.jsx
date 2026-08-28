@@ -6,7 +6,7 @@ import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'
 import { 
-  FiMail, FiCheckCircle, FiAlertTriangle, 
+  FiCheckCircle, FiAlertTriangle, 
   FiArrowLeft, FiSend, FiLoader, FiShoppingBag 
 } from 'react-icons/fi'
 

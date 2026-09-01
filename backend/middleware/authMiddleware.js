@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { ApiError, asyncHandler } from './errorHandler.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'sklp_fashion_key_anji7206';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || '1b5bc5004ff832818fb5099e47e098765d8a5913048d028f8dabcb39ee649c8735d88a2d8084da7e1bcac6be2a735d1b6cffef78be668597b84fe9564b1f7976';
+
 // Verify JWT token
 export const verifyToken = asyncHandler((req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -10,7 +13,7 @@ export const verifyToken = asyncHandler((req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -83,7 +86,7 @@ export const optionalAuth = (req, res, next) => {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
     } catch (error) {
       // Token is invalid but it's optional, so we don't fail
@@ -103,7 +106,7 @@ export const verifyRefreshToken = asyncHandler((req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
     req.user = decoded;
     next();
   } catch (error) {

@@ -22,14 +22,17 @@ export const normalizeIndianPhone = (rawPhone) => {
 // Hash OTP with SHA-256 — OTP stored as hash, never plain text
 const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
 
-const generateToken = (user) => {
+const JWT_SECRET = process.env.JWT_SECRET || 'sklp_fashion_key_anji7206'
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || '1b5bc5004ff832818fb5099e47e098765d8a5913048d028f8dabcb39ee649c8735d88a2d8084da7e1bcac6be2a735d1b6cffef78be668597b84fe9564b1f7976'
+
+const generateToken = (user, customExpire) => {
   const payload = {
     id: user._id.toString(),
     email: user.email,
     role: user.role,
     provider: user.authProvider
   }
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' })
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: customExpire || process.env.JWT_EXPIRE || '7d' })
 }
 
 const generateRefreshToken = (user) => {
@@ -39,7 +42,7 @@ const generateRefreshToken = (user) => {
     role: user.role,
     type: 'refresh'
   }
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' })
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' })
 }
 
 // Extract device info from request
@@ -253,11 +256,7 @@ export const login = async (req, res) => {
 
   // Generate tokens
   const tokenExpire = rememberMe ? '30d' : (process.env.JWT_EXPIRE || '7d')
-  const token = jwt.sign(
-    { id: user._id.toString(), email: user.email, role: user.role, provider: user.authProvider },
-    process.env.JWT_SECRET,
-    { expiresIn: tokenExpire }
-  )
+  const token = generateToken(user, tokenExpire)
   const refreshToken = generateRefreshToken(user)
 
   // Store refresh token with device info
@@ -873,7 +872,7 @@ export const refreshToken = async (req, res) => {
 
   let decoded
   try {
-    decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+    decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET)
   } catch (err) {
     throw new ApiError(401, 'Invalid or expired refresh token')
   }

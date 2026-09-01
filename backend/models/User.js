@@ -304,8 +304,11 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 // Method to get user info without sensitive data
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
-  // Add string id alias for frontend compatibility
+  // Add string id and Firebase uid aliases for frontend compatibility
   user.id = user._id.toString();
+  user.uid = user.firebaseUid || user._id.toString();
+  user.name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Customer';
+  user.photoURL = user.avatar?.url || null;
   // Scrub sensitive internal fields
   delete user.password;
   delete user.twoFactorSecret;

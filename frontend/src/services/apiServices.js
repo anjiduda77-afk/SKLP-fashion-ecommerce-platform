@@ -92,14 +92,15 @@ export const uploadService = {
  * Auth API Service
  */
 export const authService = {
-  firebaseLogin: (idToken) => apiClient.post('/auth/firebase-login', { idToken }),
+  googleAuth: (idToken) => apiClient.post('/auth/google', { idToken }, { headers: { Authorization: `Bearer ${idToken}` } }),
+  firebaseLogin: (idToken) => apiClient.post('/auth/google', { idToken }, { headers: { Authorization: `Bearer ${idToken}` } }),
+  googleLogin: (token) => apiClient.post('/auth/google', { token }, { headers: { Authorization: `Bearer ${token}` } }),
   login: (email, password, rememberMe) =>
     apiClient.post('/auth/login', { email, password, rememberMe }),
   register: (data) => apiClient.post('/auth/register', data),
   sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
   resendOTP: (phone) => apiClient.post('/auth/resend-otp', { phone }),
-  googleLogin: (token) => apiClient.post('/auth/google-login', { token }),
   refreshToken: (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   logoutAll: () => apiClient.post('/auth/logout-all'),

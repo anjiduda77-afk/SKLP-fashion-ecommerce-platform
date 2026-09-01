@@ -36,7 +36,6 @@ const getFirebaseGoogleErrorMessage = (error) => {
 }
 
 function PasswordStrengthBar({ password }) {
-  const { t } = useTranslation()
   const checks = [
     { label: '8+ chars', pass: password.length >= 8 },
     { label: 'Uppercase', pass: /[A-Z]/.test(password) },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -174,10 +174,9 @@ function AvatarModal({ currentAvatar, onSelectAvatar, onClose, isDarkMode }) {
 
 function Profile() {
   const { t } = useTranslation()
-  const { user, updateUser, isAuthenticated, loading: authLoading, logout } = useAuth()
+  const { user, updateUser, isAuthenticated, loading: authLoading } = useAuth()
   const { isDarkMode, toggleTheme, language, changeLanguage } = useTheme()
   const { currency, setCurrency, RATES } = useCurrency()
-  const navigate = useNavigate()
 
   const TABS = [
     { id: 'profile',       label: t('profile.personalDetails', 'Personal Details'),     icon: FiUser,       desc: t('profile.personalInfo', 'Name, contact, avatar') },

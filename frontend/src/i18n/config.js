@@ -11,7 +11,7 @@ const getInitialLanguage = () => {
     if (saved && ['en', 'te', 'hi'].includes(saved)) {
       return saved
     }
-  } catch (e) {}
+  } catch (_e) { /* localStorage unavailable in SSR/sandboxed env */ }
   return 'en'
 }
 

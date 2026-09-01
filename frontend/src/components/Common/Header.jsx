@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { 
   FiSearch, FiShoppingCart, FiHeart, FiUser, 
   FiSun, FiMoon, FiMic, FiX, FiArrowRight,
-  FiZap, FiMail, FiAlertCircle
+  FiZap
 } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'

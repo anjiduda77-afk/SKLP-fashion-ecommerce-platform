@@ -11,7 +11,6 @@ import {
 } from 'react-icons/fi'
 
 function PasswordStrengthBar({ password }) {
-  const { t } = useTranslation()
   const checks = [
     { label: '8+ characters', pass: password.length >= 8 },
     { label: 'Uppercase letter', pass: /[A-Z]/.test(password) },

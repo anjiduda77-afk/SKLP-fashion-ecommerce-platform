@@ -57,6 +57,13 @@ export default function ExitIntentPopup() {
     }
   }, [campaign, variant, triggerPopup]);
 
+  const handleClose = () => {
+    setIsOpen(false);
+    if (campaign?._id) {
+      sessionStorage.setItem(`sklp_exit_dismiss_${campaign._id}`, 'true');
+    }
+  };
+
   // Escape key to close
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -64,14 +71,8 @@ export default function ExitIntentPopup() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const handleClose = () => {
-    setIsOpen(false);
-    if (campaign?._id) {
-      sessionStorage.setItem(`sklp_exit_dismiss_${campaign._id}`, 'true');
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleCopyCoupon = (e) => {
     e.stopPropagation();

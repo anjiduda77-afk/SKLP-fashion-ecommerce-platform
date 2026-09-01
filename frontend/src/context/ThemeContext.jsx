@@ -9,7 +9,7 @@ const getInitialTheme = () => {
     if (saved === 'light' || saved === 'dark') {
       return saved
     }
-  } catch (e) {}
+  } catch (_e) { /* localStorage unavailable in SSR/sandboxed env */ }
   return 'dark'
 }
 
@@ -19,7 +19,7 @@ const getInitialLanguage = () => {
     if (saved && ['en', 'te', 'hi'].includes(saved)) {
       return saved
     }
-  } catch (e) {}
+  } catch (_e) { /* localStorage unavailable in SSR/sandboxed env */ }
   return 'en'
 }
 

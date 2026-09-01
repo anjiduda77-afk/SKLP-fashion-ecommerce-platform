@@ -1,6 +1,11 @@
 import axios from 'axios'
 
-let rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim().replace(/['";]/g, '');
+// Detect environment: use Render URL as production fallback if VITE_API_URL is not set
+const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const PROD_API = 'https://sklp-fashion-ecommerce-platform.onrender.com/api';
+const DEV_API  = 'http://localhost:5000/api';
+
+let rawUrl = (import.meta.env.VITE_API_URL || (isProd ? PROD_API : DEV_API)).trim().replace(/['";]/g, '');
 
 // Robust URL formatting: ensure it ends with /api and has no trailing slashes
 let API_URL = rawUrl.replace(/\/+$/, '');

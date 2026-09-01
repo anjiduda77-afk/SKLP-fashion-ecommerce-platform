@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "sklp-fashion-store-9fa5d"
+  },
+  "targets": {
+    "sklp-fashion-store-9fa5d": {
+      "hosting": {
+        "frontend": [
+          "sklp-fashion-store-9fa5d-7f4d3"
+        ]
+      }
+    }
+  }
+}

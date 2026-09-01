@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { authService } from '@services/apiServices'
 import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'
@@ -10,6 +11,7 @@ import {
 } from 'react-icons/fi'
 
 function PasswordStrengthBar({ password }) {
+  const { t } = useTranslation()
   const checks = [
     { label: '8+ characters', pass: password.length >= 8 },
     { label: 'Uppercase letter', pass: /[A-Z]/.test(password) },
@@ -55,6 +57,7 @@ function PasswordStrengthBar({ password }) {
 }
 
 function ResetPassword() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { isDarkMode } = useTheme()
@@ -71,17 +74,17 @@ function ResetPassword() {
     e.preventDefault()
 
     if (!token) {
-      toast.error('Invalid or missing password reset token.')
+      toast.error(t('errors.invalidToken', 'Invalid or missing password reset token.'))
       return
     }
 
     if (password.length < 8) {
-      toast.error('Password must be at least 8 characters long.')
+      toast.error(t('profile.minPasswordLength', 'Password must be at least 8 characters long.'))
       return
     }
 
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match.')
+      toast.error(t('profile.passwordMismatch', 'Passwords do not match.'))
       return
     }
 
@@ -90,13 +93,13 @@ function ResetPassword() {
       const response = await authService.resetPassword(token, password)
       if (response.data?.success) {
         setSuccess(true)
-        toast.success('Password reset successfully! Redirecting to login...')
+        toast.success(t('auth.passwordResetSuccess', 'Password reset successfully! Redirecting to login...'))
         setTimeout(() => {
           navigate('/login')
         }, 2000)
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Password reset failed. The link may have expired.')
+      toast.error(error.response?.data?.message || t('errors.serverError', 'Password reset failed. The link may have expired.'))
     } finally {
       setLoading(false)
     }
@@ -128,7 +131,7 @@ function ResetPassword() {
             to="/login"
             className="inline-flex items-center gap-2 text-xs font-bold text-amber-500 hover:underline mb-6"
           >
-            <FiArrowLeft size={14} /> Back to Sign In
+            <FiArrowLeft size={14} /> {t('auth.backToLogin', 'Back to Sign In')}
           </Link>
 
           {!token ? (
@@ -136,15 +139,15 @@ function ResetPassword() {
               <div className="w-16 h-16 rounded-full bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center mx-auto text-red-500">
                 <FiAlertTriangle size={28} />
               </div>
-              <h2 className="text-xl font-serif font-bold">Invalid Reset Link</h2>
+              <h2 className="text-xl font-serif font-bold">{t('errors.invalidToken', 'Invalid Reset Link')}</h2>
               <p className="text-xs opacity-65 leading-relaxed">
-                This password reset link is invalid or incomplete. Please request a new link from the forgot password page.
+                {t('errors.expiredToken', 'This password reset link is invalid or incomplete. Please request a new link from the forgot password page.')}
               </p>
               <Link
                 to="/forgot-password"
                 className={`mt-4 inline-block px-6 py-3 rounded-2xl bg-amber-500 text-black font-bold text-xs uppercase tracking-wider`}
               >
-                Request New Link
+                {t('auth.requestNewLink', 'Request New Link')}
               </Link>
             </div>
           ) : success ? (
@@ -152,15 +155,15 @@ function ResetPassword() {
               <div className="w-16 h-16 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto text-green-500">
                 <FiCheckCircle size={32} />
               </div>
-              <h2 className="text-2xl font-serif font-bold text-amber-500">Password Updated!</h2>
+              <h2 className="text-2xl font-serif font-bold text-amber-500">{t('auth.passwordUpdated', 'Password Updated!')}</h2>
               <p className="text-xs opacity-75">
-                Your password has been successfully reset. Redirecting you to sign in...
+                {t('auth.passwordResetSuccess', 'Your password has been successfully reset. Redirecting you to sign in...')}
               </p>
               <Link
                 to="/login"
                 className={`mt-4 inline-block px-6 py-3 rounded-2xl bg-amber-500 text-black font-bold text-xs uppercase tracking-wider`}
               >
-                Sign In Now
+                {t('auth.signInNow', 'Sign In Now')}
               </Link>
             </div>
           ) : (
@@ -170,9 +173,9 @@ function ResetPassword() {
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-500">
                   <FiLock size={24} />
                 </div>
-                <h1 className="text-2xl font-serif font-bold tracking-tight">Set New Password</h1>
+                <h1 className="text-2xl font-serif font-bold tracking-tight">{t('auth.setNewPassword', 'Set New Password')}</h1>
                 <p className="text-xs opacity-65 mt-1.5">
-                  Create a strong, secure password for your SKLP account.
+                  {t('auth.setNewPasswordSubtitle', 'Create a strong, secure password for your SKLP account.')}
                 </p>
               </div>
 
@@ -180,7 +183,7 @@ function ResetPassword() {
                 {/* New Password */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-75">
-                    New Password
+                    {t('auth.newPassword', 'New Password')}
                   </label>
                   <div className="relative">
                     <FiLock className="absolute left-4 top-4 text-amber-500/60" size={16} />
@@ -188,7 +191,7 @@ function ResetPassword() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter new password"
+                      placeholder={t('auth.enterNewPassword', 'Enter new password')}
                       className={`${inputClass} pl-11 pr-11`}
                       required
                     />
@@ -206,7 +209,7 @@ function ResetPassword() {
                 {/* Confirm Password */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-75">
-                    Confirm New Password
+                    {t('auth.confirmPassword', 'Confirm New Password')}
                   </label>
                   <div className="relative">
                     <FiShield className="absolute left-4 top-4 text-amber-500/60" size={16} />
@@ -214,7 +217,7 @@ function ResetPassword() {
                       type={showConfirm ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
+                      placeholder={t('auth.reenterNewPassword', 'Re-enter new password')}
                       className={`${inputClass} pl-11 pr-11 ${
                         confirmPassword && password !== confirmPassword ? 'border-red-500' : ''
                       }`}
@@ -229,7 +232,7 @@ function ResetPassword() {
                     </button>
                   </div>
                   {confirmPassword && password !== confirmPassword && (
-                    <p className="text-red-400 text-xs mt-1 font-medium">Passwords do not match</p>
+                    <p className="text-red-400 text-xs mt-1 font-medium">{t('auth.passwordMismatch', 'Passwords do not match')}</p>
                   )}
                 </div>
 
@@ -242,7 +245,7 @@ function ResetPassword() {
                   {loading ? (
                     <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    'Reset Password'
+                    t('auth.resetPassword', 'Reset Password')
                   )}
                 </button>
               </form>
@@ -255,3 +258,4 @@ function ResetPassword() {
 }
 
 export default ResetPassword
+

@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { authService } from '@services/apiServices'
+import apiClient from '@services/apiClient'
 import { auth, googleProvider, signInWithPopup, FIREBASE_CONFIGURED } from '../../config/firebase'
 import { toast } from 'react-toastify'
 import { 
@@ -12,7 +14,29 @@ import {
 } from 'react-icons/fi'
 import { FcGoogle } from 'react-icons/fc'
 
+// Helper to map Firebase Google Auth error codes to user-friendly messages
+const getFirebaseGoogleErrorMessage = (error) => {
+  if (!error) return 'Google signup failed. Please try again.'
+  switch (error.code) {
+    case 'auth/popup-closed-by-user':
+      return 'Google signup was cancelled before completion.'
+    case 'auth/popup-blocked':
+      return 'Popup was blocked by your browser. Please allow popups for this site.'
+    case 'auth/unauthorized-domain':
+      return 'Domain not authorized in Firebase Console. Please add this domain in Firebase Authentication settings.'
+    case 'auth/cancelled-popup-request':
+      return 'Previous signup request was cancelled.'
+    case 'auth/network-request-failed':
+      return 'Network connection error. Please check your internet connection.'
+    case 'auth/operation-not-allowed':
+      return 'Google Sign-In is not enabled in Firebase Console. Please enable Google provider.'
+    default:
+      return error.message || 'Unable to sign up with Google. Please try again.'
+  }
+}
+
 function PasswordStrengthBar({ password }) {
+  const { t } = useTranslation()
   const checks = [
     { label: '8+ chars', pass: password.length >= 8 },
     { label: 'Uppercase', pass: /[A-Z]/.test(password) },
@@ -60,10 +84,12 @@ function PasswordStrengthBar({ password }) {
 }
 
 function Register() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
   const { isDarkMode } = useTheme()
+
 
   const redirectUrl = new URLSearchParams(location.search).get('redirect') || null
 
@@ -73,7 +99,7 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    agreeTerms: true
+    agreeTerms: false
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -89,7 +115,7 @@ function Register() {
     }))
   }
 
-  // Redirect handler after verified login
+  // Redirect handler after successful registration
   const handleRedirectAfterLogin = useCallback((userObj) => {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
     toast.success(`Welcome to SKLP Fashion${name ? `, ${name}` : ''}! 🎉`)
@@ -115,17 +141,52 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.firstName.trim() || !formData.email.trim() || !formData.password) {
-      toast.error('Please fill in all required fields.')
+    const cleanFirst = formData.firstName.trim()
+    const cleanLast = formData.lastName.trim()
+    const cleanEmail = formData.email.trim().toLowerCase()
+    const pass = formData.password
+
+    if (!cleanFirst) {
+      toast.error('Please enter your first name.')
       return
     }
 
-    if (formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters.')
+    if (!cleanEmail) {
+      toast.error('Please enter a valid email address.')
       return
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!pass) {
+      toast.error('Please enter a password.')
+      return
+    }
+
+    if (pass.length < 8) {
+      toast.error('Password must be at least 8 characters long.')
+      return
+    }
+
+    if (!/[A-Z]/.test(pass)) {
+      toast.error('Password must contain at least one uppercase letter (A-Z).')
+      return
+    }
+
+    if (!/[a-z]/.test(pass)) {
+      toast.error('Password must contain at least one lowercase letter (a-z).')
+      return
+    }
+
+    if (!/[0-9]/.test(pass)) {
+      toast.error('Password must contain at least one number (0-9).')
+      return
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass)) {
+      toast.error('Password must contain at least one special character (!@#$%^&*).')
+      return
+    }
+
+    if (pass !== formData.confirmPassword) {
       toast.error('Passwords do not match.')
       return
     }
@@ -136,15 +197,18 @@ function Register() {
     }
 
     setLoading(true)
+    const targetUrl = `${apiClient.defaults.baseURL || ''}/auth/register`
+
     try {
       const payload = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim() || 'User',
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password
+        firstName: cleanFirst,
+        lastName: cleanLast || 'User',
+        email: cleanEmail,
+        password: pass
       }
 
       const res = await authService.register(payload)
+
       if (res.data?.success && res.data?.token) {
         const { user: userObj, token: authToken, refreshToken } = res.data
         login(userObj, authToken, refreshToken)
@@ -153,9 +217,34 @@ function Register() {
         throw new Error(res.data?.message || 'Registration failed')
       }
     } catch (err) {
-      console.error('Registration error:', err)
-      const msg = err.response?.data?.message || 'Could not create account. Please try again.'
-      toast.error(msg)
+      console.error('[REGISTER] Registration error object:', err)
+      const status = err.response?.status
+      const data = err.response?.data
+
+      let errorMsg = ''
+      if (data?.errors) {
+        if (Array.isArray(data.errors)) {
+          errorMsg = data.errors.map(e => (typeof e === 'object' ? e.message : e)).join('. ')
+        } else if (typeof data.errors === 'string') {
+          errorMsg = data.errors
+        }
+      } else if (data?.message) {
+        errorMsg = data.message
+      }
+
+      if (!errorMsg) {
+        if (err.message === 'Network Error' || !err.response) {
+          if (targetUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+            errorMsg = 'Backend URL Mismatch: Frontend is trying to call localhost in production. Please configure VITE_API_URL in your deployment.'
+          } else {
+            errorMsg = `Cannot connect to server. Please verify your internet connection or server status.`
+          }
+        } else {
+          errorMsg = `Registration failed (${status || 'Error'}): ${err.message || 'Please try again.'}`
+        }
+      }
+
+      toast.error(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -185,12 +274,11 @@ function Register() {
       }
     } catch (error) {
       console.error('Google Signup error:', error)
+      const msg = getFirebaseGoogleErrorMessage(error)
       if (error.code === 'auth/popup-closed-by-user') {
-        toast.info('Google signup was cancelled.')
-      } else if (error.code === 'auth/popup-blocked') {
-        toast.error('Popup blocked by browser. Please enable popups for this site.')
+        toast.info(msg)
       } else {
-        toast.error(error.message || 'Unable to sign up with Google.')
+        toast.error(msg)
       }
     } finally {
       setGoogleLoading(false)
@@ -228,10 +316,10 @@ function Register() {
               SKLP Fashion
             </h2>
             <h1 className="text-2xl font-serif font-bold tracking-tight mt-1">
-              Create an Account
+              {t('auth.register', 'Create an Account')}
             </h1>
             <p className="text-xs opacity-65 mt-1.5 leading-relaxed">
-              Join SKLP Fashion for a personalized luxury shopping experience.
+              {t('auth.registerSubtitle', 'Join SKLP Fashion for a personalized luxury shopping experience.')}
             </p>
           </div>
 
@@ -249,12 +337,12 @@ function Register() {
             {googleLoading ? (
               <>
                 <FiLoader size={18} className="animate-spin text-amber-500" />
-                <span>Connecting to Google...</span>
+                <span>{t('common.loading', 'Connecting to Google...')}</span>
               </>
             ) : (
               <>
                 <FcGoogle size={20} />
-                <span>Sign up with Google</span>
+                <span>{t('auth.googleLogin', 'Sign up with Google')}</span>
               </>
             )}
           </button>
@@ -263,7 +351,7 @@ function Register() {
           <div className="relative flex items-center justify-center mb-6">
             <div className="border-t border-current/10 w-full"></div>
             <span className="bg-transparent px-3 text-[11px] uppercase tracking-widest font-bold opacity-50 absolute">
-              or register with email
+              {t('auth.orContinueWith', 'or register with email')}
             </span>
           </div>
 
@@ -273,7 +361,7 @@ function Register() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                  First Name
+                  {t('profile.firstName', 'First Name')}
                 </label>
                 <div className="relative flex items-center">
                   <FiUser className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -291,7 +379,7 @@ function Register() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                  Last Name
+                  {t('profile.lastName', 'Last Name')}
                 </label>
                 <div className="relative flex items-center">
                   <FiUser className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -310,7 +398,7 @@ function Register() {
             {/* Email Input */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                Email Address
+                {t('auth.email', 'Email Address')}
               </label>
               <div className="relative flex items-center">
                 <FiMail className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -329,7 +417,7 @@ function Register() {
             {/* Password Input */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                Password
+                {t('auth.password', 'Password')}
               </label>
               <div className="relative flex items-center">
                 <FiLock className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -356,7 +444,7 @@ function Register() {
             {/* Confirm Password Input */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                Confirm Password
+                {t('auth.confirmPassword', 'Confirm Password')}
               </label>
               <div className="relative flex items-center">
                 <FiLock className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -391,9 +479,7 @@ function Register() {
                   required
                 />
                 <span>
-                  I agree to SKLP's{' '}
-                  <span className="text-amber-500 underline font-semibold">Terms of Service</span> and{' '}
-                  <span className="text-amber-500 underline font-semibold">Privacy Policy</span>.
+                  {t('auth.agreeTerms', "I agree to SKLP's Terms of Service and Privacy Policy.")}
                 </span>
               </label>
             </div>
@@ -406,11 +492,11 @@ function Register() {
             >
               {loading ? (
                 <>
-                  <FiLoader size={16} className="animate-spin" /> Creating Account...
+                  <FiLoader size={16} className="animate-spin" /> {t('common.loading', 'Creating Account...')}
                 </>
               ) : (
                 <>
-                  <span>Create Account</span>
+                  <span>{t('auth.register', 'Create Account')}</span>
                   <FiArrowRight size={16} />
                 </>
               )}
@@ -420,12 +506,12 @@ function Register() {
           {/* ── FOOTER: SIGN IN LINK ── */}
           <div className="mt-8 pt-6 border-t border-current/10 text-center">
             <p className="text-xs opacity-75">
-              Already have an account?{' '}
+              {t('auth.haveAccount', 'Already have an account?')}{' '}
               <Link
                 to="/login"
                 className="font-bold text-amber-500 hover:underline inline-flex items-center gap-1 ml-1"
               >
-                Sign In
+                {t('auth.signIn', 'Sign In')}
               </Link>
             </p>
           </div>
@@ -433,7 +519,7 @@ function Register() {
           {/* Security Badge */}
           <div className="flex items-center justify-center gap-1.5 pt-4 text-[11px] font-medium opacity-50">
             <FiShield size={12} className="text-amber-500" />
-            <span>256-bit SSL Encrypted & Google Firebase Secured</span>
+            <span>{t('profile.sessionEncrypted', '256-bit SSL Encrypted & Google Firebase Secured')}</span>
           </div>
         </div>
       </motion.div>

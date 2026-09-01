@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { FiTrash2, FiMinus, FiPlus, FiArrowRight, FiPercent, FiTruck, FiShoppingBag } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
@@ -12,6 +13,7 @@ const AVAILABLE_COUPONS = [
 ]
 
 function Cart() {
+  const { t } = useTranslation()
   const { isDarkMode } = useTheme()
   const { cartItems, cartTotal, removeFromCart, updateCartItem, clearCart } = useCart()
   
@@ -64,13 +66,13 @@ function Cart() {
         <div className="w-24 h-24 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mb-6">
           <FiShoppingBag size={40} />
         </div>
-        <h1 className="text-4xl font-serif font-bold mb-4">Your Cart is Empty</h1>
-        <p className="opacity-60 mb-8 max-w-sm">Explore our curated collections and experience the premium luxury fashion styling of SKLP.</p>
+        <h1 className="text-4xl font-serif font-bold mb-4">{t('cart.emptyTitle', 'Your Cart is Empty')}</h1>
+        <p className="opacity-60 mb-8 max-w-sm">{t('cart.emptyDesc', 'Explore our curated collections and experience the premium luxury fashion styling of SKLP.')}</p>
         <Link
           to="/products"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
         >
-          START SHOPPING
+          {t('orders.startShopping', 'START SHOPPING')}
         </Link>
       </div>
     )
@@ -78,7 +80,7 @@ function Cart() {
 
   return (
     <div className="container-custom py-16 min-h-screen">
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">Shopping Cart</h1>
+      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">{t('cart.title', 'Shopping Cart')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* LEFT COLUMN: Items List */}
@@ -89,9 +91,9 @@ function Cart() {
               <FiTruck className="text-luxury-gold" size={20} />
               <span className="text-sm font-semibold">
                 {remainingForFreeShipping > 0 ? (
-                  <>Add <span className="text-luxury-gold font-bold">₹{remainingForFreeShipping.toLocaleString()}</span> more for <span className="text-luxury-gold font-bold">FREE EXPRESS SHIPPING</span></>
+                  <>{t('cart.freeShippingAdd', 'Add')} <span className="text-luxury-gold font-bold">₹{remainingForFreeShipping.toLocaleString()}</span> {t('cart.freeShippingMore', 'more for')} <span className="text-luxury-gold font-bold">{t('cart.freeExpressShipping', 'FREE EXPRESS SHIPPING')}</span></>
                 ) : (
-                  <span className="text-green-500 font-bold">CONGRATULATIONS! YOU QUALIFY FOR FREE INSURED SHIPPING</span>
+                  <span className="text-green-500 font-bold">{t('cart.freeShippingQualified', 'CONGRATULATIONS! YOU QUALIFY FOR FREE INSURED SHIPPING')}</span>
                 )}
               </span>
             </div>
@@ -185,13 +187,13 @@ function Cart() {
           {/* Action links */}
           <div className="flex justify-between items-center pt-4">
             <Link to="/products" className="text-xs font-bold tracking-widest text-luxury-gold uppercase hover:underline">
-              ← Continue Shopping
+              ← {t('cart.continueShopping', 'Continue Shopping')}
             </Link>
             <button
               onClick={clearCart}
               className="text-xs font-bold tracking-widest text-red-500 uppercase hover:underline"
             >
-              Clear Shopping Cart
+              {t('cart.clearCart', 'Clear Shopping Cart')}
             </button>
           </div>
         </div>
@@ -200,7 +202,7 @@ function Cart() {
         <div className="space-y-6">
           {/* Coupon Application Block */}
           <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-gray-100 text-black'}`}>
-            <h3 className="text-xs uppercase tracking-widest text-luxury-gold font-bold mb-4">Promo Coupon</h3>
+            <h3 className="text-xs uppercase tracking-widest text-luxury-gold font-bold mb-4">{t('cart.promoCoupon', 'Promo Coupon')}</h3>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -215,14 +217,14 @@ function Cart() {
                   onClick={removeCoupon}
                   className="px-4 py-3 bg-red-500/20 text-red-500 font-bold text-xs uppercase rounded-lg hover:bg-red-500/30"
                 >
-                  Remove
+                  {t('common.remove', 'Remove')}
                 </button>
               ) : (
                 <button
                   onClick={() => handleApplyCoupon(couponCode)}
                   className="px-4 py-3 bg-luxury-gold text-luxury-black font-bold text-xs uppercase rounded-lg hover:bg-yellow-400"
                 >
-                  Apply
+                  {t('common.apply', 'Apply')}
                 </button>
               )}
             </div>
@@ -231,37 +233,37 @@ function Cart() {
               onClick={() => setShowCouponsDrawer(true)}
               className="text-xs text-luxury-gold font-semibold hover:underline mt-4 flex items-center gap-1"
             >
-              <FiPercent /> View Available Store Coupons
+              <FiPercent /> {t('cart.viewCoupons', 'View Available Store Coupons')}
             </button>
           </div>
 
           {/* Order Summary details */}
           <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-gray-100 text-black'}`}>
-            <h2 className="text-xl font-serif font-bold mb-6 tracking-wider">ORDER SUMMARY</h2>
+            <h2 className="text-xl font-serif font-bold mb-6 tracking-wider">{t('cart.orderSummary', 'ORDER SUMMARY')}</h2>
             
             <div className="space-y-4 mb-6 pb-6 border-b border-white/10">
               <div className="flex justify-between text-sm">
-                <span className="opacity-60">Subtotal</span>
+                <span className="opacity-60">{t('cart.subtotal', 'Subtotal')}</span>
                 <span className="font-bold">₹{cartTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="opacity-60">Shipping</span>
-                <span>{remainingForFreeShipping > 0 ? '₹150' : 'FREE'}</span>
+                <span className="opacity-60">{t('checkout.shipping', 'Shipping')}</span>
+                <span>{remainingForFreeShipping > 0 ? '₹150' : t('common.free', 'FREE')}</span>
               </div>
               {appliedCoupon && (
                 <div className="flex justify-between text-sm text-green-500">
-                  <span>Discount ({appliedCoupon.code})</span>
+                  <span>{t('cart.discount', 'Discount')} ({appliedCoupon.code})</span>
                   <span>- ₹{discountAmount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="opacity-60">Estimated Taxes</span>
-                <span>Included (0%)</span>
+                <span className="opacity-60">{t('cart.estimatedTax', 'Estimated Taxes')}</span>
+                <span>{t('cart.taxIncluded', 'Included (0%)')}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-baseline mb-8">
-              <span className="text-base font-bold">Grand Total</span>
+              <span className="text-base font-bold">{t('cart.grandTotal', 'Grand Total')}</span>
               <span className="text-2xl font-bold text-luxury-gold">
                 ₹{(finalTotal + (remainingForFreeShipping > 0 ? 150 : 0)).toLocaleString()}
               </span>
@@ -271,7 +273,7 @@ function Cart() {
               to="/checkout"
               className="w-full py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-all text-center flex items-center justify-center gap-2"
             >
-              PROCEED TO SECURE CHECKOUT <FiArrowRight />
+              {t('cart.proceedCheckout', 'PROCEED TO SECURE CHECKOUT')} <FiArrowRight />
             </Link>
           </div>
         </div>
@@ -295,7 +297,7 @@ function Cart() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-                  <h3 className="text-lg font-serif font-bold">STORE COUPONS</h3>
+                  <h3 className="text-lg font-serif font-bold">{t('cart.storeCoupons', 'STORE COUPONS')}</h3>
                   <button onClick={() => setShowCouponsDrawer(false)}>
                     <FiTrash2 size={24} className="text-luxury-gold rotate-45" />
                   </button>
@@ -318,7 +320,7 @@ function Cart() {
                               onClick={() => { handleApplyCoupon(c.code); setShowCouponsDrawer(false) }}
                               className="px-3 py-1 bg-luxury-gold text-luxury-black font-bold text-xs uppercase hover:bg-yellow-400"
                             >
-                              Apply
+                              {t('common.apply', 'Apply')}
                             </button>
                           ) : (
                             <span className="text-[10px] uppercase font-mono tracking-wider opacity-60">Min ₹{c.min.toLocaleString()}</span>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { authService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -11,6 +12,7 @@ import {
 } from 'react-icons/fi'
 
 function VerifyEmail() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const { isDarkMode } = useTheme()
@@ -24,7 +26,7 @@ function VerifyEmail() {
 
   useEffect(() => {
     if (!token) {
-      setErrorMsg('No verification token found. Please check the link sent to your email.')
+      setErrorMsg(t('auth.noTokenFound', 'No verification token found. Please check the link sent to your email.'))
       return
     }
 
@@ -33,26 +35,26 @@ function VerifyEmail() {
         const res = await authService.verifyEmail(token)
         if (res.data?.success) {
           setSuccess(true)
-          toast.success('Email verified successfully! 🎉')
+          toast.success(t('auth.emailVerified', 'Email verified successfully! 🎉'))
           if (refreshUser) {
             refreshUser()
           }
         }
       } catch (err) {
-        setErrorMsg(err.response?.data?.message || 'Verification link is invalid or has expired.')
+        setErrorMsg(err.response?.data?.message || t('errors.expiredToken', 'Verification link is invalid or has expired.'))
       } finally {
         setVerifying(false)
       }
     }
 
     verify()
-  }, [token, refreshUser])
+  }, [token, refreshUser, t])
 
   const handleResend = async (e) => {
     e.preventDefault()
     const targetEmail = resendEmail.trim() || user?.email
     if (!targetEmail) {
-      toast.error('Please enter your email address')
+      toast.error(t('errors.invalidEmail', 'Please enter your email address'))
       return
     }
 
@@ -60,10 +62,10 @@ function VerifyEmail() {
     try {
       const res = await authService.resendVerification(targetEmail)
       if (res.data?.success) {
-        toast.success('New verification link sent to your email! ✉️')
+        toast.success(t('auth.verificationResent', 'New verification link sent to your email! ✉️'))
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend verification email.')
+      toast.error(err.response?.data?.message || t('errors.serverError', 'Failed to resend verification email.'))
     } finally {
       setResending(false)
     }
@@ -95,7 +97,7 @@ function VerifyEmail() {
             to="/login"
             className="inline-flex items-center gap-2 text-xs font-bold text-amber-500 hover:underline mb-6"
           >
-            <FiArrowLeft size={14} /> Back to Sign In
+            <FiArrowLeft size={14} /> {t('auth.backToLogin', 'Back to Sign In')}
           </Link>
 
           {verifying ? (
@@ -103,9 +105,9 @@ function VerifyEmail() {
               <div className="w-16 h-16 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
                 <FiLoader size={28} className="animate-spin" />
               </div>
-              <h2 className="text-xl font-serif font-bold">Verifying Your Email...</h2>
+              <h2 className="text-xl font-serif font-bold">{t('auth.verifyingEmail', 'Verifying Your Email...')}</h2>
               <p className="text-xs opacity-65">
-                Please wait while we confirm your email credentials.
+                {t('auth.verifyingSubtitle', 'Please wait while we confirm your email credentials.')}
               </p>
             </div>
           ) : success ? (
@@ -113,22 +115,22 @@ function VerifyEmail() {
               <div className="w-16 h-16 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto text-green-500">
                 <FiCheckCircle size={32} />
               </div>
-              <h2 className="text-2xl font-serif font-bold text-amber-500">Email Verified!</h2>
+              <h2 className="text-2xl font-serif font-bold text-amber-500">{t('auth.emailVerifiedTitle', 'Email Verified!')}</h2>
               <p className="text-xs opacity-75 leading-relaxed">
-                Thank you for verifying your email address. Your SKLP Luxury Fashion account is now fully active.
+                {t('auth.emailVerifiedSubtitle', 'Thank you for verifying your email address. Your SKLP Luxury Fashion account is now fully active.')}
               </p>
               <div className="pt-2 flex flex-col gap-3">
                 <Link
                   to="/products"
                   className={primaryBtn}
                 >
-                  <FiShoppingBag size={16} /> Explore Luxury Couture
+                  <FiShoppingBag size={16} /> {t('common.shopNow', 'Explore Luxury Couture')}
                 </Link>
                 <Link
                   to="/profile"
                   className="w-full py-3.5 text-center text-xs font-bold uppercase tracking-wider rounded-2xl border border-amber-500/30 hover:bg-amber-500/10 transition-all text-amber-500"
                 >
-                  Go to Atelier Profile
+                  {t('profile.title', 'Go to Atelier Profile')}
                 </Link>
               </div>
             </div>
@@ -138,23 +140,23 @@ function VerifyEmail() {
                 <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4 text-red-500">
                   <FiAlertTriangle size={24} />
                 </div>
-                <h1 className="text-2xl font-serif font-bold">Verification Issue</h1>
+                <h1 className="text-2xl font-serif font-bold">{t('auth.verificationIssue', 'Verification Issue')}</h1>
                 <p className="text-xs opacity-65 mt-2 leading-relaxed">
-                  {errorMsg || 'The verification link is invalid, expired, or has already been used.'}
+                  {errorMsg || t('errors.expiredToken', 'The verification link is invalid, expired, or has already been used.')}
                 </p>
               </div>
 
               {/* Resend Form */}
               <form onSubmit={handleResend} className="space-y-4 pt-2 border-t border-current/10">
                 <p className="text-xs font-bold opacity-80 uppercase tracking-wider">
-                  Request a New Verification Link
+                  {t('auth.requestNewVerification', 'Request a New Verification Link')}
                 </p>
                 <div>
                   <input
                     type="email"
                     value={resendEmail || user?.email || ''}
                     onChange={(e) => setResendEmail(e.target.value)}
-                    placeholder="Enter your registered email"
+                    placeholder={t('auth.email', 'Enter your registered email')}
                     className={inputClass}
                     required
                   />
@@ -167,7 +169,7 @@ function VerifyEmail() {
                   {resending ? (
                     <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <><FiSend size={16} /> Resend Verification Email</>
+                    <><FiSend size={16} /> {t('auth.resendVerification', 'Resend Verification Email')}</>
                   )}
                 </button>
               </form>
@@ -180,3 +182,4 @@ function VerifyEmail() {
 }
 
 export default VerifyEmail
+

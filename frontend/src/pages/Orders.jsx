@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown, FiStar } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'
+
 function Orders() {
+  const { t } = useTranslation()
   const { isDarkMode } = useTheme()
   const { isAuthenticated } = useAuth()
   const location = useLocation()
@@ -80,7 +83,7 @@ function Orders() {
         }, 1000)
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel order.')
+      toast.error(err.response?.data?.message || t('errors.serverError', 'Failed to cancel order.'))
     }
   }
 
@@ -101,7 +104,7 @@ function Orders() {
         fetchOrders()
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to request return.')
+      toast.error(err.response?.data?.message || t('errors.serverError', 'Failed to request return.'))
     } finally {
       setReturnLoading(false)
     }
@@ -122,13 +125,13 @@ function Orders() {
   if (!isAuthenticated) {
     return (
       <div className="container-custom py-24 text-center min-h-[60vh] flex flex-col justify-center items-center">
-        <h1 className="text-3xl font-serif font-bold mb-6">Track Your Orders</h1>
-        <p className="opacity-60 mb-8 max-w-sm">Sign in to your account to view order history, track packages, and manage returns.</p>
+        <h1 className="text-3xl font-serif font-bold mb-6">{t('orders.trackOrder', 'Track Your Orders')}</h1>
+        <p className="opacity-60 mb-8 max-w-sm">{t('orders.noOrdersDesc', 'Sign in to your account to view order history, track packages, and manage returns.')}</p>
         <Link
           to="/login?redirect=/orders"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
         >
-          LOG IN TO TRACK ORDERS
+          {t('auth.signIn', 'Sign In')}
         </Link>
       </div>
     )
@@ -136,21 +139,21 @@ function Orders() {
 
   return (
     <div className="container-custom py-16 min-h-screen">
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">My Orders</h1>
+      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">{t('orders.title', 'My Orders')}</h1>
 
       {loading ? (
         <div className="text-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-luxury-gold mx-auto mb-4" />
-          <p className="opacity-60 text-sm">Loading your orders...</p>
+          <p className="opacity-60 text-sm">{t('common.loading', 'Loading your orders...')}</p>
         </div>
       ) : orders.length === 0 ? (
         <div className="text-center py-20 card rounded-2xl border border-white/5">
-          <p className="text-lg opacity-60 mb-8">You haven't placed any premium orders yet.</p>
+          <p className="text-lg opacity-60 mb-8">{t('orders.noOrders', "You haven't placed any premium orders yet.")}</p>
           <Link
             to="/products"
             className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400"
           >
-            START SHOPPING
+            {t('orders.startShopping', 'START SHOPPING')}
           </Link>
         </div>
       ) : (
@@ -173,11 +176,12 @@ function Orders() {
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <span className="text-xs font-mono font-bold tracking-wider text-luxury-gold">#{order._id.toString().toUpperCase()}</span>
                       <span className={`text-[10px] px-3 py-1 border rounded-full uppercase font-semibold ${getStatusBadgeClass(order.status)}`}>
-                        {order.status}
+                        {t(`orders.status.${order.status}`, order.status)}
                       </span>
                     </div>
-                    <p className="text-xs opacity-60 font-mono">Placed on: {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
+                    <p className="text-xs opacity-60 font-mono">{t('orders.placedOn', 'Placed on')}: {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
                   </div>
+
 
                   <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                     <div>

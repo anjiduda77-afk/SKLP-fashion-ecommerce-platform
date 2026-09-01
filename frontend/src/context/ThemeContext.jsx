@@ -1,54 +1,87 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import i18n from '../i18n/config'
 
 const ThemeContext = createContext()
 
+const getInitialTheme = () => {
+  try {
+    const saved = localStorage.getItem('sklp-theme')
+    if (saved === 'light' || saved === 'dark') {
+      return saved
+    }
+  } catch (e) {}
+  return 'dark'
+}
+
+const getInitialLanguage = () => {
+  try {
+    const saved = localStorage.getItem('sklp-language')
+    if (saved && ['en', 'te', 'hi'].includes(saved)) {
+      return saved
+    }
+  } catch (e) {}
+  return 'en'
+}
+
+// Early execution to prevent any theme flashing
+if (typeof document !== 'undefined') {
+  const initialTheme = getInitialTheme()
+  if (initialTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+  const initialLang = getInitialLanguage()
+  document.documentElement.lang = initialLang
+}
+
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true)
-  const [language, setLanguage] = useState('en')
+  const [theme, setTheme] = useState(getInitialTheme)
+  const isDarkMode = theme === 'dark'
+  const [language, setLanguageState] = useState(getInitialLanguage)
 
-  // Load theme from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    const savedLanguage = localStorage.getItem('language')
-
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark')
-    }
-    if (savedLanguage) {
-      setLanguage(savedLanguage)
-      i18n.changeLanguage(savedLanguage)
-    }
-  }, [])
-
-  // Apply theme to document
+  // Apply theme class to document element and persist
   useEffect(() => {
     const htmlElement = document.documentElement
-    if (isDarkMode) {
+    if (theme === 'dark') {
       htmlElement.classList.add('dark')
     } else {
       htmlElement.classList.remove('dark')
     }
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light')
-  }, [isDarkMode])
+    localStorage.setItem('sklp-theme', theme)
+  }, [theme])
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode)
-  }
+  // Sync language attribute on html tag
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
 
-  const changeLanguage = (lang) => {
-    setLanguage(lang)
-    localStorage.setItem('language', lang)
-    i18n.changeLanguage(lang)
-  }
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
+
+  const changeLanguage = useCallback((lang) => {
+    if (['en', 'te', 'hi'].includes(lang)) {
+      setLanguageState(lang)
+      localStorage.setItem('sklp-language', lang)
+      i18n.changeLanguage(lang)
+      document.documentElement.lang = lang
+    }
+  }, [])
 
   return (
     <ThemeContext.Provider
       value={{
+        theme,
         isDarkMode,
         toggleTheme,
         language,
         changeLanguage,
+        supportedLanguages: [
+          { code: 'en', name: 'English', nativeName: 'English' },
+          { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+          { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+        ],
       }}
     >
       {children}
@@ -63,3 +96,4 @@ export const useTheme = () => {
   }
   return context
 }
+

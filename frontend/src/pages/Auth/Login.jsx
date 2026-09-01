@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { authService } from '@services/apiServices'
@@ -34,10 +35,12 @@ const getFirebaseGoogleErrorMessage = (error) => {
 }
 
 function Login() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
   const { isDarkMode } = useTheme()
+
 
   // Preserved destination after successful verification
   const redirectUrl = new URLSearchParams(location.search).get('redirect') || null
@@ -92,7 +95,7 @@ function Login() {
       }
     } catch (err) {
       console.error('Email login error:', err)
-      const msg = err.response?.data?.message || 'Invalid email or password.'
+      const msg = err.response?.data?.message || 'Invalid email or password. Please check your credentials.'
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -126,7 +129,11 @@ function Login() {
     } catch (error) {
       console.error('Google Sign-In error:', error)
       const msg = getFirebaseGoogleErrorMessage(error)
-      toast.error(msg)
+      if (error.code === 'auth/popup-closed-by-user') {
+        toast.info(msg)
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setGoogleLoading(false)
     }
@@ -163,10 +170,10 @@ function Login() {
               SKLP Fashion
             </h2>
             <h1 className="text-2xl font-serif font-bold tracking-tight mt-1">
-              Welcome Back
+              {t('common.welcome', 'Welcome to SKLP')}
             </h1>
             <p className="text-xs opacity-65 mt-1.5 leading-relaxed">
-              Sign in with your email or Google to continue shopping luxury fashion.
+              {t('auth.signIn', 'Sign in to your account to continue shopping luxury fashion.')}
             </p>
           </div>
 
@@ -184,12 +191,12 @@ function Login() {
             {googleLoading ? (
               <>
                 <FiLoader size={18} className="animate-spin text-amber-500" />
-                <span>Connecting to Google...</span>
+                <span>{t('common.loading', 'Connecting to Google...')}</span>
               </>
             ) : (
               <>
                 <FcGoogle size={20} />
-                <span>Continue with Google</span>
+                <span>{t('auth.googleLogin', 'Continue with Google')}</span>
               </>
             )}
           </button>
@@ -198,7 +205,7 @@ function Login() {
           <div className="relative flex items-center justify-center mb-6">
             <div className="border-t border-current/10 w-full"></div>
             <span className="bg-transparent px-3 text-[11px] uppercase tracking-widest font-bold opacity-50 absolute">
-              or sign in with email
+              {t('auth.orContinueWith', 'or continue with email')}
             </span>
           </div>
 
@@ -207,7 +214,7 @@ function Login() {
             {/* Email Input */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-75">
-                Email Address
+                {t('auth.email', 'Email Address')}
               </label>
               <div className="relative flex items-center">
                 <FiMail className="absolute left-3.5 text-amber-500 opacity-80" size={16} />
@@ -227,13 +234,13 @@ function Login() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider opacity-75">
-                  Password
+                  {t('auth.password', 'Password')}
                 </label>
                 <Link
                   to="/forgot-password"
                   className="text-xs text-amber-500 font-semibold hover:underline"
                 >
-                  Forgot Password?
+                  {t('auth.forgotPassword', 'Forgot Password?')}
                 </Link>
               </div>
               <div className="relative flex items-center">
@@ -265,7 +272,7 @@ function Login() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-400/50"
                 />
-                <span>Remember me for 30 days</span>
+                <span>{t('auth.rememberMe', 'Keep me signed in')}</span>
               </label>
             </div>
 
@@ -277,11 +284,11 @@ function Login() {
             >
               {loading ? (
                 <>
-                  <FiLoader size={16} className="animate-spin" /> Signing In...
+                  <FiLoader size={16} className="animate-spin" /> {t('common.loading', 'Signing In...')}
                 </>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>{t('auth.login', 'Sign In')}</span>
                   <FiArrowRight size={16} />
                 </>
               )}
@@ -291,12 +298,12 @@ function Login() {
           {/* ── FOOTER: CREATE ACCOUNT LINK ── */}
           <div className="mt-8 pt-6 border-t border-current/10 text-center">
             <p className="text-xs opacity-75">
-              Don't have an account yet?{' '}
+              {t('auth.noAccount', "Don't have an account?")}{' '}
               <Link
                 to="/register"
                 className="font-bold text-amber-500 hover:underline inline-flex items-center gap-1 ml-1"
               >
-                Create an Account
+                {t('auth.register', 'Create Account')}
               </Link>
             </p>
           </div>
@@ -304,7 +311,7 @@ function Login() {
           {/* Security Badge */}
           <div className="flex items-center justify-center gap-1.5 pt-4 text-[11px] font-medium opacity-50">
             <FiShield size={12} className="text-amber-500" />
-            <span>256-bit SSL Encrypted & Google Firebase Secured</span>
+            <span>{t('profile.sessionEncrypted', '256-bit SSL Encrypted & Google Firebase Secured')}</span>
           </div>
         </div>
       </motion.div>
@@ -313,3 +320,4 @@ function Login() {
 }
 
 export default Login
+

@@ -24,6 +24,7 @@ import deliveryRoutes from './routes/deliveryRoutes.js';
 import deliveryFeeRoutes from './routes/deliveryFeeRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import campaignRoutes from './routes/campaignRoutes.js';
 
 const app = express();
 
@@ -153,6 +154,7 @@ app.use('/api/delivery', deliveryRoutes);
 app.use('/api/delivery-fee', deliveryFeeRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/campaigns', campaignRoutes);
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {

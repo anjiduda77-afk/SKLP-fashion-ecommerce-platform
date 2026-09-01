@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FiPackage, FiTruck, FiCheckCircle, FiFileText, FiMapPin } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useTheme } from '@context/ThemeContext'
@@ -12,6 +13,7 @@ const steps = [
 ]
 
 function OrderTracking() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const { isDarkMode } = useTheme()
   const [trackingInfo, setTrackingInfo] = useState(null)
@@ -48,7 +50,7 @@ function OrderTracking() {
     return (
       <div className="container-custom py-24 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-luxury-gold mx-auto mb-4" />
-        <p className="opacity-60 text-sm">Tracking live coordinates...</p>
+        <p className="opacity-60 text-sm">{t('common.loading', 'Tracking live coordinates...')}</p>
       </div>
     )
   }
@@ -56,8 +58,8 @@ function OrderTracking() {
   if (!trackingInfo) {
     return (
       <div className="container-custom py-24 text-center">
-        <p className="text-lg opacity-60 mb-6">Tracking details not found.</p>
-        <Link to="/orders" className="btn btn-primary">Back to Orders</Link>
+        <p className="text-lg opacity-60 mb-6">{t('orderTracking.notFound', 'Tracking details not found.')}</p>
+        <Link to="/orders" className="btn btn-primary">{t('orderTracking.backToOrders', 'Back to Orders')}</Link>
       </div>
     )
   }
@@ -78,25 +80,25 @@ function OrderTracking() {
   return (
     <div className="container-custom py-16 min-h-screen">
       <nav className="text-xs uppercase tracking-widest opacity-60 mb-8">
-        <Link to="/orders">← Back to My Orders</Link>
+        <Link to="/orders">← {t('orderTracking.backToOrders', 'Back to My Orders')}</Link>
       </nav>
 
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">Track Order</h1>
+      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">{t('orderTracking.title', 'Track Order')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* LEFT/MID: Stepper and Status History */}
         <div className="lg:col-span-2 space-y-8">
           {/* Stepper Card */}
           <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-gray-100 text-black'}`}>
-            <h2 className="text-lg font-serif font-bold mb-8 uppercase tracking-wider text-luxury-gold">Shipping Progress</h2>
+            <h2 className="text-lg font-serif font-bold mb-8 uppercase tracking-wider text-luxury-gold">{t('orderTracking.shippingProgress', 'Shipping Progress')}</h2>
             
             {trackingInfo.status === 'cancelled' ? (
               <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-center font-bold">
-                This order has been cancelled.
+                {t('orders.status.cancelled', 'This order has been cancelled.')}
               </div>
             ) : trackingInfo.status === 'return_requested' ? (
               <div className="p-4 bg-orange-500/10 border border-orange-500/30 text-orange-500 rounded-xl text-center font-bold">
-                Return has been requested for this order.
+                {t('orders.status.return_requested', 'Return has been requested for this order.')}
               </div>
             ) : (
               <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-4">
@@ -124,8 +126,8 @@ function OrderTracking() {
                         <Icon size={18} />
                       </div>
                       <div className="text-left md:text-center">
-                        <p className={`font-bold text-sm ${isCompleted ? 'text-luxury-gold' : 'opacity-40'}`}>{st.label}</p>
-                        <p className="text-[10px] opacity-60 hidden md:block max-w-[120px] mx-auto mt-1">{st.desc}</p>
+                        <p className={`font-bold text-sm ${isCompleted ? 'text-luxury-gold' : 'opacity-40'}`}>{t(`orderTracking.steps.${st.status}`, st.label)}</p>
+                        <p className="text-[10px] opacity-60 hidden md:block max-w-[120px] mx-auto mt-1">{t(`orderTracking.steps.${st.status}Desc`, st.desc)}</p>
                       </div>
                     </div>
                   )
@@ -136,7 +138,7 @@ function OrderTracking() {
 
           {/* Detailed timeline */}
           <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-gray-100 text-black'}`}>
-            <h2 className="text-lg font-serif font-bold mb-6 uppercase tracking-wider text-luxury-gold">Scan Log</h2>
+            <h2 className="text-lg font-serif font-bold mb-6 uppercase tracking-wider text-luxury-gold">{t('orderTracking.scanLog', 'Scan Log')}</h2>
             <div className="relative pl-6 border-l-2 border-white/10 space-y-6">
               {trackingInfo.statusHistory?.map((log, idx) => (
                 <div key={idx} className="relative">
@@ -144,8 +146,8 @@ function OrderTracking() {
                   <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-luxury-gold border-4 border-luxury-black" />
                   <div>
                     <span className="text-[10px] font-mono opacity-50 block">{new Date(log.updatedAt).toLocaleString()}</span>
-                    <h4 className="font-bold text-sm text-white/95 capitalize mb-1">{log.status}</h4>
-                    <p className="text-xs opacity-75">{log.comment || 'Package processed successfully.'}</p>
+                    <h4 className="font-bold text-sm text-white/95 capitalize mb-1">{t(`orders.status.${log.status}`, log.status)}</h4>
+                    <p className="text-xs opacity-75">{log.comment || t('orderTracking.processed', 'Package processed successfully.')}</p>
                   </div>
                 </div>
               ))}
@@ -156,21 +158,21 @@ function OrderTracking() {
         {/* RIGHT COLUMN: Ship Carrier Details */}
         <div className="space-y-6">
           <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-gray-100 text-black'}`}>
-            <h3 className="text-xs uppercase tracking-widest text-luxury-gold font-bold mb-6">Delivery Details</h3>
+            <h3 className="text-xs uppercase tracking-widest text-luxury-gold font-bold mb-6">{t('orderTracking.deliveryDetails', 'Delivery Details')}</h3>
             
             <div className="space-y-6">
               <div>
-                <span className="text-[10px] uppercase opacity-50 block mb-1">Carrier Network</span>
+                <span className="text-[10px] uppercase opacity-50 block mb-1">{t('orderTracking.carrierNetwork', 'Carrier Network')}</span>
                 <span className="text-sm font-bold">{trackingInfo.trackingDetails?.carrier || 'SKLP Couture Express'}</span>
               </div>
               
               <div>
-                <span className="text-[10px] uppercase opacity-50 block mb-1">Tracking ID</span>
+                <span className="text-[10px] uppercase opacity-50 block mb-1">{t('orderTracking.trackingId', 'Tracking ID')}</span>
                 <span className="text-sm font-mono font-bold text-luxury-gold">{trackingInfo.trackingDetails?.trackingNumber || 'SKLP-NONE'}</span>
               </div>
 
               <div className="pt-4 border-t border-white/10">
-                <span className="text-[10px] uppercase opacity-50 block mb-2">Delivery Address</span>
+                <span className="text-[10px] uppercase opacity-50 block mb-2">{t('orderTracking.deliveryAddress', 'Delivery Address')}</span>
                 <div className="flex gap-2 items-start text-xs opacity-70">
                   <FiMapPin className="text-luxury-gold flex-shrink-0 mt-0.5" />
                   <p>

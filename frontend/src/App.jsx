@@ -42,6 +42,11 @@ import AdminUsers from '@pages/Admin/Users'
 import AdminCoupons from '@pages/Admin/Coupons'
 import AdminReturns from '@pages/Admin/Returns'
 import AdminSellers from '@pages/Admin/Sellers'
+import AdminMarketing from '@pages/Admin/Marketing'
+
+// Marketing Components
+import AnnouncementBar from '@components/Marketing/AnnouncementBar'
+import ExitIntentPopup from '@components/Marketing/ExitIntentPopup'
 
 // Seller Pages
 import SellerDashboard from '@pages/Seller/Dashboard'
@@ -76,6 +81,9 @@ function App() {
                   ? 'bg-luxury-black' 
                   : 'bg-luxury-white'}`}
               />
+
+              {/* Announcement Bar */}
+              <AnnouncementBar />
 
               {/* Header */}
               <Header isDarkMode={isDarkMode} />
@@ -115,6 +123,7 @@ function App() {
                   <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminOrders /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/coupons" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminCoupons /></AdminLayout></ProtectedRoute>} />
+                  <Route path="/admin/marketing" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminMarketing /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/returns" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminReturns /></AdminLayout></ProtectedRoute>} />
                   <Route path="/admin/sellers" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout><AdminSellers /></AdminLayout></ProtectedRoute>} />
 
@@ -134,6 +143,9 @@ function App() {
 
               {/* Mobile Navigation */}
               <MobileNavigation isDarkMode={isDarkMode} />
+
+              {/* Exit Intent Marketing Popup */}
+              <ExitIntentPopup />
 
               {/* AI Chatbot */}
               <AIChatbot />

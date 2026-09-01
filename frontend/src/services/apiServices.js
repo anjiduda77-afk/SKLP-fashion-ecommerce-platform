@@ -205,4 +205,32 @@ export const reviewService = {
     apiClient.post(`/products/${productId}/reviews/${reviewId}/reply`, data)
 }
 
+/**
+ * Public Campaign & Marketing Service
+ */
+export const campaignService = {
+  getActiveCampaigns: (params) => apiClient.get('/campaigns/active', { params }),
+  trackEvent: (campaignId, data) => apiClient.post(`/campaigns/${campaignId}/track`, data)
+}
+
+/**
+ * Admin Marketing & Campaign Management Service
+ */
+export const adminMarketingService = {
+  getCampaigns: (params) => apiClient.get('/admin/campaigns', { params }),
+  getCampaignById: (id) => apiClient.get(`/admin/campaigns/${id}`),
+  createCampaign: (data) => apiClient.post('/admin/campaigns', data),
+  updateCampaign: (id, data) => apiClient.put(`/admin/campaigns/${id}`, data),
+  deleteCampaign: (id) => apiClient.delete(`/admin/campaigns/${id}`),
+  cloneCampaign: (id) => apiClient.post(`/admin/campaigns/${id}/clone`),
+  toggleStatus: (id, status) => apiClient.put(`/admin/campaigns/${id}/status`, { status }),
+  emergencyStopAll: () => apiClient.post('/admin/campaigns/emergency-stop-all'),
+  getCalendar: () => apiClient.get('/admin/campaigns/calendar'),
+  getFunnelAnalytics: () => apiClient.get('/admin/campaigns/funnel'),
+  getAuditLogs: (params) => apiClient.get('/admin/campaigns/audit-logs', { params }),
+  getAssets: (params) => apiClient.get('/admin/campaigns/assets', { params }),
+  createAsset: (data) => apiClient.post('/admin/campaigns/assets', data),
+  deleteAsset: (id) => apiClient.delete(`/admin/campaigns/assets/${id}`)
+}
+
 export default apiClient

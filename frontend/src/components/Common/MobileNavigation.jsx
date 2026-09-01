@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { FiShoppingCart, FiHeart, FiShoppingBag, FiBell, FiUser } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useWishlist } from '@context/WishlistContext'
 import { useAuth } from '@context/AuthContext'
 
 function MobileNavigation({ isDarkMode }) {
+  const { t } = useTranslation()
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
   const { isAuthenticated } = useAuth()
@@ -35,41 +37,42 @@ function MobileNavigation({ isDarkMode }) {
 
   const navItems = [
     {
-      label: 'Cart',
+      label: t('common.cart', 'Cart'),
       path: '/cart',
       icon: <FiShoppingCart size={22} />,
       badge: itemCount,
       color: 'text-luxury-gold'
     },
     {
-      label: 'Wishlist',
+      label: t('common.wishlist', 'Wishlist'),
       path: '/wishlist',
       icon: <FiHeart size={22} />,
       badge: wishlistCount,
       color: 'text-red-500'
     },
     {
-      label: 'Orders',
+      label: t('common.orders', 'Orders'),
       path: '/orders',
       icon: <FiShoppingBag size={22} />,
       badge: 0,
       color: 'text-luxury-gold'
     },
     {
-      label: 'Alerts',
-      path: '/orders', // In ecommers usually orders alerts trigger notifications
+      label: t('header.notifications', 'Alerts'),
+      path: '/orders',
       icon: <FiBell size={22} />,
       badge: notificationCount,
       color: 'text-luxury-gold'
     },
     {
-      label: 'Profile',
+      label: t('common.profile', 'Profile'),
       path: isAuthenticated ? '/profile' : '/login',
       icon: <FiUser size={22} />,
       badge: 0,
       color: 'text-luxury-gold'
     }
   ]
+
 
   return (
     <nav 

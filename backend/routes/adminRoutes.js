@@ -75,9 +75,63 @@ router.delete('/banners/:id', asyncHandler(adminController.deleteBanner))
 router.get('/notifications', asyncHandler(adminController.getNotifications))
 router.post('/notifications', asyncHandler(adminController.createNotification))
 
-// Product Reviews Moderation
-router.get('/reviews', asyncHandler(adminController.getAdminReviews))
-router.put('/reviews/:id/status', asyncHandler(adminController.updateReviewModerationStatus))
+// Campaigns & Advanced Marketing
+router.get('/campaigns', asyncHandler(async (req, res) => {
+  const { getAdminCampaigns } = await import('../controllers/campaignController.js')
+  return getAdminCampaigns(req, res)
+}))
+router.post('/campaigns', asyncHandler(async (req, res) => {
+  const { createCampaign } = await import('../controllers/campaignController.js')
+  return createCampaign(req, res)
+}))
+router.get('/campaigns/calendar', asyncHandler(async (req, res) => {
+  const { getCampaignCalendar } = await import('../controllers/campaignController.js')
+  return getCampaignCalendar(req, res)
+}))
+router.get('/campaigns/funnel', asyncHandler(async (req, res) => {
+  const { getFunnelAnalytics } = await import('../controllers/campaignController.js')
+  return getFunnelAnalytics(req, res)
+}))
+router.get('/campaigns/audit-logs', asyncHandler(async (req, res) => {
+  const { getAuditLogs } = await import('../controllers/campaignController.js')
+  return getAuditLogs(req, res)
+}))
+router.post('/campaigns/emergency-stop-all', asyncHandler(async (req, res) => {
+  const { emergencyStopAll } = await import('../controllers/campaignController.js')
+  return emergencyStopAll(req, res)
+}))
+router.get('/campaigns/assets', asyncHandler(async (req, res) => {
+  const { getMarketingAssets } = await import('../controllers/campaignController.js')
+  return getMarketingAssets(req, res)
+}))
+router.post('/campaigns/assets', asyncHandler(async (req, res) => {
+  const { createMarketingAsset } = await import('../controllers/campaignController.js')
+  return createMarketingAsset(req, res)
+}))
+router.delete('/campaigns/assets/:id', asyncHandler(async (req, res) => {
+  const { deleteMarketingAsset } = await import('../controllers/campaignController.js')
+  return deleteMarketingAsset(req, res)
+}))
+router.get('/campaigns/:id', asyncHandler(async (req, res) => {
+  const { getAdminCampaignById } = await import('../controllers/campaignController.js')
+  return getAdminCampaignById(req, res)
+}))
+router.put('/campaigns/:id', asyncHandler(async (req, res) => {
+  const { updateCampaign } = await import('../controllers/campaignController.js')
+  return updateCampaign(req, res)
+}))
+router.delete('/campaigns/:id', asyncHandler(async (req, res) => {
+  const { deleteCampaign } = await import('../controllers/campaignController.js')
+  return deleteCampaign(req, res)
+}))
+router.post('/campaigns/:id/clone', asyncHandler(async (req, res) => {
+  const { cloneCampaign } = await import('../controllers/campaignController.js')
+  return cloneCampaign(req, res)
+}))
+router.put('/campaigns/:id/status', asyncHandler(async (req, res) => {
+  const { toggleCampaignStatus } = await import('../controllers/campaignController.js')
+  return toggleCampaignStatus(req, res)
+}))
 
 export default router
 

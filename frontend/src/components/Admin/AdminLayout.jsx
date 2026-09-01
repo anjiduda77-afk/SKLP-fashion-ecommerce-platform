@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiTag, FiRefreshCw, FiBriefcase,
-  FiLogOut, FiMenu, FiX, FiChevronRight, FiBell
+  FiLogOut, FiMenu, FiX, FiChevronRight, FiBell, FiTrendingUp
 } from 'react-icons/fi'
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
   { path: '/admin/users', label: 'Users', icon: FiUsers },
   { path: '/admin/coupons', label: 'Coupons', icon: FiTag },
+  { path: '/admin/marketing', label: 'Marketing', icon: FiTrendingUp },
   { path: '/admin/returns', label: 'Returns', icon: FiRefreshCw },
   { path: '/admin/sellers', label: 'Sellers', icon: FiBriefcase },
 ]

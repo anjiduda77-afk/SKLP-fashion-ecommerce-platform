@@ -6,10 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="SKLP - Premium AI-Powered Fashion Ecommerce Platform" />
     <meta name="theme-color" content="#FFD700" />
-    <link rel="preconnect" href="https://checkout.razorpay.com" />
     <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('sklp-theme');
+          var isDark = savedTheme === 'dark' || (!savedTheme) || (savedTheme !== 'light');
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          var savedLang = localStorage.getItem('sklp-language');
+          if (savedLang && (savedLang === 'en' || savedLang === 'te' || savedLang === 'hi')) {
+            document.documentElement.lang = savedLang;
+          } else {
+            document.documentElement.lang = 'en';
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>SKLP - Luxury Fashion Store</title>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

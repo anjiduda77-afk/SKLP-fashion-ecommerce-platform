@@ -304,11 +304,16 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 // Method to get user info without sensitive data
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
+  // Add string id alias for frontend compatibility
+  user.id = user._id.toString();
+  // Scrub sensitive internal fields
   delete user.password;
   delete user.twoFactorSecret;
   delete user.emailVerificationToken;
   delete user.emailVerificationExpiry;
   delete user.phoneVerificationToken;
+  delete user.passwordResetToken;
+  delete user.passwordResetExpiry;
   delete user.refreshTokens;
   delete user.passwordHistory;
   return user;

@@ -13,7 +13,7 @@ export const normalizeIndianPhone = (rawPhone) => {
   if (!rawPhone || typeof rawPhone !== 'string') return null
   const digits = rawPhone.replace(/\D/g, '')
   const clean10 = digits.slice(-10)
-  if (/^[6-9][0-9]{9}$/.test(clean10)) {
+  if (/^[0-9]{10}$/.test(clean10)) {
     return clean10
   }
   return null
@@ -69,63 +69,115 @@ const issueAuthTokens = async (user, req) => {
 }
 
 export const register = async (req, res) => {
+  console.log('[BACKEND] Registration request received')
   const { firstName, lastName, email, phone, password } = req.body
+
+  const cleanEmail = email ? email.toLowerCase().trim() : null
+  const cleanPhone = phone ? normalizeIndianPhone(phone) : null
+
+  console.log(`[BACKEND] Request payload fields: firstName=${Boolean(firstName)}, lastName=${Boolean(lastName)}, email=${Boolean(cleanEmail)}, phone=${Boolean(cleanPhone)}, hasPassword=${Boolean(password)}`)
+
+  if (!cleanEmail && !cleanPhone) {
+    throw new ApiError(400, 'Please provide an email address or mobile phone number to register')
+  }
 
   // Validate password strength
   if (password) {
     const { isValid, errors } = User.validatePasswordStrength(password)
     if (!isValid) {
+      console.log('[BACKEND] Request validation failed: Password does not meet requirements')
       throw new ApiError(400, 'Password does not meet requirements', errors)
     }
+  } else {
+    throw new ApiError(400, 'Password is required for registration')
   }
+  console.log('[BACKEND] Request validation passed')
 
   // Build OR conditions for duplicate check
   const orConditions = []
-  if (email) orConditions.push({ email: email.toLowerCase() })
-  if (phone) orConditions.push({ phone })
+  if (cleanEmail) orConditions.push({ email: cleanEmail })
+  if (cleanPhone) orConditions.push({ phone: cleanPhone })
 
   if (orConditions.length > 0) {
+    console.log('[MONGODB] Searching for duplicate user')
     const existingUser = await User.findOne({ $or: orConditions })
+    console.log(`[MONGODB] Duplicate check result: ${existingUser ? 'EXISTS' : 'NONE'}`)
     if (existingUser) {
-      throw new ApiError(409, 'Email or phone already registered')
+      if (cleanEmail && existingUser.email === cleanEmail) {
+        throw new ApiError(409, 'An account with this email address already exists. Please sign in or use Continue with Google.')
+      }
+      if (cleanPhone && existingUser.phone === cleanPhone) {
+        throw new ApiError(409, 'An account with this mobile phone number already exists. Please sign in.')
+      }
+      throw new ApiError(409, 'Email or phone already registered. Please sign in.')
     }
   }
 
   // Strictly enforce role = customer for public registration
   const userData = {
-    firstName: firstName || 'Customer',
-    lastName: lastName || 'User',
-    email: email ? email.toLowerCase().trim() : undefined,
-    phone: phone ? phone.trim() : undefined,
+    firstName: firstName && firstName.trim() ? firstName.trim() : 'Customer',
+    lastName: lastName && lastName.trim() ? lastName.trim() : 'User',
     password,
     authProvider: 'email',
     role: 'customer',
+    status: 'active',
+    isActive: true,
+    isEmailVerified: true,
+    isPhoneVerified: true
+  }
+
+  if (cleanEmail) userData.email = cleanEmail
+  if (cleanPhone) userData.phone = cleanPhone
+
+  console.log('[MONGODB] User.create reached')
+  let user
+  try {
+    user = await User.create(userData)
+    console.log(`[MONGODB] User created successfully: ID ${user._id}`)
+  } catch (createErr) {
+    console.error(`[MONGODB] Save failed: ${createErr.message}`)
+    if (createErr.code === 11000) {
+      // Check if collision was on customUserId, retry with new random ID
+      if (createErr.keyPattern?.customUserId || createErr.message?.includes('customUserId')) {
+        userData.customUserId = `USER_${Date.now().toString().slice(-4)}${Math.floor(10000 + Math.random() * 90000)}`
+        user = await User.create(userData)
+      } else if (createErr.keyPattern?.email || createErr.message?.includes('email')) {
+        throw new ApiError(409, 'An account with this email address already exists. Please sign in.')
+      } else if (createErr.keyPattern?.phone || createErr.message?.includes('phone')) {
+        throw new ApiError(409, 'An account with this mobile phone number already exists. Please sign in.')
+      } else {
+        throw new ApiError(409, 'An account with these details already exists. Please sign in.')
+      }
+    } else {
+      throw createErr
+    }
   }
 
   // Generate email verification token if email provided
-  if (email) {
+  if (cleanEmail) {
     const verificationToken = crypto.randomBytes(32).toString('hex')
-    userData.emailVerificationToken = verificationToken
-    userData.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    user.emailVerificationToken = verificationToken
+    user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    await user.save()
 
-    const user = await User.create(userData)
     const { token, refreshToken } = await issueAuthTokens(user, req)
+    console.log('[MONGODB] Save successful: YES')
 
     // Send verification email (async, don't block response)
     try {
-      const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`
       await sendEmail({
-        to: email,
+        to: cleanEmail,
         subject: 'Verify Your SKLP Account',
         text: `Welcome to SKLP! Please verify your email by clicking: ${verifyUrl}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #FFD700; text-align: center;">Welcome to SKLP!</h1>
-            <p>Hi ${firstName},</p>
-            <p>Thank you for registering with SKLP. Please verify your email address to unlock all features.</p>
+            <p>Hi ${user.firstName || 'Customer'},</p>
+            <p>Thank you for registering with SKLP Fashion. Please verify your email address to unlock all luxury features.</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${verifyUrl}" style="background: #FFD700; color: #000; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-                Verify Email
+              <a href="${verifyUrl}" style="background: #FFD700; color: #000; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+                Verify Email Address
               </a>
             </div>
             <p style="color: #666; font-size: 12px;">This link expires in 24 hours.</p>
@@ -138,19 +190,19 @@ export const register = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Account created successfully. Please check your email to verify your account.',
+      message: 'Account created successfully. Welcome to SKLP Fashion!',
       user: user.toJSON(),
       token,
       refreshToken
     })
   }
 
-  const user = await User.create(userData)
   const { token, refreshToken } = await issueAuthTokens(user, req)
+  console.log('[MONGODB] Save successful: YES')
 
   res.status(201).json({
     success: true,
-    message: 'Account created successfully.',
+    message: 'Account created successfully. Welcome to SKLP Fashion!',
     user: user.toJSON(),
     token,
     refreshToken
@@ -159,15 +211,27 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password, rememberMe } = req.body
-  const searchEmail = email ? email.toLowerCase() : ''
+  const searchEmail = email ? email.toLowerCase().trim() : ''
+  if (!searchEmail) {
+    throw new ApiError(400, 'Please enter your email address')
+  }
+  if (!password) {
+    throw new ApiError(400, 'Please enter your password')
+  }
+
   const user = await User.findOne({ email: searchEmail }).select('+password')
   if (!user) {
-    throw new ApiError(401, 'Invalid email or password')
+    throw new ApiError(401, 'Invalid email or password. Please check your credentials or register a new account.')
+  }
+
+  // Informative hint if account exists without password (e.g., registered via Google)
+  if (!user.password) {
+    throw new ApiError(400, 'This account was created using Google Sign-In. Please click "Continue with Google" or use Forgot Password to set a password.')
   }
 
   // Check account status
   if (user.status === 'suspended' || user.status === 'blocked') {
-    throw new ApiError(403, 'Your account has been suspended or blocked. Please contact support.')
+    throw new ApiError(403, 'Your account has been suspended or blocked. Please contact customer support.')
   }
   if (user.status === 'deleted') {
     throw new ApiError(403, 'This account has been deleted.')
@@ -176,7 +240,7 @@ export const login = async (req, res) => {
   if (user.isLocked()) {
     const remainingMs = user.lockUntil - Date.now()
     const remainingMin = Math.ceil(remainingMs / 60000)
-    throw new ApiError(423, `Account locked. Try again in ${remainingMin} minute(s).`)
+    throw new ApiError(423, `Account temporarily locked due to failed attempts. Try again in ${remainingMin} minute(s).`)
   }
 
   const passwordMatch = await user.comparePassword(password)
@@ -343,19 +407,23 @@ export const googleLogin = async (req, res) => {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// FIREBASE GOOGLE AUTHENTICATION — Google-Verified Identity Resolution
+// FIREBASE AUTHENTICATION (PHONE OTP & GOOGLE) — Verified Identity Resolution
 // ──────────────────────────────────────────────────────────────────────────────
 export const firebaseLogin = async (req, res) => {
+  console.log('[AUTH] Firebase login request received')
+
   const authHeader = req.headers.authorization
   const idToken = req.body.idToken || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null)
 
   if (!idToken) {
+    console.warn('[AUTH] Missing Firebase ID Token in request')
     throw new ApiError(400, 'Firebase ID Token is required')
   }
 
   let decodedToken
   try {
     decodedToken = await verifyFirebaseIdToken(idToken)
+    console.log('[AUTH] Firebase token verified')
   } catch (err) {
     console.error('[AUTH] Firebase Token Verification Failed:', err.message)
     throw new ApiError(401, 'Invalid or expired Firebase authentication token')
@@ -364,11 +432,22 @@ export const firebaseLogin = async (req, res) => {
   const { uid, email, name, picture, phone_number } = decodedToken
 
   if (!email && !uid && !phone_number) {
+    console.warn('[AUTH] Verified identity or UID missing from Firebase token')
     throw new ApiError(400, 'Verified identity or UID missing from Firebase token')
   }
 
   const searchEmail = email ? email.toLowerCase().trim() : null
   const cleanPhone = phone_number ? normalizeIndianPhone(phone_number) : null
+
+  if (phone_number) {
+    console.log(`[AUTH] Verified phone received: ${cleanPhone ? `+91 ${cleanPhone.slice(0, 3)}***${cleanPhone.slice(-3)}` : 'format normalized'}`)
+  }
+  if (email) {
+    console.log(`[AUTH] Verified email received: ${searchEmail ? `${searchEmail.slice(0, 3)}***@${searchEmail.split('@')[1]}` : ''}`)
+  }
+
+  console.log(`[MONGODB] Connected database name: ${User.db?.name || 'sklp_db'}`)
+  console.log(`[MONGODB] User collection: ${User.collection.name}`)
 
   // Resolve user: search by firebaseUid OR email OR verified phone
   const query = []
@@ -376,7 +455,13 @@ export const firebaseLogin = async (req, res) => {
   if (searchEmail) query.push({ email: searchEmail })
   if (cleanPhone) query.push({ phone: cleanPhone })
 
+  if (query.length === 0) {
+    throw new ApiError(400, 'No searchable identity in verified Firebase token')
+  }
+
+  console.log('[MONGODB] Searching for user')
   let user = await User.findOne({ $or: query })
+  console.log(`[MONGODB] Existing user: ${user ? 'YES' : 'NO'}`)
 
   // Parse first and last name from display name
   let firstName = 'Customer'
@@ -386,6 +471,8 @@ export const firebaseLogin = async (req, res) => {
     firstName = parts[0] || 'Customer'
     lastName = parts.slice(1).join(' ') || 'User'
   }
+
+  const determinedProvider = phone_number && !searchEmail ? 'firebase' : (searchEmail ? 'google' : 'firebase')
 
   if (user) {
     // Check account status
@@ -400,8 +487,14 @@ export const firebaseLogin = async (req, res) => {
     if (uid && user.firebaseUid !== uid) {
       user.firebaseUid = uid
     }
+    if (cleanPhone && !user.phone) {
+      user.phone = cleanPhone
+    }
     if (searchEmail && !user.email) {
       user.email = searchEmail
+    }
+    if (cleanPhone || phone_number) {
+      user.isPhoneVerified = true
     }
     if (decodedToken.email_verified || searchEmail) {
       user.isEmailVerified = true
@@ -415,24 +508,56 @@ export const firebaseLogin = async (req, res) => {
     if ((!user.lastName || user.lastName === 'User') && lastName !== 'User') {
       user.lastName = lastName
     }
-    user.authProvider = user.authProvider || 'google'
+    user.authProvider = user.authProvider || determinedProvider
     await user.save()
   } else {
-    // Automatically create new CUSTOMER account with default customer role
-    user = await User.create({
-      firstName,
-      lastName,
-      email: searchEmail || undefined,
-      phone: cleanPhone || undefined,
-      firebaseUid: uid,
-      authProvider: 'google',
-      role: 'customer',
-      status: 'active',
-      isActive: true,
-      isEmailVerified: Boolean(decodedToken.email_verified || searchEmail),
-      isPhoneVerified: false,
-      avatar: picture ? { url: picture, publicId: null } : undefined
-    })
+    // Automatically create new CUSTOMER account
+    console.log('[MONGODB] New user creation started')
+    console.log('[MONGODB] User.create called')
+
+    try {
+      user = await User.create({
+        firstName,
+        lastName,
+        email: searchEmail || undefined,
+        phone: cleanPhone || undefined,
+        firebaseUid: uid,
+        authProvider: determinedProvider,
+        role: 'customer',
+        status: 'active',
+        isActive: true,
+        isEmailVerified: Boolean(decodedToken.email_verified || searchEmail),
+        isPhoneVerified: Boolean(cleanPhone || phone_number),
+        avatar: picture ? { url: picture, publicId: null } : undefined
+      })
+      console.log(`[MONGODB] User created successfully (ID: ${user._id})`)
+    } catch (createErr) {
+      console.error('[MONGODB] User creation failed:', createErr.message)
+      console.error('Error type:', createErr.name)
+      console.error('Error message:', createErr.message)
+
+      if (createErr.errors) {
+        const errorFields = Object.keys(createErr.errors)
+        console.error('Exact failing field:', errorFields.join(', '))
+        console.error('Validation error details:', errorFields.map(k => ({
+          field: k,
+          message: createErr.errors[k].message
+        })))
+      }
+
+      if (createErr.code === 11000) {
+        console.warn('[MONGODB] Duplicate key conflict during User.create. Attempting recovery...')
+        const existing = await User.findOne({ $or: query })
+        if (existing) {
+          console.log('[MONGODB] Found existing user after race condition, proceeding with login')
+          user = existing
+        } else {
+          throw new ApiError(409, 'Account already exists with this phone number or email')
+        }
+      } else {
+        throw new ApiError(500, `Failed to create user account: ${createErr.message}`)
+      }
+    }
   }
 
   // Issue Application JWT & Refresh Token
@@ -440,7 +565,7 @@ export const firebaseLogin = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Google login successful',
+    message: 'Login successful',
     user: user.toJSON(),
     token: authToken,
     refreshToken: rToken
@@ -759,6 +884,7 @@ export const refreshToken = async (req, res) => {
   }
 
   // Check if this refresh token exists in user's stored tokens
+  user.refreshTokens = user.refreshTokens || []
   const storedToken = user.refreshTokens.find(rt => rt.token === refreshToken)
   if (!storedToken) {
     // Token reuse detected — possible token theft. Revoke all tokens.
@@ -852,12 +978,13 @@ export const getActiveSessions = async (req, res) => {
 // Send OTP to link a new phone number to the authenticated user's account
 export const sendLinkPhoneOTP = async (req, res) => {
   const { phone } = req.body
-  if (!phone || !/^[0-9]{10}$/.test(phone)) {
-    throw new ApiError(400, 'Please provide a valid 10-digit mobile number')
+  const cleanPhone = normalizeIndianPhone(phone)
+  if (!cleanPhone) {
+    throw new ApiError(400, 'Please provide a valid 10-digit Indian mobile number')
   }
 
   // Check if phone already belongs to another account
-  const existingUser = await User.findOne({ phone, _id: { $ne: req.user.id } })
+  const existingUser = await User.findOne({ phone: cleanPhone, _id: { $ne: req.user.id } })
   if (existingUser) {
     throw new ApiError(409, 'This phone number is already associated with another account')
   }
@@ -867,17 +994,34 @@ export const sendLinkPhoneOTP = async (req, res) => {
   const user = await User.findById(req.user.id)
   if (!user) throw new ApiError(404, 'User not found')
 
+  // Dispatch OTP via Real External SMS Provider or Dev Mode fallback
+  let smsResult
+  try {
+    smsResult = await sendOTPMessage(cleanPhone, otp)
+  } catch (err) {
+    console.error('[AUTH] Link phone SMS dispatch failure:', err.message)
+    if (process.env.NODE_ENV === 'development' || process.env.OTP_MODE === 'development') {
+      console.log(`\n=========================================\n[SKLP DEV OTP] Real OTP for +91${cleanPhone}: ${otp}\n=========================================\n`)
+      smsResult = { provider: 'Development Mode', devOtp: otp }
+    } else {
+      if (err.code === 'SMS_GATEWAY_NOT_CONFIGURED') {
+        throw new ApiError(503, 'Mobile SMS service is not configured. Please configure your SMS provider credentials in server environment variables.')
+      }
+      throw new ApiError(500, 'Unable to send OTP right now. Please try again later.')
+    }
+  }
+
   user.phoneOtp = otpHash          // Store hash — never plain text
   user.phoneOtpExpiry = new Date(Date.now() + 5 * 60 * 1000)
   user.phoneOtpAttempts = 0
   user.lastOtpSentAt = new Date()
   await user.save()
 
-  await sendOTPMessage(phone, otp)
-
   res.status(200).json({
     success: true,
-    message: 'OTP sent to your mobile number',
+    message: `OTP sent to +91 ${cleanPhone.slice(0, 5)}XXXXX`,
+    provider: smsResult.provider,
+    devOtp: (process.env.NODE_ENV === 'development' || process.env.OTP_MODE === 'development') ? otp : undefined,
     expiresIn: 300
   })
 }
@@ -885,6 +1029,11 @@ export const sendLinkPhoneOTP = async (req, res) => {
 // Verify OTP and link phone to authenticated user
 export const verifyLinkPhone = async (req, res) => {
   const { phone, otp } = req.body
+  const cleanPhone = normalizeIndianPhone(phone)
+  if (!cleanPhone || !otp) {
+    throw new ApiError(400, 'Please enter a valid 10-digit mobile number and 6-digit OTP')
+  }
+
   const user = await User.findById(req.user.id)
   if (!user) throw new ApiError(404, 'User not found')
 
@@ -904,12 +1053,12 @@ export const verifyLinkPhone = async (req, res) => {
   }
 
   // Check again in case someone registered this phone in the meantime
-  const existingUser = await User.findOne({ phone, _id: { $ne: req.user.id } })
+  const existingUser = await User.findOne({ phone: cleanPhone, _id: { $ne: req.user.id } })
   if (existingUser) {
     throw new ApiError(409, 'This phone number is already associated with another account')
   }
 
-  user.phone = phone
+  user.phone = cleanPhone
   user.isPhoneVerified = true
   user.phoneOtp = undefined
   user.phoneOtpExpiry = undefined

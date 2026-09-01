@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { 
   FiSearch, FiShoppingCart, FiHeart, FiUser, 
   FiSun, FiMoon, FiMic, FiX, FiArrowRight,
-  FiZap
+  FiZap, FiMail, FiAlertCircle
 } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
@@ -37,6 +37,7 @@ const searchMockData = {
 }
 
 function Header({ isDarkMode }) {
+
   const { t } = useTranslation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -46,7 +47,7 @@ function Header({ isDarkMode }) {
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
   const { isAuthenticated, user, logout } = useAuth()
-  const { toggleTheme } = useTheme()
+  const { toggleTheme, language, changeLanguage } = useTheme()
   const { currency, setCurrency, RATES } = useCurrency()
   const navigate = useNavigate()
 
@@ -189,6 +190,24 @@ function Header({ isDarkMode }) {
               <FiSearch size={20} />
             </button>
 
+            {/* Multi-Language Switcher */}
+            <div className="relative">
+              <select
+                value={language}
+                onChange={(e) => changeLanguage(e.target.value)}
+                className={`h-11 px-2.5 text-xs font-bold rounded-2xl border cursor-pointer outline-none transition-all duration-300 ${
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10'
+                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
+                }`}
+                title="Select Language"
+              >
+                <option value="en" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>English</option>
+                <option value="te" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>తెలుగు</option>
+                <option value="hi" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>हिन्दी</option>
+              </select>
+            </div>
+
             {/* Multi-Currency Switcher */}
             <div className="relative">
               <select
@@ -295,10 +314,10 @@ function Header({ isDarkMode }) {
                     <FiZap size={14} className="animate-pulse" />
                     <span>
                       {user.role === 'admin'
-                        ? 'Admin Panel'
+                        ? t('header.adminPanel', 'Admin Panel')
                         : user.role === 'seller'
-                        ? 'Seller Hub'
-                        : 'Delivery Hub'}
+                        ? t('header.sellerHub', 'Seller Hub')
+                        : t('header.deliveryHub', 'Delivery Hub')}
                     </span>
                   </Link>
                 )}
@@ -311,7 +330,7 @@ function Header({ isDarkMode }) {
                     }`}
                 >
                   <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
-                  <span>Profile</span>
+                  <span>{t('header.profile', 'Profile')}</span>
                 </Link>
                 <button
                   onClick={() => {
@@ -320,7 +339,7 @@ function Header({ isDarkMode }) {
                   }}
                   className="inline-flex items-center gap-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300 shadow-md"
                 >
-                  <span>Sign Out</span>
+                  <span>{t('header.signOut', 'Sign Out')}</span>
                 </button>
               </div>
             ) : (
@@ -333,9 +352,10 @@ function Header({ isDarkMode }) {
                   }`}
               >
                 <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-black'} />
-                <span>Sign In</span>
+                <span>{t('header.signIn', 'Sign In')}</span>
               </button>
             )}
+
 
           </div>
         </div>

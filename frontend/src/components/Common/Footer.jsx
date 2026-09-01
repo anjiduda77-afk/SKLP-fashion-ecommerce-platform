@@ -44,19 +44,19 @@ function Footer({ isDarkMode }) {
             {/* Quick Policy triggers */}
             <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
               <button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiTruck className="text-luxury-gold" /> Shipping Policy
+                <FiTruck className="text-luxury-gold" /> {t('footer.shippingPolicy', 'Shipping Policy')}
               </button>
               <span className="opacity-30">•</span>
               <button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiRefreshCw className="text-luxury-gold" /> Returns & Refunds
+                <FiRefreshCw className="text-luxury-gold" /> {t('footer.returnsRefunds', 'Returns & Refunds')}
               </button>
               <span className="opacity-30">•</span>
               <button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiShield className="text-luxury-gold" /> Payment Security
+                <FiShield className="text-luxury-gold" /> {t('footer.paymentSecurity', 'Payment Security')}
               </button>
               <span className="opacity-30">•</span>
               <button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiAward className="text-luxury-gold" /> VIP Plan
+                <FiAward className="text-luxury-gold" /> {t('footer.vipPlan', 'VIP Membership')}
               </button>
             </div>
 
@@ -67,14 +67,14 @@ function Footer({ isDarkMode }) {
                 onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
                 className="py-2.5 px-5 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5"
               >
-                💬 Chat Bot
+                💬 {t('footer.chatBot', 'AI Chatbot')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowHelpline(true)}
                 className="py-2.5 px-5 bg-luxury-gold text-luxury-black hover:bg-luxury-darkGold rounded-full text-xs font-extrabold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-glow"
               >
-                📞 Help Line & Info
+                📞 {t('footer.helplineInfo', 'Help Line & Info')}
               </button>
             </div>
           </div>
@@ -108,7 +108,7 @@ function Footer({ isDarkMode }) {
 
               <div className="flex items-center gap-2 mb-8 border-b pb-4 border-current/15">
                 <FiHelpCircle className="text-luxury-gold text-2xl animate-pulse" />
-                <h2 className="text-2xl font-serif font-bold uppercase tracking-wider">SKLP Helpline & Info Settings</h2>
+                <h2 className="text-2xl font-serif font-bold uppercase tracking-wider">{t('footer.helplineInfo', 'SKLP Helpline & Info Settings')}</h2>
               </div>
 
               {/* Responsive columns */}
@@ -117,7 +117,7 @@ function Footer({ isDarkMode }) {
                 {/* Brand description and Newsletter */}
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-base font-bold text-luxury-gold mb-3 uppercase tracking-wider">About SKLP</h3>
+                    <h3 className="text-base font-bold text-luxury-gold mb-3 uppercase tracking-wider">{t('footer.aboutUs', 'About SKLP')}</h3>
                     <p className="text-xs opacity-75 leading-relaxed">
                       {t('footer.description', 'Premium fashion and footwear for everyone. Discover luxury style and comfort.')}
                     </p>
@@ -168,10 +168,10 @@ function Footer({ isDarkMode }) {
                 <div>
                   <h3 className="text-base font-bold text-luxury-gold mb-4 uppercase tracking-wider">{t('footer.support', 'Store Policies')}</h3>
                   <ul className="space-y-3 text-xs font-semibold">
-                    <li><button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors text-left block py-1">Shipping & Delivery Policy</button></li>
-                    <li><button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors text-left block py-1">15-Day Return Policy</button></li>
-                    <li><button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors text-left block py-1">Payments & Security</button></li>
-                    <li><button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors text-left block py-1">SKLP VIP Elite Plan</button></li>
+                    <li><button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors text-left block py-1">{t('footer.shippingPolicy', 'Shipping Policy')}</button></li>
+                    <li><button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors text-left block py-1">{t('footer.returnsRefunds', 'Returns & Refunds')}</button></li>
+                    <li><button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors text-left block py-1">{t('footer.paymentSecurity', 'Payment Security')}</button></li>
+                    <li><button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors text-left block py-1">{t('footer.vipPlan', 'VIP Membership')}</button></li>
                   </ul>
                 </div>
 
@@ -180,17 +180,18 @@ function Footer({ isDarkMode }) {
               {/* Helpline direct contacts */}
               <div className="mt-8 pt-6 border-t border-current/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-semibold">
                 <div className="flex gap-4">
-                  <span>📞 Helpline: +1 (800) 123-4567</span>
+                  <span>📞 {t('footer.customerCare', 'Customer Care')}: +91 9948682179</span>
                   <span className="opacity-50">|</span>
-                  <span>✉️ Email: support@sklp.com</span>
+                  <span>✉️ {t('common.emailUs', 'Email')}: support@sklp.com</span>
                 </div>
                 <button
                   onClick={() => setShowHelpline(false)}
                   className="px-6 py-2 bg-luxury-gold text-luxury-black font-extrabold uppercase tracking-wider rounded-xl hover:bg-yellow-400 transition-all"
                 >
-                  Close Settings
+                  {t('common.close', 'Close')}
                 </button>
               </div>
+
 
             </motion.div>
           </motion.div>

@@ -51,15 +51,21 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized - attempt token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't retry refresh-token or login requests
-      if (
-        originalRequest.url?.includes('/auth/refresh-token') ||
-        originalRequest.url?.includes('/auth/login')
-      ) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+      // Don't retry refresh-token or public authentication requests
+      const isPublicAuthRoute = [
+        '/auth/login',
+        '/auth/register',
+        '/auth/firebase-login',
+        '/auth/google-login',
+        '/auth/send-otp',
+        '/auth/verify-otp',
+        '/auth/resend-otp',
+        '/auth/forgot-password',
+        '/auth/reset-password',
+        '/auth/refresh-token'
+      ].some(path => originalRequest.url?.includes(path))
+
+      if (isPublicAuthRoute) {
         return Promise.reject(error)
       }
 

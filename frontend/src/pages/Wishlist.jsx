@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { FiHeart, FiShoppingBag, FiTrash2 } from 'react-icons/fi'
 import { wishlistService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
@@ -9,6 +10,7 @@ import { useTheme } from '@context/ThemeContext'
 import { toast } from 'react-toastify'
 
 function Wishlist() {
+  const { t } = useTranslation()
   const { isDarkMode } = useTheme()
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
@@ -68,13 +70,13 @@ function Wishlist() {
         <div className="w-24 h-24 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mb-6">
           <FiHeart size={40} />
         </div>
-        <h1 className="text-4xl font-serif font-bold mb-4">Your Wishlist</h1>
-        <p className="opacity-60 mb-8 max-w-sm">Sign in to save your favourite SKLP luxury pieces across devices.</p>
+        <h1 className="text-4xl font-serif font-bold mb-4">{t('wishlist.title', 'Your Wishlist')}</h1>
+        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.signInDesc', 'Sign in to save your favourite SKLP luxury pieces across devices.')}</p>
         <Link
           to="/login?redirect=/wishlist"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
         >
-          LOG IN TO VIEW WISHLIST
+          {t('auth.signIn', 'Sign In')}
         </Link>
       </div>
     )
@@ -84,7 +86,7 @@ function Wishlist() {
     return (
       <div className="container-custom py-24 text-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-luxury-gold mx-auto mb-4" />
-        <p className="opacity-60 text-sm">Fetching saved favorites...</p>
+        <p className="opacity-60 text-sm">{t('common.loading', 'Fetching saved favorites...')}</p>
       </div>
     )
   }
@@ -95,13 +97,13 @@ function Wishlist() {
         <div className="w-24 h-24 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mb-6">
           <FiHeart size={40} />
         </div>
-        <h1 className="text-4xl font-serif font-bold mb-4">Your Wishlist is Empty</h1>
-        <p className="opacity-60 mb-8 max-w-sm">Explore our signature haute couture collections and tap the heart icon on any piece to save it here.</p>
+        <h1 className="text-4xl font-serif font-bold mb-4">{t('wishlist.emptyTitle', 'Your Wishlist is Empty')}</h1>
+        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.emptyDesc', 'Explore our signature haute couture collections and tap the heart icon on any piece to save it here.')}</p>
         <Link
           to="/products"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
         >
-          DISCOVER COLLECTIONS
+          {t('wishlist.discoverCollections', 'DISCOVER COLLECTIONS')}
         </Link>
       </div>
     )
@@ -111,8 +113,8 @@ function Wishlist() {
     <div className="container-custom py-16 min-h-screen">
       <div className="flex justify-between items-end mb-12">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-wide uppercase mb-2">My Wishlist</h1>
-          <p className="opacity-60 text-xs font-mono uppercase tracking-widest">{wishlistItems.length} Saved Luxury Pieces</p>
+          <h1 className="text-4xl font-serif font-bold tracking-wide uppercase mb-2">{t('wishlist.myWishlist', 'My Wishlist')}</h1>
+          <p className="opacity-60 text-xs font-mono uppercase tracking-widest">{wishlistItems.length} {t('wishlist.savedPieces', 'Saved Luxury Pieces')}</p>
         </div>
       </div>
 
@@ -176,7 +178,7 @@ function Wishlist() {
                     onClick={() => handleMoveToCart(item)}
                     className="w-full py-3 bg-luxury-gold text-luxury-black font-bold text-xs uppercase tracking-widest hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 rounded-lg"
                   >
-                    <FiShoppingBag size={14} /> ADD TO CART
+                    <FiShoppingBag size={14} /> {t('wishlist.addToCart', 'ADD TO CART')}
                   </button>
                 </div>
               </motion.div>

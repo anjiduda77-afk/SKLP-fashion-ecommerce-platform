@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { authService } from '@services/apiServices'
 import { toast } from 'react-toastify'
 import { FiMail, FiArrowLeft, FiCheckCircle } from 'react-icons/fi'
 
 function ForgotPassword() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -30,9 +32,9 @@ function ForgotPassword() {
       await authService.forgotPassword(email)
       setSent(true)
       startCountdown()
-      toast.success('Reset link sent to your email!')
+      toast.success(t('auth.resetLinkSent', 'Reset link sent to your email!'))
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Could not send reset link. Try again.')
+      toast.error(error?.response?.data?.message || t('errors.serverError', 'Could not send reset link. Try again.'))
     } finally {
       setLoading(false)
     }
@@ -44,9 +46,9 @@ function ForgotPassword() {
     try {
       await authService.forgotPassword(email)
       startCountdown()
-      toast.success('Reset link resent!')
+      toast.success(t('auth.resetLinkSent', 'Reset link resent!'))
     } catch {
-      toast.error('Failed to resend. Try again.')
+      toast.error(t('errors.serverError', 'Failed to resend. Try again.'))
     } finally {
       setLoading(false)
     }
@@ -62,7 +64,7 @@ function ForgotPassword() {
             className="flex items-center gap-2 text-sm text-luxury-mediumGray hover:text-luxury-gold transition-colors mb-6"
           >
             <FiArrowLeft size={16} />
-            Back to Login
+            {t('auth.backToLogin', 'Back to Login')}
           </Link>
 
           {!sent ? (
@@ -72,15 +74,15 @@ function ForgotPassword() {
                 <div className="w-16 h-16 rounded-full bg-luxury-gold/10 border-2 border-luxury-gold/30 flex items-center justify-center mx-auto mb-4">
                   <FiMail size={28} className="text-luxury-gold" />
                 </div>
-                <h1 className="text-3xl font-serif font-bold mb-2">Forgot Password?</h1>
+                <h1 className="text-3xl font-serif font-bold mb-2">{t('auth.forgotPassword', 'Forgot Password?')}</h1>
                 <p className="opacity-75 text-sm">
-                  No worries! Enter your email and we'll send you a reset link.
+                  {t('auth.forgotPasswordSubtitle', "Enter your email and we'll send you a reset link.")}
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Email Address</label>
+                  <label className="block text-sm font-semibold mb-2">{t('auth.email', 'Email Address')}</label>
                   <div className="relative">
                     <FiMail className="absolute left-3 top-3 text-luxury-gold" size={16} />
                     <input
@@ -102,10 +104,10 @@ function ForgotPassword() {
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
                       <span className="w-5 h-5 border-2 border-luxury-black border-t-transparent rounded-full animate-spin" />
-                      Sending...
+                      {t('common.loading', 'Sending...')}
                     </span>
                   ) : (
-                    'Send Reset Link'
+                    t('auth.sendResetLink', 'Send Reset Link')
                   )}
                 </button>
               </form>
@@ -116,11 +118,11 @@ function ForgotPassword() {
               <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto mb-6">
                 <FiCheckCircle size={36} className="text-green-400" />
               </div>
-              <h2 className="text-2xl font-serif font-bold mb-3">Check Your Email</h2>
-              <p className="opacity-75 text-sm mb-2">We sent a password reset link to:</p>
+              <h2 className="text-2xl font-serif font-bold mb-3">{t('auth.checkEmail', 'Check Your Email')}</h2>
+              <p className="opacity-75 text-sm mb-2">{t('auth.resetLinkSentTo', 'We sent a password reset link to:')}</p>
               <p className="text-luxury-gold font-semibold mb-6">{email}</p>
               <p className="text-xs opacity-60 mb-6">
-                Didn't receive it? Check your spam folder or resend below.
+                {t('auth.didntReceive', "Didn't receive it? Check your spam folder or resend below.")}
               </p>
 
               <div className="space-y-3">
@@ -129,13 +131,13 @@ function ForgotPassword() {
                   disabled={resendCountdown > 0 || loading}
                   className="w-full py-2.5 border-2 border-luxury-gold/50 rounded-xl hover:border-luxury-gold hover:bg-luxury-gold/10 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend Email'}
+                  {resendCountdown > 0 ? `${t('auth.resendIn', 'Resend in')} ${resendCountdown}s` : t('auth.resendEmail', 'Resend Email')}
                 </button>
                 <Link
                   to="/login"
                   className="block w-full py-2.5 text-center text-sm opacity-75 hover:opacity-100 hover:text-luxury-gold transition-colors"
                 >
-                  Return to Login
+                  {t('auth.backToLogin', 'Return to Login')}
                 </Link>
               </div>
             </div>
@@ -147,3 +149,4 @@ function ForgotPassword() {
 }
 
 export default ForgotPassword
+

@@ -2,10 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SKLP - Luxury Fashion Store</title>
+    <meta name="title" content="SKLP - Luxury Fashion Store" />
     <meta name="description" content="SKLP - Premium AI-Powered Fashion Ecommerce Platform" />
+    <meta name="keywords" content="SKLP, luxury fashion, ecommerce, sarees, ethnic wear, indian fashion, AI fashion styling" />
     <meta name="theme-color" content="#FFD700" />
+    <link rel="canonical" href="https://sklp-fashion-ecommerce-platform.vercel.app/" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- Open Graph / Facebook / WhatsApp Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SKLP Fashion Store" />
+    <meta property="og:url" content="https://sklp-fashion-ecommerce-platform.vercel.app/" />
+    <meta property="og:title" content="SKLP - Luxury Fashion Store" />
+    <meta property="og:description" content="SKLP - Premium AI-Powered Fashion Ecommerce Platform" />
+    <meta property="og:image" content="https://sklp-fashion-ecommerce-platform.vercel.app/sklp_og.png" />
+    <meta property="og:image:alt" content="SKLP - Luxury Fashion Store" />
+
+    <!-- Twitter Card Preview -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@sklp_fashion" />
+    <meta name="twitter:url" content="https://sklp-fashion-ecommerce-platform.vercel.app/" />
+    <meta name="twitter:title" content="SKLP - Luxury Fashion Store" />
+    <meta name="twitter:description" content="SKLP - Premium AI-Powered Fashion Ecommerce Platform" />
+    <meta name="twitter:image" content="https://sklp-fashion-ecommerce-platform.vercel.app/sklp_og.png" />
+    <meta name="twitter:image:alt" content="SKLP - Luxury Fashion Store" />
+
     <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
     <script>
       (function() {
@@ -23,10 +47,9 @@
           } else {
             document.documentElement.lang = 'en';
           }
-        } catch (e) {}
+        } catch (_e) { /* localStorage unavailable in sandboxed env */ }
       })();
     </script>
-    <title>SKLP - Luxury Fashion Store</title>
   </head>
 
   <body>

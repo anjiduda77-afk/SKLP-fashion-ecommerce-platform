@@ -95,7 +95,14 @@ function Login() {
       }
     } catch (err) {
       console.error('Email login error:', err)
-      const msg = err.response?.data?.message || 'Invalid email or password. Please check your credentials.'
+      let msg = err.response?.data?.message
+      if (!msg) {
+        if (err.message === 'Network Error' || !err.response) {
+          msg = 'Unable to connect to the backend server. Please check your internet connection or try again in a few moments.'
+        } else {
+          msg = err.message || 'Invalid email or password. Please check your credentials.'
+        }
+      }
       toast.error(msg)
     } finally {
       setLoading(false)

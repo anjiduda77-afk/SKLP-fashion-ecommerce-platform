@@ -55,7 +55,7 @@ export const getShopProducts = async (req, res) => {
   const total = await SellerOffer.countDocuments(query)
 
   // Filter out any offers whose catalog product was deleted or inactive
-  const validProducts = offers
+  let validProducts = offers
     .filter(o => o.productId)
     .map(o => ({
       offerId: o._id,
@@ -77,6 +77,15 @@ export const getShopProducts = async (req, res) => {
       shopSlug: seller.shopSlug
     }))
 
+  if (category) {
+    validProducts = validProducts.filter(p => p.category?.toLowerCase() === category.toLowerCase())
+  }
+  if (sort === 'price-low') {
+    validProducts.sort((a, b) => a.price - b.price)
+  } else if (sort === 'price-high') {
+    validProducts.sort((a, b) => b.price - a.price)
+  }
+
   res.status(200).json({
     success: true,
     products: validProducts,
@@ -88,3 +97,64 @@ export const getShopProducts = async (req, res) => {
     }
   })
 }
+
+/**
+ * Get all active and approved shops/brands for marketplace brand selector
+ */
+export const getAllActiveShops = async (req, res) => {
+  const { search } = req.query
+  const filter = {
+    $or: [
+      { approvalStatus: 'APPROVED' },
+      { verificationStatus: 'verified' }
+    ],
+    sellerStatus: 'active'
+  }
+
+  if (search && search.trim()) {
+    const s = search.trim()
+    filter.$and = [
+      {
+        $or: [
+          { brandName: { $regex: s, $options: 'i' } },
+          { shopName: { $regex: s, $options: 'i' } },
+          { description: { $regex: s, $options: 'i' } }
+        ]
+      }
+    ]
+  }
+
+  const sellers = await Seller.find(filter)
+    .select('shopName shopSlug brandName brandNameNormalized logo banner description rating reviewCount totalOrders createdAt')
+    .sort({ rating: -1, totalOrders: -1 })
+    .lean()
+
+  const shopList = await Promise.all(sellers.map(async (s) => {
+    const productCount = await Product.countDocuments({
+      $or: [{ sellerId: s._id }, { brand: s.brandName || s.shopName }],
+      isActive: true
+    })
+    return {
+      _id: s._id,
+      id: s._id,
+      shopName: s.shopName,
+      brandName: s.brandName || s.shopName,
+      brandNameNormalized: s.brandNameNormalized,
+      shopSlug: s.shopSlug,
+      logo: s.logo,
+      banner: s.banner,
+      description: s.description,
+      rating: s.rating,
+      reviewCount: s.reviewCount,
+      productCount,
+      isVerified: true
+    }
+  }))
+
+  res.status(200).json({
+    success: true,
+    count: shopList.length,
+    shops: shopList
+  })
+}
+

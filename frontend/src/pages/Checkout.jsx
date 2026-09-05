@@ -177,19 +177,26 @@ function Checkout() {
       return
     }
     if (!deliveryInfo.calculated) {
-      toast.error('Please wait — calculating delivery fee for your address…')
-      return
+      // If address is complete, try to calculate on-the-spot before blocking
+      if (shippingAddress.city && shippingAddress.postalCode && shippingAddress.postalCode.length >= 5) {
+        toast.info('Calculating delivery fee for your address…')
+        await fetchDeliveryFee(shippingAddress)
+        // If still not calculated after attempt, show error
+        if (!deliveryInfo.calculated) {
+          toast.error('Unable to calculate delivery fee. Please check your address and try again.')
+          return
+        }
+      } else {
+        toast.error('Please enter your city and 6-digit postal code to calculate delivery charges.')
+        return
+      }
     }
 
     setLoading(true)
     try {
-      // Sync cart with backend
-      toast.info('Syncing secure checkout session…')
-      await cartService.clearCart()
-      for (const item of cartItems) {
-        await cartService.addToCart(item.id, item.quantity, item.variant)
-      }
-
+      // The backend cart is already synced via CartContext on every addToCart/update action.
+      // We do NOT clear and re-add here to avoid data loss if the loop fails mid-way.
+      // Instead we place the order directly — the backend reads the user's cart server-side.
       let orderResult
 
       if (paymentMethod === 'cod') {
@@ -408,15 +415,15 @@ function Checkout() {
   const labelCls = 'text-xs uppercase tracking-wider block mb-1 opacity-70'
 
   return (
-    <div className="container-custom py-16 min-h-screen">
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">Secure Checkout</h1>
+    <div className="container-custom py-8 md:py-16 min-h-screen">
+      <h1 className="text-2xl md:text-4xl font-serif font-bold mb-8 md:mb-12 tracking-wide uppercase">Secure Checkout</h1>
 
-      <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         {/* ── LEFT: Contact, Address, Payment ── */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6 sm:space-y-8">
 
           {/* 1. Contact Information */}
-          <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
+          <div className={`p-5 sm:p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
             <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">
               1. Contact Information
             </h2>
@@ -448,7 +455,7 @@ function Checkout() {
           </div>
 
           {/* 2. Delivery Address */}
-          <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
+          <div className={`p-5 sm:p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
             <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">
               2. Delivery Address
             </h2>
@@ -512,7 +519,7 @@ function Checkout() {
           </div>
 
           {/* 3. Payment Method */}
-          <div className={`p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
+          <div className={`p-5 sm:p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
             <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">
               3. Payment Method
             </h2>
@@ -552,7 +559,7 @@ function Checkout() {
 
         {/* ── RIGHT: Order Summary ── */}
         <div>
-          <div className={`p-8 rounded-2xl border sticky top-24 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
+          <div className={`p-5 sm:p-8 rounded-2xl border sticky top-24 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
             <h2 className="text-xl font-serif font-bold mb-6 tracking-wide uppercase">Order Summary</h2>
 
             {/* Cart items */}

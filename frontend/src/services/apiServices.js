@@ -33,7 +33,8 @@ export const adminService = {
   markSettlementPaid: (id, data) => apiClient.put(`/admin/settlements/${id}/pay`, data),
   // Review Moderation
   getReviews: (params) => apiClient.get('/admin/reviews', { params }),
-  updateReviewStatus: (id, data) => apiClient.put(`/admin/reviews/${id}/status`, data)
+  updateReviewStatus: (id, data) => apiClient.put(`/admin/reviews/${id}/status`, data),
+  deleteReview: (id) => apiClient.delete(`/admin/reviews/${id}`)
 }
 
 /**
@@ -54,6 +55,7 @@ export const sellerService = {
   createOffer: (data) => apiClient.post('/seller/offers', data),
   // Settlement ledger
   getSettlements: (params) => apiClient.get('/seller/settlements', { params }),
+  requestPayout: (data) => apiClient.post('/seller/settlements/payout', data),
   // Subscriptions & Plans
   getSubscription: () => apiClient.get('/seller/subscription'),
   selectSubscriptionPlan: (data) => apiClient.post('/seller/subscription/select-plan', data)
@@ -98,9 +100,6 @@ export const authService = {
   login: (email, password, rememberMe) =>
     apiClient.post('/auth/login', { email, password, rememberMe }),
   register: (data) => apiClient.post('/auth/register', data),
-  sendOTP: (phone) => apiClient.post('/auth/send-otp', { phone }),
-  verifyOTP: (phone, otp) => apiClient.post('/auth/verify-otp', { phone, otp }),
-  resendOTP: (phone) => apiClient.post('/auth/resend-otp', { phone }),
   refreshToken: (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   logoutAll: () => apiClient.post('/auth/logout-all'),
@@ -110,9 +109,9 @@ export const authService = {
   resendVerification: (email) => apiClient.post('/auth/resend-verification', { email }),
   getSessions: () => apiClient.get('/auth/sessions'),
   getMe: () => apiClient.get('/auth/me'),
+  linkEmail: (email) => apiClient.post('/auth/link-email', { email }),
   sendLinkPhoneOTP: (phone) => apiClient.post('/auth/link-phone/send-otp', { phone }),
-  verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp }),
-  linkEmail: (email) => apiClient.post('/auth/link-email', { email })
+  verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp })
 }
 
 /**
@@ -174,6 +173,14 @@ export const orderService = {
 }
 
 /**
+ * Payment API Service
+ */
+export const paymentService = {
+  verifyRazorpayPayment: (data) => apiClient.post('/orders/verify-payment', data),
+  verifyPayment: (data) => apiClient.post('/payments/razorpay/verify', data)
+}
+
+/**
  * Delivery Fee Service
  */
 export const deliveryFeeService = {
@@ -232,6 +239,27 @@ export const adminMarketingService = {
   getAssets: (params) => apiClient.get('/admin/campaigns/assets', { params }),
   createAsset: (data) => apiClient.post('/admin/campaigns/assets', data),
   deleteAsset: (id) => apiClient.delete(`/admin/campaigns/assets/${id}`)
+}
+
+/**
+ * Notifications & FCM Device Token Service
+ */
+export const notificationService = {
+  getNotifications: (params) => apiClient.get('/users/notifications', { params }),
+  markAsRead: (id) => apiClient.put(`/users/notifications/${id}/read`),
+  markAllAsRead: () => apiClient.put('/users/notifications/read-all'),
+  registerFcmToken: (token) => apiClient.post('/users/fcm-token', { token }),
+  sendTestNotification: () => apiClient.post('/users/notifications/test')
+}
+
+/**
+ * Search API Service
+ */
+export const searchService = {
+  getSuggestions: (q, shopId) => apiClient.get('/search/suggestions', { params: { q, shopId } }),
+  search: (params) => apiClient.get('/search', { params }),
+  getAnalytics: (params) => apiClient.get('/search/analytics', { params }),
+  trackEvent: (data) => apiClient.post('/search/track', data)
 }
 
 export default apiClient

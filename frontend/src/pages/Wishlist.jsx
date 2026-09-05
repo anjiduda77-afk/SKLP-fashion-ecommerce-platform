@@ -97,13 +97,13 @@ function Wishlist() {
         <div className="w-24 h-24 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mb-6">
           <FiHeart size={40} />
         </div>
-        <h1 className="text-4xl font-serif font-bold mb-4">{t('wishlist.emptyTitle', 'Your Wishlist is Empty')}</h1>
-        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.emptyDesc', 'Explore our signature haute couture collections and tap the heart icon on any piece to save it here.')}</p>
+        <h1 className="text-4xl font-serif font-bold mb-4">{t('wishlist.emptyTitle', 'Your wishlist is empty.')}</h1>
+        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.emptyDesc', 'Save items you love by tapping the heart icon, and shop them anytime.')}</p>
         <Link
           to="/products"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
         >
-          {t('wishlist.discoverCollections', 'DISCOVER COLLECTIONS')}
+          {t('wishlist.discoverCollections', 'Explore Products')}
         </Link>
       </div>
     )

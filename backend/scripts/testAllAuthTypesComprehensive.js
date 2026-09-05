@@ -172,22 +172,26 @@ async function runComprehensiveAuthTests() {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 5. MOBILE PHONE OTP GENERATION & VERIFICATION
+  // 5. MOBILE PHONE LINKING & OTP VERIFICATION
   // ──────────────────────────────────────────────────────────────────────────
   console.log('\n─── 5. MOBILE PHONE OTP FLOW (SEND & VERIFY) ────────────────────')
   {
     process.env.OTP_MODE = 'development'
     const testPhone = '9812345678'
-    const sendReq = { body: { phone: testPhone } }
+    const sendReq = {
+      user: { id: customerUser._id.toString() },
+      body: { phone: testPhone }
+    }
     const sendRes = createMockRes()
-    await authController.sendOTP(sendReq, sendRes)
+    await authController.sendLinkPhoneOTP(sendReq, sendRes)
     const sendData = sendRes.getData()
 
-    assert(sendRes.getStatusCode() === 200 && sendData.success, 'Send OTP returns 200 OK')
+    assert(sendRes.getStatusCode() === 200 && sendData.success, 'Send Link Phone OTP returns 200 OK')
     assert(Boolean(sendData.devOtp), 'Dev OTP received for verification in test environment')
 
     // Verify OTP
     const verifyReq = {
+      user: { id: customerUser._id.toString() },
       body: {
         phone: testPhone,
         otp: sendData.devOtp
@@ -196,15 +200,12 @@ async function runComprehensiveAuthTests() {
       connection: { remoteAddress: '127.0.0.1' }
     }
     const verifyRes = createMockRes()
-    await authController.verifyOTP(verifyReq, verifyRes)
+    await authController.verifyLinkPhone(verifyReq, verifyRes)
     const verifyData = verifyRes.getData()
 
-    assert(verifyRes.getStatusCode() === 200 && verifyData.success, 'Verify OTP returns 200 OK')
+    assert(verifyRes.getStatusCode() === 200 && verifyData.success, 'Verify Link Phone OTP returns 200 OK')
     assert(verifyData.user.isPhoneVerified === true, 'Phone is marked as verified')
-    assert(Boolean(verifyData.token), 'JWT token returned on OTP login')
-
-    // Clean up OTP user
-    await User.findByIdAndDelete(verifyData.user._id)
+    assert(verifyData.user.phone === testPhone, 'Phone number updated on user account')
   }
 
   // ──────────────────────────────────────────────────────────────────────────

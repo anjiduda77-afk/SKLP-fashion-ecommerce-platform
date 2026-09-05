@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please provide a valid email']
   },
   phone: {
     type: String,
@@ -49,8 +49,8 @@ const userSchema = new mongoose.Schema({
   // Authentication
   authProvider: {
     type: String,
-    enum: ['email', 'google', 'otp', 'firebase'],
-    default: 'firebase'
+    enum: ['email', 'google', 'firebase'],
+    default: 'email'
   },
   firebaseUid: {
     type: String,
@@ -71,13 +71,7 @@ const userSchema = new mongoose.Schema({
   passwordResetToken: String,
   passwordResetExpiry: Date,
   phoneVerificationToken: String,
-
-  // OTP Authentication (dedicated fields — not shared with lockUntil)
-  phoneOtp: String,
-  phoneOtpExpiry: Date,
-  phoneOtpAttempts: { type: Number, default: 0 },
-  phoneOtpResendCount: { type: Number, default: 0 },
-  lastOtpSentAt: Date,
+  phoneVerificationExpiry: Date,
 
   // Refresh Token Management (stored per device)
   refreshTokens: [{
@@ -88,10 +82,13 @@ const userSchema = new mongoose.Schema({
     expiresAt: { type: Date, required: true }
   }],
 
-  // User Status
+  // Firebase Cloud Messaging (FCM) Device Push Tokens
+  fcmTokens: [{ type: String }],
+
+  // User Status (Strictly 4 Roles: customer, admin, seller, delivery)
   role: {
     type: String,
-    enum: ['customer', 'admin', 'seller', 'delivery', 'moderator'],
+    enum: ['customer', 'admin', 'seller', 'delivery'],
     default: 'customer'
   },
   status: {
@@ -268,22 +265,14 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-
-  try {
+// Pre-save operations: hash password & clean up refresh tokens
+userSchema.pre('save', async function () {
+  if (this.isModified('password')) {
     const salt = await bcrypt.genSalt(parseInt(process.env.BCRYPT_ROUNDS) || 10);
     this.password = await bcrypt.hash(this.password, salt);
     this.lastPasswordChange = new Date();
-    next();
-  } catch (error) {
-    next(error);
   }
-});
 
-// Clean up expired refresh tokens before saving
-userSchema.pre('save', function (next) {
   if (this.refreshTokens && this.refreshTokens.length > 0) {
     this.refreshTokens = this.refreshTokens.filter(
       rt => rt.expiresAt > new Date()
@@ -293,7 +282,6 @@ userSchema.pre('save', function (next) {
       this.refreshTokens = this.refreshTokens.slice(-5);
     }
   }
-  next();
 });
 
 // Method to compare passwords

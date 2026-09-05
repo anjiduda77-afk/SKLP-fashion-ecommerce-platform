@@ -189,7 +189,7 @@ function ProductDetail() {
   const activeImg = product.images?.[activeImageIdx]?.url || product.image
 
   return (
-    <div className="min-h-screen py-12">
+    <div className="min-h-screen py-4 sm:py-12">
       <div className="container-custom">
         {/* Breadcrumb */}
         <nav className="text-xs uppercase tracking-widest opacity-60 mb-8 flex items-center gap-2">
@@ -241,7 +241,7 @@ function ProductDetail() {
           <div className="flex flex-col justify-between">
             <div>
               <p className="text-xs uppercase tracking-widest text-luxury-gold font-semibold mb-2">{product.brand || 'SKLP Couture'}</p>
-              <h1 className="text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight">{product.name}</h1>
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-bold mb-3 sm:mb-4 leading-tight">{product.name}</h1>
               
               {/* Review & Ratings */}
               <div 
@@ -313,7 +313,7 @@ function ProductDetail() {
                       <button
                         key={sz}
                         onClick={() => setSelectedSize(sz)}
-                        className={`w-12 h-12 border text-xs font-bold uppercase flex items-center justify-center transition-all ${
+                        className={`min-w-[44px] min-h-[44px] px-3 border text-xs font-bold uppercase flex items-center justify-center transition-all rounded-lg ${
                           selectedSize === sz ? 'bg-luxury-gold text-luxury-black border-luxury-gold' : 'border-white/10 hover:border-white/40'
                         }`}
                       >
@@ -339,7 +339,7 @@ function ProductDetail() {
               </div>
             </div>
 
-            {/* Actions Panel */}
+            {/* Actions Panel - hidden on mobile (moved to sticky bar) */}
             <div className="space-y-4 pt-6 border-t border-white/10">
               {/* Seller Trust Information */}
               <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-luxury-black/60 border-luxury-darkGray' : 'bg-gray-50 border-gray-200'} space-y-2`}>
@@ -368,19 +368,20 @@ function ProductDetail() {
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              {/* Desktop action buttons */}
+              <div className="hidden sm:flex gap-4">
                 <button
                   onClick={() => {
                     addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
                     toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'SKLP Official Store'}! 🎉`)
                   }}
-                  className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap"
+                  className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap touch-target"
                 >
                   <FiShoppingBag size={14} className="shrink-0" /> Buy Now / Add to Cart
                 </button>
                  <button
                   onClick={() => toggleWishlist(product)}
-                  className={`p-4 border rounded-xl transition-colors duration-200 ${
+                  className={`p-4 border rounded-xl transition-colors duration-200 touch-target ${
                     isInWishlist(product._id || product.id)
                       ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20'
                       : isDarkMode
@@ -396,7 +397,7 @@ function ProductDetail() {
               {/* Outfit Recommendation look Trigger */}
               <button
                 onClick={() => setShowOutfitDrawer(true)}
-                className="w-full py-4 border border-luxury-gold text-luxury-gold font-bold tracking-wider text-xs uppercase hover:bg-luxury-gold hover:text-luxury-black transition-all"
+                className="w-full py-4 border border-luxury-gold text-luxury-gold font-bold tracking-wider text-xs uppercase hover:bg-luxury-gold hover:text-luxury-black transition-all touch-target"
               >
                 View Curated Styling Outfit Look
               </button>
@@ -524,6 +525,38 @@ function ProductDetail() {
             ))}
           </div>
         </section>
+      </div>
+
+      {/* ============ MOBILE STICKY BOTTOM ACTION BAR ============ */}
+      <div className={`fixed bottom-0 left-0 right-0 z-30 sm:hidden glass-bottom-bar safe-pb border-t ${
+        isDarkMode ? 'bg-luxury-black/95 border-luxury-gold/20' : 'bg-white/95 border-gray-200'
+      } backdrop-blur-xl`}>
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+          <div className="flex-1">
+            <p className="text-[10px] uppercase tracking-widest text-luxury-gold">Price</p>
+            <p className="text-lg font-bold text-luxury-gold">₹{product.price.toLocaleString()}</p>
+          </div>
+          <button
+            onClick={() => toggleWishlist(product)}
+            className={`p-3 border rounded-xl transition-colors duration-200 touch-target ${
+              isInWishlist(product._id || product.id)
+                ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                : 'border-luxury-gold/30 text-luxury-gold'
+            }`}
+            aria-label="Toggle Wishlist"
+          >
+            <FiHeart size={18} className={isInWishlist(product._id || product.id) ? 'fill-current' : ''} />
+          </button>
+          <button
+            onClick={() => {
+              addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
+              toast.success('Added to Cart! 🎉')
+            }}
+            className="flex-grow max-w-[180px] py-3 px-4 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl touch-target"
+          >
+            <FiShoppingBag size={14} /> Add to Cart
+          </button>
+        </div>
       </div>
 
       {/* ============ SIZE RECOMMENDATION ADVISOR MODAL ============ */}

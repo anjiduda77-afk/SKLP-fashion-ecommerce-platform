@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useCurrency } from '@context/CurrencyContext'
-import { userService, authService } from '@services/apiServices'
+import { userService, authService, notificationService } from '@services/apiServices'
+import { requestFcmToken } from '@config/firebase'
 import { toast } from 'react-toastify'
 import {
   FiUser, FiMail, FiPhone, FiLock, FiMapPin,
@@ -144,10 +145,10 @@ function AvatarModal({ currentAvatar, onSelectAvatar, onClose, isDarkMode }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className={`w-full max-w-md rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
         <div className="flex items-center justify-between mb-4 border-b border-current/10 pb-3">
-          <h3 className="text-lg font-bold text-luxury-gold flex items-center gap-2 font-serif"><FiUser /> Choose Atelier Avatar</h3>
+          <h3 className="text-lg font-bold text-luxury-gold flex items-center gap-2 font-serif"><FiUser /> Choose Profile Photo</h3>
           <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
         </div>
-        <p className="text-xs opacity-75 mb-4">Select a luxury couture avatar or provide an image link:</p>
+        <p className="text-xs opacity-75 mb-4">Choose a preset avatar or paste an image link:</p>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {PRESET_AVATARS.map((av) => {
             const isSelected = currentAvatar === av.url
@@ -210,6 +211,54 @@ function Profile() {
     deliveryInstructions: user?.preferences?.deliveryInstructions || '', preferredSlot: user?.preferences?.preferredSlot || 'anytime'
   })
   const [fashionPreferences, setFashionPreferences] = useState({ genderPreference: user?.fashionPreferences?.genderPreference || 'all', clothingSize: user?.fashionPreferences?.clothingSize || 'M', shoeSize: user?.fashionPreferences?.shoeSize || 'UK 8', styleVibe: user?.fashionPreferences?.styleVibe || 'Royal Couture' })
+  const [pushPermission, setPushPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  )
+  const [pushRegistering, setPushRegistering] = useState(false)
+  const [testingPush, setTestingPush] = useState(false)
+
+  const handleEnablePushNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      toast.warn('Push notifications are not supported by this browser.')
+      return
+    }
+
+    setPushRegistering(true)
+    try {
+      const token = await requestFcmToken()
+      if (token) {
+        await notificationService.registerFcmToken(token)
+        setPushPermission('granted')
+        toast.success('✨ Web Push Notifications enabled! You will receive live order & drop updates.')
+      } else {
+        setPushPermission(Notification.permission)
+        if (Notification.permission === 'denied') {
+          toast.error('Notification permission was blocked in your browser settings.')
+        } else {
+          toast.info('Notification permission was not granted.')
+        }
+      }
+    } catch (err) {
+      console.error('Enable push error:', err)
+      toast.error('Could not enable push notifications.')
+    } finally {
+      setPushRegistering(false)
+    }
+  }
+
+  const handleSendTestNotification = async () => {
+    setTestingPush(true)
+    try {
+      const res = await notificationService.sendTestNotification()
+      if (res.data?.success) {
+        toast.success('🔔 Test notification dispatched! Check your notification bell and desktop alert.')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not send test notification')
+    } finally {
+      setTestingPush(false)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -230,9 +279,9 @@ function Profile() {
       <div className="container-custom py-20 min-h-[70vh] flex items-center justify-center">
         <div className={`card max-w-md p-8 text-center space-y-5 rounded-3xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white text-black'}`}>
           <div className="w-16 h-16 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mx-auto"><FiLock size={32} /></div>
-          <h2 className="text-2xl font-serif font-bold">Access Atelier Settings</h2>
-          <p className="text-xs opacity-75 leading-relaxed">Please sign in to manage your profile, delivery addresses, notification alerts, and account settings.</p>
-          <Link to="/login?redirect=/profile" className="block w-full py-3.5 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">Sign In to SKLP</Link>
+          <h2 className="text-2xl font-serif font-bold">Account Settings</h2>
+          <p className="text-xs opacity-75 leading-relaxed">Please login to manage your profile, delivery addresses, notifications, and account settings.</p>
+          <Link to="/login?redirect=/profile" className="block w-full py-3.5 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">Login to SKLP</Link>
         </div>
       </div>
     )
@@ -556,27 +605,94 @@ function Profile() {
           )}
 
           {activeTab === 'notifications' && (
-            <div className={`p-6 rounded-2xl border ${cardBg} max-w-3xl space-y-6 animate-fade-in`}>
-              <div><h2 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2"><FiBell /> Notification & Communication Alerts</h2><p className="text-xs opacity-65 mt-1">Configure your preferred channels for updates and private couture drops.</p></div>
-              <div className="divide-y divide-current/10">
-                {[
-                  { key: 'orderUpdates', title: 'Live Order Tracking & Dispatch Alerts', desc: 'Real-time SMS & Email dispatch notifications with courier links' },
-                  { key: 'whatsapp', title: 'WhatsApp Concierge Updates', desc: 'Receive OTPs and delivery status on your WhatsApp number' },
-                  { key: 'promoAlerts', title: 'Private Couture & Festive Drops', desc: 'Early VIP access to limited-edition festive garments and sales' },
-                  { key: 'priceDropAlerts', title: 'Wishlist Price Drop Alerts', desc: 'Get alerted when items on your wishlist go on discount' },
-                  { key: 'email', title: 'Digest & Invoicing Emails', desc: 'Receive digital tax invoices and monthly style recommendations' }
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between py-4">
-                    <div><p className="text-sm font-bold">{item.title}</p><p className="text-xs opacity-65 mt-0.5">{item.desc}</p></div>
-                    <button type="button" onClick={() => setPreferences(prev => ({ ...prev, notifications: { ...prev.notifications, [item.key]: !prev.notifications[item.key] } }))}
-                      className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 flex-shrink-0 ml-4 ${preferences.notifications[item.key] ? 'bg-luxury-gold' : isDarkMode ? 'bg-white/20' : 'bg-gray-300'}`}>
-                      <div className={`w-4 h-4 rounded-full bg-black transition-transform ${preferences.notifications[item.key] ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </button>
+            <div className="max-w-3xl space-y-6 animate-fade-in">
+              {/* Web Push / FCM Status & Activation Card */}
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2">
+                      <FiBell className="text-luxury-gold" /> Web Push & Realtime Alerts
+                    </h2>
+                    <p className="text-xs opacity-65 mt-1">
+                      Receive instant status updates directly on your device even when your browser tab is in background.
+                    </p>
                   </div>
-                ))}
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                    pushPermission === 'granted'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : pushPermission === 'denied'
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${
+                      pushPermission === 'granted' ? 'bg-emerald-400' : pushPermission === 'denied' ? 'bg-red-400' : 'bg-yellow-400'
+                    }`} />
+                    {pushPermission === 'granted' ? 'Push Active' : pushPermission === 'denied' ? 'Push Blocked' : 'Push Inactive'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleEnablePushNotifications}
+                    disabled={pushRegistering}
+                    className="px-5 py-2.5 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all shadow-glow flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FiBell />
+                    {pushRegistering ? 'Registering Device...' : pushPermission === 'granted' ? 'Re-Sync Push Device' : 'Enable Push Notifications'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendTestNotification}
+                    disabled={testingPush}
+                    className={`px-5 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+                      isDarkMode ? 'border-white/20 hover:bg-white/10 text-white' : 'border-black/20 hover:bg-black/5 text-black'
+                    } disabled:opacity-50`}
+                  >
+                    {testingPush ? 'Sending Test...' : 'Send Test Alert'}
+                  </button>
+                </div>
               </div>
-              <div className="pt-4 border-t border-current/10">
-                <button type="button" onClick={() => handlePreferencesSave(preferences, fashionPreferences)} disabled={prefsLoading} className="px-6 py-3 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">{prefsLoading ? 'Saving...' : 'Save Notification Preferences'}</button>
+
+              {/* Granular Channel Preferences */}
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-6`}>
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-luxury-gold">Notification Channels & Topics</h3>
+                  <p className="text-xs opacity-65 mt-1">Configure which notifications you want to receive across SMS, WhatsApp, and Email.</p>
+                </div>
+                <div className="divide-y divide-current/10">
+                  {[
+                    { key: 'orderUpdates', title: 'Live Order Tracking & Dispatch Alerts', desc: 'Real-time SMS & Email dispatch notifications with courier links' },
+                    { key: 'whatsapp', title: 'WhatsApp Concierge Updates', desc: 'Receive OTPs and delivery status on your WhatsApp number' },
+                    { key: 'promoAlerts', title: 'Private Couture & Festive Drops', desc: 'Early VIP access to limited-edition festive garments and sales' },
+                    { key: 'priceDropAlerts', title: 'Wishlist Price Drop Alerts', desc: 'Get alerted when items on your wishlist go on discount' },
+                    { key: 'email', title: 'Digest & Invoicing Emails', desc: 'Receive digital tax invoices and monthly style recommendations' }
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center justify-between py-4">
+                      <div>
+                        <p className="text-sm font-bold">{item.title}</p>
+                        <p className="text-xs opacity-65 mt-0.5">{item.desc}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPreferences(prev => ({ ...prev, notifications: { ...prev.notifications, [item.key]: !prev.notifications?.[item.key] } }))}
+                        className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 flex-shrink-0 ml-4 ${preferences.notifications?.[item.key] ? 'bg-luxury-gold' : isDarkMode ? 'bg-white/20' : 'bg-gray-300'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-black transition-transform ${preferences.notifications?.[item.key] ? 'translate-x-6' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 border-t border-current/10">
+                  <button
+                    type="button"
+                    onClick={() => handlePreferencesSave(preferences, fashionPreferences)}
+                    disabled={prefsLoading}
+                    className="px-6 py-3 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all"
+                  >
+                    {prefsLoading ? 'Saving...' : 'Save Notification Preferences'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -605,15 +721,15 @@ function Profile() {
               </div>
               <div className={`p-6 rounded-2xl border ${cardBg} space-y-4 flex flex-col justify-between`}>
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-luxury-gold flex items-center gap-2"><FiTag /> SKLP Atelier Wallet</h3>
+                  <h3 className="text-lg font-serif font-bold text-luxury-gold flex items-center gap-2"><FiTag /> SKLP Wallet</h3>
                   <div className="mt-4 p-5 rounded-2xl bg-luxury-gold/10 border border-luxury-gold/30 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-luxury-gold">Available Reward Coins</p>
                     <p className="text-3xl font-serif font-extrabold mt-1 text-luxury-gold">500 Coins</p>
-                    <p className="text-[10px] opacity-75 mt-1">Worth Rs.500 discount on your next checkout</p>
+                    <p className="text-[10px] opacity-75 mt-1">Worth ₹500 discount on your next order</p>
                   </div>
-                  <div className="mt-4 space-y-2 text-xs opacity-75"><p>Earn 5% back on all luxury couture orders</p><p>Automatically applicable at Checkout</p></div>
+                  <div className="mt-4 space-y-2 text-xs opacity-75"><p>Earn reward coins on every order</p><p>Redeemable directly at Checkout</p></div>
                 </div>
-                <Link to="/products" className="block text-center w-full py-3 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow">Shop & Earn More</Link>
+                <Link to="/products" className="block text-center w-full py-3 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow">Shop & Earn Coins</Link>
               </div>
             </div>
           )}

@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ['order', 'payment', 'shipment', 'return', 'offer', 'review', 'account', 'system'],
+    enum: ['order', 'payment', 'shipment', 'return', 'offer', 'review', 'account', 'system', 'seller_approved', 'seller_rejected', 'seller_info_required'],
     required: true
   },
 
@@ -29,7 +29,7 @@ const notificationSchema = new mongoose.Schema({
   relatedEntity: {
     entityType: {
       type: String,
-      enum: ['order', 'product', 'user', 'coupon'],
+      enum: ['order', 'product', 'user', 'coupon', 'seller', 'application'],
     },
     entityId: mongoose.Schema.Types.ObjectId
   },

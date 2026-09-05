@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
@@ -6,187 +5,128 @@ import Coupon from '../models/Coupon.js';
 import Banner from '../models/Banner.js';
 import Notification from '../models/Notification.js';
 import Review from '../models/Review.js';
+import SellerSettlement from '../models/SellerSettlement.js';
 import { ApiError } from '../middleware/errorHandler.js';
-import { uploadMultipleImages, deleteImage } from '../config/cloudinary.js';
+import { uploadMultipleImages } from '../config/cloudinary.js';
 
 // ================= ENHANCED DASHBOARD =================
 export const getDashboardMetrics = async (req, res) => {
   try {
-    // 1. Core Summary Stats
-    const totalUsers = await User.countDocuments({ role: 'customer' });
-    const totalSellers = await User.countDocuments({ role: 'seller' });
-    const totalOrders = await Order.countDocuments({});
-    const totalProducts = await Product.countDocuments({ isActive: true });
-    
-    // Revenue Aggregation
-    const salesStats = await Order.aggregate([
-      { $match: { status: { $nin: ['cancelled', 'returned', 'refunded'] } } },
-      { $group: { _id: null, totalSales: { $sum: '$totalAmount' }, avgOrder: { $avg: '$totalAmount' } } }
-    ]);
-    
-    const totalSales = salesStats[0]?.totalSales || 0;
-    const avgOrderValue = salesStats[0]?.avgOrder || 0;
-
-    // Today's stats
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayOrders = await Order.countDocuments({ createdAt: { $gte: todayStart } });
-    const todayRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: todayStart }, status: { $nin: ['cancelled'] } } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
-    ]);
-    const todayRevenue = todayRevenueAgg[0]?.revenue || 0;
-
-    // This week stats
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
-    const weeklyNewUsers = await User.countDocuments({ createdAt: { $gte: weekStart } });
-    const weeklyOrders = await Order.countDocuments({ createdAt: { $gte: weekStart } });
-    const weeklyRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: weekStart }, status: { $nin: ['cancelled'] } } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
-    ]);
-    const weeklyRevenue = weeklyRevenueAgg[0]?.revenue || 0;
-
-    // Previous week for growth calculation
     const prevWeekStart = new Date();
     prevWeekStart.setDate(prevWeekStart.getDate() - 14);
-    const prevWeekRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: prevWeekStart, $lt: weekStart }, status: { $nin: ['cancelled'] } } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
-    ]);
-    const prevWeekRevenue = prevWeekRevenueAgg[0]?.revenue || 0;
-    const weeklyGrowth = prevWeekRevenue > 0 
-      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) 
-      : 0;
 
-    // Inventory alerts
-    const lowStockCount = await Product.countDocuments({
-      stock: { $gt: 0, $lte: 10 },
-      isActive: true
-    });
-    const outOfStockCount = await Product.countDocuments({
-      stock: 0,
-      isActive: true
-    });
-
-    // Pending actions
-    const pendingReturnsCount = await Order.countDocuments({ status: 'return_requested' });
-    const pendingOrdersCount = await Order.countDocuments({ status: 'pending' });
-    const pendingSellersCount = await User.countDocuments({ role: 'seller', 'sellerProfile.isVerified': false });
-
-    // Order status breakdown
-    const orderStatusBreakdown = await Order.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-
-    // Category Sales
-    const categorySales = await Order.aggregate([
-      { $match: { status: { $nin: ['cancelled'] } } },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.productId',
-          qty: { $sum: '$items.quantity' },
-          amount: { $sum: '$items.finalPrice' }
-        }
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'productInfo'
-        }
-      },
-      { $unwind: '$productInfo' },
-      {
-        $group: {
-          _id: '$productInfo.category',
-          totalQuantity: { $sum: '$qty' },
-          totalSales: { $sum: '$amount' }
-        }
-      },
-      { $sort: { totalSales: -1 } }
-    ]);
-
-    // Monthly Sales Timeline (Last 30 days)
-    const salesTimeline = await Order.aggregate([
-      { $match: { status: { $nin: ['cancelled'] } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' }
-          },
+    // ── Run ALL queries in parallel for maximum speed ──────────────────
+    const [
+      totalUsers,
+      totalSellers,
+      totalOrders,
+      totalProducts,
+      salesStats,
+      todayOrders,
+      todayRevenueAgg,
+      weeklyNewUsers,
+      weeklyOrders,
+      weeklyRevenueAgg,
+      prevWeekRevenueAgg,
+      lowStockCount,
+      outOfStockCount,
+      pendingReturnsCount,
+      pendingOrdersCount,
+      pendingSellersCount,
+      orderStatusBreakdown,
+      categorySales,
+      salesTimeline,
+      recentOrders
+    ] = await Promise.all([
+      User.countDocuments({ role: 'customer' }),
+      User.countDocuments({ role: 'seller' }),
+      Order.countDocuments({}),
+      Product.countDocuments({ isActive: true }),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled', 'returned', 'refunded'] } } },
+        { $group: { _id: null, totalSales: { $sum: '$totalAmount' }, avgOrder: { $avg: '$totalAmount' } } }
+      ]),
+      Order.countDocuments({ createdAt: { $gte: todayStart } }),
+      Order.aggregate([
+        { $match: { createdAt: { $gte: todayStart }, status: { $nin: ['cancelled'] } } },
+        { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+      ]),
+      User.countDocuments({ createdAt: { $gte: weekStart } }),
+      Order.countDocuments({ createdAt: { $gte: weekStart } }),
+      Order.aggregate([
+        { $match: { createdAt: { $gte: weekStart }, status: { $nin: ['cancelled'] } } },
+        { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+      ]),
+      Order.aggregate([
+        { $match: { createdAt: { $gte: prevWeekStart, $lt: weekStart }, status: { $nin: ['cancelled'] } } },
+        { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
+      ]),
+      Product.countDocuments({ stock: { $gt: 0, $lte: 10 }, isActive: true }),
+      Product.countDocuments({ stock: 0, isActive: true }),
+      Order.countDocuments({ status: 'return_requested' }),
+      Order.countDocuments({ status: 'pending' }),
+      User.countDocuments({ role: 'seller', 'sellerProfile.isVerified': false }),
+      Order.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled'] } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.productId', qty: { $sum: '$items.quantity' }, amount: { $sum: '$items.finalPrice' } } },
+        { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'productInfo' } },
+        { $unwind: '$productInfo' },
+        { $group: { _id: '$productInfo.category', totalQuantity: { $sum: '$qty' }, totalSales: { $sum: '$amount' } } },
+        { $sort: { totalSales: -1 } }
+      ]),
+      Order.aggregate([
+        { $match: { status: { $nin: ['cancelled'] } } },
+        { $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, day: { $dayOfMonth: '$createdAt' } },
           revenue: { $sum: '$totalAmount' },
           count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-      { $limit: 30 }
+        }},
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+        { $limit: 30 }
+      ]),
+      Order.find({}).sort({ createdAt: -1 }).limit(10).populate('userId', 'firstName lastName email').lean()
     ]);
 
-    // Recent Orders
-    const recentOrders = await Order.find({})
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('userId', 'firstName lastName email')
-      .lean();
-
-    // Conversion rate (orders / unique users who visited in last 30 days)
+    const totalSales = salesStats[0]?.totalSales || 0;
+    const avgOrderValue = salesStats[0]?.avgOrder || 0;
+    const todayRevenue = todayRevenueAgg[0]?.revenue || 0;
+    const weeklyRevenue = weeklyRevenueAgg[0]?.revenue || 0;
+    const prevWeekRevenue = prevWeekRevenueAgg[0]?.revenue || 0;
+    const weeklyGrowth = prevWeekRevenue > 0
+      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
+      : 0;
     const conversionRate = totalUsers > 0 ? Math.round((totalOrders / totalUsers) * 100) : 0;
 
     res.status(200).json({
       success: true,
       metrics: {
-        // Core
-        totalUsers,
-        totalSellers,
-        totalOrders,
-        totalProducts,
-        totalSales,
+        totalUsers, totalSellers, totalOrders, totalProducts, totalSales,
         avgOrderValue: Math.round(avgOrderValue),
-        // Today
-        todayOrders,
-        todayRevenue,
-        // Weekly
-        weeklyNewUsers,
-        weeklyOrders,
-        weeklyRevenue,
-        weeklyGrowth,
-        // Inventory
-        lowStockCount,
-        outOfStockCount,
-        // Pending actions
-        pendingReturnsCount,
-        pendingOrdersCount,
-        pendingSellersCount,
-        // Calculated
+        todayOrders, todayRevenue,
+        weeklyNewUsers, weeklyOrders, weeklyRevenue, weeklyGrowth,
+        lowStockCount, outOfStockCount,
+        pendingReturnsCount, pendingOrdersCount, pendingSellersCount,
         conversionRate,
-        // Breakdowns
         orderStatusBreakdown: orderStatusBreakdown.map(s => ({ status: s._id, count: s.count })),
-        categorySales: categorySales.map(c => ({
-          category: c._id,
-          quantity: c.totalQuantity,
-          sales: c.totalSales
-        })),
+        categorySales: categorySales.map(c => ({ category: c._id, quantity: c.totalQuantity, sales: c.totalSales })),
         salesTimeline: salesTimeline.map(s => ({
           date: `${s._id.year}-${String(s._id.month).padStart(2, '0')}-${String(s._id.day).padStart(2, '0')}`,
-          revenue: s.revenue,
-          orderCount: s.count
+          revenue: s.revenue, orderCount: s.count
         })),
         recentOrders: recentOrders.map(o => ({
-          id: o._id,
-          orderNumber: o.orderNumber,
+          id: o._id, orderNumber: o.orderNumber,
           customer: o.userId ? `${o.userId.firstName} ${o.userId.lastName}` : 'Guest Customer',
-          email: o.userId?.email,
-          total: o.totalAmount,
-          status: o.status,
-          paymentMethod: o.paymentMethod,
-          date: o.createdAt
+          email: o.userId?.email, total: o.totalAmount, status: o.status,
+          paymentMethod: o.paymentMethod, date: o.createdAt
         }))
       }
     });
@@ -195,6 +135,8 @@ export const getDashboardMetrics = async (req, res) => {
     res.status(500).json({ success: false, message: 'Could not load metrics dashboard', error: error.message });
   }
 };
+
+
 
 export const getDashboardStats = getDashboardMetrics;
 
@@ -777,6 +719,12 @@ export const updateReturnStatus = async (req, res) => {
     order.paymentDetails = order.paymentDetails || {};
     order.paymentDetails.refundStatus = 'refunded';
     order.paymentDetails.refundedAt = new Date();
+
+    // Cancel settlements for returned order items
+    await SellerSettlement.updateMany(
+      { orderId: order._id, status: { $in: ['PENDING', 'AVAILABLE'] } },
+      { $set: { status: 'CANCELLED', adjustmentReason: `Return approved by admin: ${adminNotes || ''}` } }
+    );
   } else {
     order.status = 'delivered';
   }

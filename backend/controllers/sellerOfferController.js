@@ -1,6 +1,5 @@
 import SellerOffer from '../models/SellerOffer.js'
 import Seller from '../models/Seller.js'
-import User from '../models/User.js'
 import Product from '../models/Product.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { resolveProductDocument } from './productController.js'

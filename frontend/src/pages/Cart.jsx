@@ -79,8 +79,8 @@ function Cart() {
   }
 
   return (
-    <div className="container-custom py-16 min-h-screen">
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">{t('cart.title', 'Shopping Cart')}</h1>
+    <div className="container-custom py-8 sm:py-16 min-h-screen pb-32 sm:pb-16">
+      <h1 className="text-2xl sm:text-4xl font-serif font-bold mb-6 sm:mb-12 tracking-wide uppercase">{t('cart.title', 'Shopping Cart')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* LEFT COLUMN: Items List */}
@@ -108,7 +108,7 @@ function Cart() {
           </div>
 
           {/* Items List */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <AnimatePresence>
               {cartItems.map((item) => (
                 <motion.div
@@ -117,23 +117,23 @@ function Cart() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -100 }}
-                  className={`flex gap-6 p-5 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5' : 'bg-white border-gray-100'} shadow-md`}
+                  className={`flex gap-3 sm:gap-6 p-3 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/5' : 'bg-white border-gray-100'} shadow-md`}
                 >
                   {/* Thumbnail */}
-                  <div className="w-24 md:w-32 aspect-[3/4] rounded-xl overflow-hidden flex-shrink-0">
+                  <div className="w-20 sm:w-32 aspect-[3/4] rounded-xl overflow-hidden flex-shrink-0">
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   </div>
 
                   {/* Info specs */}
-                  <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div>
-                      <div className="flex justify-between items-start gap-4">
-                        <div>
-                          <h3 className="font-serif font-bold text-base md:text-lg hover:text-luxury-gold transition-colors">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <h3 className="font-serif font-bold text-sm sm:text-base md:text-lg hover:text-luxury-gold transition-colors line-clamp-2">
                             <Link to={`/products/${item.id}`}>{item.name}</Link>
                           </h3>
                           {item.variant && (
-                            <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
                               {item.variant.size && (
                                 <span className="text-[10px] px-2 py-0.5 border border-white/10 rounded font-mono uppercase">Size: {item.variant.size}</span>
                               )}
@@ -145,26 +145,26 @@ function Cart() {
                         </div>
                         <button
                           onClick={() => removeFromCart(item.id, item.variant)}
-                          className="text-red-500 hover:text-red-400 p-2 rounded-full hover:bg-red-500/5 transition-colors"
+                          className="text-red-500 hover:text-red-400 p-2 rounded-full hover:bg-red-500/5 transition-colors touch-target flex-shrink-0"
                         >
-                          <FiTrash2 size={16} />
+                          <FiTrash2 size={14} />
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center mt-4">
+                    <div className="flex justify-between items-center mt-3">
                       {/* Quantity Selector */}
                       <div className="flex items-center border border-luxury-gold/30 rounded-lg">
                         <button
                           onClick={() => updateCartItem(item.id, item.quantity - 1, item.variant)}
-                          className="px-3 py-2 text-sm hover:text-luxury-gold"
+                          className="px-3 py-2 text-sm hover:text-luxury-gold touch-target"
                         >
                           <FiMinus size={10} />
                         </button>
                         <span className="px-3 text-xs font-bold font-mono">{item.quantity}</span>
                         <button
                           onClick={() => updateCartItem(item.id, item.quantity + 1, item.variant)}
-                          className="px-3 py-2 text-sm hover:text-luxury-gold"
+                          className="px-3 py-2 text-sm hover:text-luxury-gold touch-target"
                         >
                           <FiPlus size={10} />
                         </button>
@@ -172,7 +172,7 @@ function Cart() {
 
                       {/* Pricing */}
                       <div className="text-right">
-                        <p className="text-lg font-bold text-luxury-gold">₹{(item.price * item.quantity).toLocaleString()}</p>
+                        <p className="text-base sm:text-lg font-bold text-luxury-gold">₹{(item.price * item.quantity).toLocaleString()}</p>
                         {item.quantity > 1 && (
                           <p className="text-xs opacity-50 font-mono">₹{item.price.toLocaleString()} each</p>
                         )}
@@ -336,6 +336,26 @@ function Cart() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ============ MOBILE STICKY CHECKOUT BAR ============ */}
+      <div className={`fixed bottom-0 left-0 right-0 z-30 sm:hidden safe-pb border-t ${
+        isDarkMode ? 'bg-luxury-black/95 border-luxury-gold/20' : 'bg-white/95 border-gray-200'
+      } backdrop-blur-xl`}>
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+          <div className="flex-1">
+            <p className="text-[10px] uppercase tracking-widest text-luxury-gold">Total</p>
+            <p className="text-lg font-bold text-luxury-gold">
+              ₹{(finalTotal + (remainingForFreeShipping > 0 ? 150 : 0)).toLocaleString()}
+            </p>
+          </div>
+          <Link
+            to="/checkout"
+            className="flex-grow max-w-[200px] py-3 px-4 bg-luxury-gold text-luxury-black font-bold tracking-wider text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5 rounded-xl touch-target"
+          >
+            Checkout <FiArrowRight size={14} />
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

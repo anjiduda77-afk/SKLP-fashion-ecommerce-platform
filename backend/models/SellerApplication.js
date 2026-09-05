@@ -54,6 +54,16 @@ const sellerApplicationSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  brandName: {
+    type: String,
+    trim: true
+  },
+  brandNameNormalized: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
   businessType: {
     type: String,
     enum: ['individual', 'proprietorship', 'partnership', 'pvt_ltd', 'other'],
@@ -85,8 +95,8 @@ const sellerApplicationSchema = new mongoose.Schema({
   documents: [documentSchema],
   status: {
     type: String,
-    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'VERIFICATION_REQUIRED', 'APPROVED', 'REJECTED', 'SUSPENDED'],
-    default: 'SUBMITTED',
+    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'REVIEW_REQUIRED', 'VERIFICATION_REQUIRED', 'APPROVED', 'REJECTED', 'SUSPENDED'],
+    default: 'PENDING_REVIEW',
     index: true
   },
   riskScore: {
@@ -104,7 +114,14 @@ const sellerApplicationSchema = new mongoose.Schema({
   riskFlags: [{
     type: String
   }],
+  reviewFlags: [{
+    type: String
+  }],
   adminNotes: {
+    type: String,
+    default: ''
+  },
+  rejectionReason: {
     type: String,
     default: ''
   },
@@ -115,6 +132,16 @@ const sellerApplicationSchema = new mongoose.Schema({
   reviewedAt: Date,
   auditLogs: [auditLogSchema]
 }, { timestamps: true })
+
+sellerApplicationSchema.pre('save', function(next) {
+  if (!this.brandName) {
+    this.brandName = this.shopName;
+  }
+  if (this.brandName) {
+    this.brandNameNormalized = this.brandName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  next();
+});
 
 sellerApplicationSchema.index({ status: 1, riskLevel: 1 });
 sellerApplicationSchema.index({ email: 1, phone: 1 });

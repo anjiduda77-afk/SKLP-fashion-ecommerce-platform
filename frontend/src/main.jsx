@@ -10,7 +10,7 @@ import './i18n/config.js'
 const rawGoogleId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const googleClientId = (rawGoogleId && rawGoogleId.includes('.apps.googleusercontent.com'))
   ? rawGoogleId
-  : '000000000000-dummy.apps.googleusercontent.com'
+  : null
 
 // ─── Error Boundary ─────────────────────────────────────────────────────────
 // Catches React render/lifecycle errors and shows a recovery screen
@@ -103,16 +103,24 @@ class ErrorBoundary extends React.Component {
 }
 
 // ─── App Mount ───────────────────────────────────────────────────────────────
+const appProviders = (
+  <ThemeProvider>
+    <CurrencyProvider>
+      <App />
+    </CurrencyProvider>
+  </ThemeProvider>
+)
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={googleClientId}>
-        <ThemeProvider>
-          <CurrencyProvider>
-            <App />
-          </CurrencyProvider>
-        </ThemeProvider>
-      </GoogleOAuthProvider>
+      {googleClientId ? (
+        <GoogleOAuthProvider clientId={googleClientId}>
+          {appProviders}
+        </GoogleOAuthProvider>
+      ) : (
+        appProviders
+      )}
     </ErrorBoundary>
   </React.StrictMode>,
 )

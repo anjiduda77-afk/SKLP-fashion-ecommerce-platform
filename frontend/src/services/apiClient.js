@@ -60,11 +60,9 @@ apiClient.interceptors.response.use(
       const isPublicAuthRoute = [
         '/auth/login',
         '/auth/register',
+        '/auth/google',
         '/auth/firebase-login',
         '/auth/google-login',
-        '/auth/send-otp',
-        '/auth/verify-otp',
-        '/auth/resend-otp',
         '/auth/forgot-password',
         '/auth/reset-password',
         '/auth/refresh-token'

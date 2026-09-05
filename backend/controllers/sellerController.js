@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
@@ -145,8 +144,23 @@ export const createSellerProduct = async (req, res) => {
   const {
     name, description, shortDescription, category, subcategory, gender,
     price, originalPrice, discount, stock, lowStockThreshold,
-    images, variants, attributes, brand, tags
+    images, variants, attributes, tags
   } = req.body;
+
+  // Verify seller profile and strict approval status
+  const seller = await getOrCreateSellerProfile(req.user.id);
+  if (!seller) {
+    throw new ApiError(404, 'Seller profile not found. Please complete seller registration.');
+  }
+
+  const isApproved = seller.approvalStatus === 'APPROVED' || seller.verificationStatus === 'verified';
+  if (!isApproved) {
+    throw new ApiError(403, 'Your seller account is currently under review or not approved. Only APPROVED sellers can publish products.');
+  }
+
+  // Strictly enforce brand inheritance: seller cannot choose or spoof brand/sellerId
+  const sellerBrand = seller.brandName || seller.shopName;
+  const sellerBrandNormalized = seller.brandNameNormalized || sellerBrand.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // Generate unique SKU
   const categoryPrefix = (category || 'GEN').substring(0, 3).toUpperCase();
@@ -155,7 +169,12 @@ export const createSellerProduct = async (req, res) => {
   const sku = `${categoryPrefix}-${genderPrefix}-${randomSuffix}`;
 
   // Process images: if files uploaded via multer, upload to Cloudinary
-  let processedImages = images || [];
+  let processedImages = (images || []).map((img, i) => {
+    if (typeof img === 'string') {
+      return { url: img, isMain: i === 0, alt: name || 'Product image' };
+    }
+    return img;
+  });
   if (req.files && req.files.length > 0) {
     const uploaded = await uploadMultipleImages(
       req.files.map(f => f.buffer),
@@ -171,6 +190,7 @@ export const createSellerProduct = async (req, res) => {
 
   const product = await Product.create({
     name,
+    nameNormalized: (name || '').toLowerCase().trim(),
     description,
     shortDescription,
     category,
@@ -182,7 +202,9 @@ export const createSellerProduct = async (req, res) => {
     stock,
     lowStockThreshold: lowStockThreshold || 10,
     sku,
-    brand,
+    brand: sellerBrand,
+    brandNormalized: sellerBrandNormalized,
+    sellerId: seller._id,
     images: processedImages,
     variants: variants || [],
     attributes: attributes || {},
@@ -213,6 +235,11 @@ export const updateSellerProduct = async (req, res) => {
     throw new ApiError(404, 'Product not found or you do not own this product');
   }
 
+  const seller = await getOrCreateSellerProfile(req.user.id);
+  if (!seller) {
+    throw new ApiError(404, 'Seller profile not found');
+  }
+
   // Handle new image uploads
   if (req.files && req.files.length > 0) {
     const uploaded = await uploadMultipleImages(
@@ -230,11 +257,11 @@ export const updateSellerProduct = async (req, res) => {
     product.images = [...(product.images || []), ...newImages];
   }
 
-  // Update other fields
+  // Update other fields (brand and sellerId strictly locked and excluded)
   const allowedFields = [
     'name', 'description', 'shortDescription', 'category', 'subcategory',
     'gender', 'price', 'originalPrice', 'discount', 'stock',
-    'lowStockThreshold', 'variants', 'attributes', 'brand', 'tags', 'images'
+    'lowStockThreshold', 'variants', 'attributes', 'tags', 'images'
   ];
 
   allowedFields.forEach(field => {
@@ -242,6 +269,11 @@ export const updateSellerProduct = async (req, res) => {
       product[field] = req.body[field];
     }
   });
+
+  // Always keep brand and sellerId locked to the authenticated seller
+  product.brand = seller.brandName || seller.shopName;
+  product.brandNormalized = seller.brandNameNormalized || product.brand.toLowerCase().replace(/[^a-z0-9]/g, '');
+  product.sellerId = seller._id;
 
   // If images array is explicitly provided in body (for reorder/delete)
   if (req.body.images && !req.files?.length) {
@@ -451,6 +483,8 @@ export const getSellerProfile = async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
+  const seller = await Seller.findOne({ userId: req.user.id }).lean();
+
   res.status(200).json({
     success: true,
     profile: {
@@ -459,7 +493,14 @@ export const getSellerProfile = async (req, res) => {
       email: user.email,
       phone: user.phone,
       avatar: user.avatar,
-      sellerProfile: user.sellerProfile || {},
+      sellerProfile: {
+        ...(user.sellerProfile || {}),
+        logo: seller?.logo || user.sellerProfile?.logo || { url: '', publicId: '' },
+        brandName: seller?.brandName || user.sellerProfile?.brandName || seller?.shopName || user.sellerProfile?.storeName || '',
+        storeName: seller?.shopName || user.sellerProfile?.storeName || '',
+        storeDescription: seller?.description || user.sellerProfile?.storeDescription || ''
+      },
+      seller: seller || null
     }
   });
 };
@@ -467,7 +508,7 @@ export const getSellerProfile = async (req, res) => {
 export const updateSellerProfile = async (req, res) => {
   const {
     storeName, storeDescription, gstNumber, panNumber,
-    bankDetails, firstName, lastName, phone
+    bankDetails, firstName, lastName, phone, logo, brandName
   } = req.body;
 
   const user = await User.findById(req.user.id);
@@ -486,9 +527,11 @@ export const updateSellerProfile = async (req, res) => {
     user.phone = phone;
   }
 
-  // Update seller profile
+  // Update user seller profile
   if (!user.sellerProfile) user.sellerProfile = {};
   if (storeName) user.sellerProfile.storeName = storeName;
+  if (brandName) user.sellerProfile.brandName = brandName;
+  if (logo) user.sellerProfile.logo = logo;
   if (storeDescription) user.sellerProfile.storeDescription = storeDescription;
   if (gstNumber) user.sellerProfile.gstNumber = gstNumber;
   if (panNumber) user.sellerProfile.panNumber = panNumber;
@@ -501,6 +544,19 @@ export const updateSellerProfile = async (req, res) => {
 
   await user.save();
 
+  // Sync to Seller document so brand selector and marketplace reflects immediately
+  const seller = await Seller.findOne({ userId: req.user.id });
+  if (seller) {
+    if (logo) seller.logo = logo;
+    if (storeName) seller.shopName = storeName;
+    if (brandName || storeName) {
+      seller.brandName = brandName || storeName;
+      seller.brandNameNormalized = (brandName || storeName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+    if (storeDescription) seller.description = storeDescription;
+    await seller.save();
+  }
+
   res.status(200).json({
     success: true,
     message: 'Profile updated successfully',
@@ -510,6 +566,7 @@ export const updateSellerProfile = async (req, res) => {
       email: user.email,
       phone: user.phone,
       sellerProfile: user.sellerProfile,
+      seller
     }
   });
 };

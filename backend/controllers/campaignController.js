@@ -1,8 +1,6 @@
-import mongoose from 'mongoose';
 import Campaign from '../models/Campaign.js';
 import MarketingAsset from '../models/MarketingAsset.js';
 import MarketingAuditLog from '../models/MarketingAuditLog.js';
-import Product from '../models/Product.js';
 import Coupon from '../models/Coupon.js';
 import { ApiError } from '../middleware/errorHandler.js';
 
@@ -113,7 +111,7 @@ export const getActiveCampaigns = async (req, res) => {
  */
 export const trackCampaignEvent = async (req, res) => {
   const { id } = req.params;
-  const { eventType, variantId = 'A', revenue = 0, orderId } = req.body;
+  const { eventType, variantId = 'A', revenue = 0 } = req.body;
 
   const validEvents = ['impression', 'click', 'product_view', 'add_to_cart', 'checkout', 'purchase'];
   if (!validEvents.includes(eventType)) {
@@ -644,5 +642,23 @@ export const deleteMarketingAsset = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Asset removed from library'
+  });
+};
+
+/**
+ * ADMIN: Emergency Stop - Pause all active campaigns immediately
+ */
+export const emergencyStopCampaigns = async (req, res) => {
+  const result = await Campaign.updateMany(
+    { status: 'active' },
+    { $set: { status: 'paused' } }
+  );
+
+  await logMarketingAction(null, 'emergency_stop_all', { pausedCount: result.modifiedCount }, req);
+
+  res.status(200).json({
+    success: true,
+    message: `Emergency stop triggered! ${result.modifiedCount} active campaign(s) paused immediately.`,
+    pausedCount: result.modifiedCount
   });
 };

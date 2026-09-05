@@ -44,6 +44,7 @@ router.put('/orders/:id/dispatch', asyncHandler(sellerController.dispatchOrder))
 
 // Settlement & Payout Ledger
 router.get('/settlements', asyncHandler(settlementController.getSellerSettlements))
+router.post('/settlements/payout', asyncHandler(settlementController.requestSellerPayout))
 
 // Subscription Plans & 30-Day Trial
 router.get('/subscription', asyncHandler(subscriptionController.getSubscriptionInfo))

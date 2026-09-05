@@ -13,6 +13,7 @@ export default defineConfig({
       '@services': path.resolve(__dirname, './src/services'),
       '@hooks': path.resolve(__dirname, './src/hooks'),
       '@context': path.resolve(__dirname, './src/context'),
+      '@config': path.resolve(__dirname, './src/config'),
       '@styles': path.resolve(__dirname, './src/styles'),
       '@assets': path.resolve(__dirname, './src/assets'),
     },
@@ -52,6 +53,9 @@ export default defineConfig({
             }
             if (id.includes('i18next')) {
               return 'i18n'
+            }
+            if (id.includes('firebase')) {
+              return 'firebase'
             }
             if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
               return 'forms'

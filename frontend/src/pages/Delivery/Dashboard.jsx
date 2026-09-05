@@ -218,7 +218,7 @@ function DeliveryDashboard() {
       <div className="container-custom">
         
         {/* Banner Welcome Panel */}
-        <div className={`rounded-[2rem] border p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm transition-all duration-300
+        <div className={`rounded-[1.5rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm transition-all duration-300
           ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-luxury-gold/30 text-luxury-darkBlack'}`}
         >
           <div>
@@ -226,7 +226,7 @@ function DeliveryDashboard() {
               <FiZap className="animate-pulse" />
               <span className="text-[10px] uppercase font-bold tracking-widest text-luxury-gold">Flipkart Express Delivery Network</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-serif font-black uppercase tracking-tight">Courier Agent Portal</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-tight">Courier Agent Portal</h1>
             <p className="text-xs opacity-75 mt-1">Logged in as: <strong className="text-luxury-gold">{user?.firstName || 'Delivery Partner'} {user?.lastName || ''}</strong> ({user?.phone || 'Fleet ID: #98210'})</p>
           </div>
 
@@ -234,25 +234,59 @@ function DeliveryDashboard() {
             <button
               onClick={fetchDeliveryData}
               disabled={loading}
-              className={`p-3 rounded-full border text-xs font-bold transition-all flex items-center justify-center
+              className={`p-3 rounded-full border text-xs font-bold transition-all flex items-center justify-center touch-target
                 ${isDarkMode ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200'}`}
               title="Refresh Data"
             >
               <FiRefreshCw className={loading ? 'animate-spin' : ''} size={16} />
             </button>
 
-            <span className="px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/30 rounded-full text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="px-3 sm:px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/30 rounded-full text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
-              On Duty • GPS Active
+              On Duty
             </span>
           </div>
         </div>
 
+        {/* ── Mobile Horizontal Tab Bar ── */}
+        {(() => {
+          const navItems = [
+            { id: 'tasks', name: 'Shipments', icon: <FiTruck />, badge: deliveries.length },
+            { id: 'routes', name: 'Maps', icon: <FiMap /> },
+            { id: 'verify', name: 'OTP', icon: <FiKey /> },
+            { id: 'history', name: 'History', icon: <FiCheckSquare />, badge: history.length },
+            { id: 'earnings', name: 'Earnings', icon: <FiDollarSign /> }
+          ]
+          return (
+            <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-4 px-4">
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wider transition-all touch-target ${
+                    activeTab === item.id
+                      ? 'bg-luxury-gold text-black border-luxury-gold'
+                      : isDarkMode ? 'bg-white/5 border-white/10 text-white/70' : 'bg-white border-black/10 text-slate-700'
+                  }`}
+                >
+                  {item.icon}
+                  <span className="whitespace-nowrap">{item.name}</span>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                      activeTab === item.id ? 'bg-black text-luxury-gold' : 'bg-luxury-gold/20 text-luxury-gold'
+                    }`}>{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
+
         {/* Outer Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
           
-          {/* LEFT NAVBAR */}
-          <div className="space-y-3">
+          {/* LEFT NAVBAR (desktop only) */}
+          <div className="hidden lg:block space-y-3">
             {[
               { id: 'tasks', name: 'Active Shipments', icon: <FiTruck />, badge: deliveries.length },
               { id: 'routes', name: 'Dispatch Maps', icon: <FiMap /> },
@@ -339,7 +373,7 @@ function DeliveryDashboard() {
                     filteredDeliveries.map((d) => (
                       <div 
                         key={d.id}
-                        className={`p-5 rounded-3xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm transition-all duration-300 hover:border-luxury-gold/50
+                        className={`p-4 sm:p-5 rounded-3xl border flex flex-col gap-4 shadow-sm transition-all duration-300 hover:border-luxury-gold/50
                           ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-slate-800'}`}
                       >
                         <div className="space-y-2 flex-1">
@@ -376,24 +410,26 @@ function DeliveryDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col gap-3 items-end w-full md:w-auto shrink-0">
-                          <span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-wider self-start md:self-auto
-                            ${d.status === 'Pending Pickup' ? 'bg-yellow-500/15 text-yellow-500 border border-yellow-500/30' : 'bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse'}`}>
-                            {d.status}
-                          </span>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 w-full shrink-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-wider
+                              ${d.status === 'Pending Pickup' ? 'bg-yellow-500/15 text-yellow-500 border border-yellow-500/30' : 'bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse'}`}>
+                              {d.status}
+                            </span>
+                          </div>
 
-                          <div className="flex gap-2 w-full md:w-auto justify-end">
+                          <div className="flex gap-2 w-full sm:w-auto">
                             {d.status === 'Pending Pickup' ? (
                               <button
                                 onClick={() => handleStartTransit(d.id)}
-                                className="px-5 py-2.5 bg-luxury-gold text-black rounded-xl text-[11px] uppercase tracking-wider font-extrabold shadow-glow active:scale-95 transition"
+                                className="flex-1 sm:flex-none px-5 py-3 bg-luxury-gold text-black rounded-xl text-[11px] uppercase tracking-wider font-extrabold shadow-glow active:scale-95 transition touch-target"
                               >
-                                Pick up Shipment
+                                🚚 Pick up Shipment
                               </button>
                             ) : (
                               <button
                                 onClick={() => { setOtpInput({ id: d.id, code: '' }); setActiveTab('verify') }}
-                                className="px-5 py-2.5 bg-green-500 text-white rounded-xl text-[11px] uppercase tracking-wider font-extrabold hover:bg-green-600 active:scale-95 transition flex items-center gap-1.5"
+                                className="flex-1 sm:flex-none px-5 py-3 bg-green-500 text-white rounded-xl text-[11px] uppercase tracking-wider font-extrabold hover:bg-green-600 active:scale-95 transition flex items-center justify-center gap-1.5 touch-target"
                               >
                                 <FiKey size={14} />
                                 Enter Door OTP

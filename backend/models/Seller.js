@@ -23,6 +23,33 @@ const sellerSchema = new mongoose.Schema({
     trim: true,
     index: true
   },
+  brandName: {
+    type: String,
+    trim: true,
+    index: true
+  },
+  brandNameNormalized: {
+    type: String,
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['PENDING_REVIEW', 'APPROVED', 'REJECTED', 'SUSPENDED', 'REVIEW_REQUIRED'],
+    default: 'PENDING_REVIEW',
+    index: true
+  },
+  reviewFlags: [{
+    type: String,
+    enum: ['DUPLICATE_RISK', 'REVIEW_REQUIRED', 'SUSPICIOUS_DOCS', 'NAME_SIMILARITY']
+  }],
+  adminNotes: {
+    type: String,
+    default: ''
+  },
   logo: {
     url: { type: String, default: null },
     publicId: { type: String, default: null }
@@ -128,6 +155,24 @@ const sellerSchema = new mongoose.Schema({
     policyNotes: { type: String, default: '7-day easy return policy for unworn items with tags intact' }
   }
 }, { timestamps: true })
+
+sellerSchema.pre('save', function(next) {
+  if (!this.brandName) {
+    this.brandName = this.shopName;
+  }
+  if (!this.shopName) {
+    this.shopName = this.brandName;
+  }
+  if (this.brandName) {
+    this.brandNameNormalized = this.brandName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  if (this.approvalStatus === 'APPROVED' && this.verificationStatus !== 'verified') {
+    this.verificationStatus = 'verified';
+  } else if (this.verificationStatus === 'verified' && (!this.approvalStatus || this.approvalStatus === 'PENDING_REVIEW')) {
+    this.approvalStatus = 'APPROVED';
+  }
+  next();
+});
 
 sellerSchema.index({ rating: -1 });
 sellerSchema.index({ verificationStatus: 1, sellerStatus: 1 });

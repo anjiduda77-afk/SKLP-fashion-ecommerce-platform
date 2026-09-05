@@ -3,6 +3,7 @@ import Cart from '../models/Cart.js'
 import Product from '../models/Product.js'
 import Coupon from '../models/Coupon.js'
 import User from '../models/User.js'
+import SellerSettlement from '../models/SellerSettlement.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 const calculateOrderTotals = async (cart, coupon) => {
@@ -339,6 +340,13 @@ export const cancelOrder = async (req, res) => {
   }
   order.status = 'cancelled'
   await order.save()
+
+  // Invalidate any pending or available settlements for this cancelled order
+  await SellerSettlement.updateMany(
+    { orderId: order._id, status: { $in: ['PENDING', 'AVAILABLE'] } },
+    { $set: { status: 'CANCELLED', adjustmentReason: 'Order cancelled by user/admin' } }
+  )
+
   res.status(200).json({ success: true, order })
 }
 

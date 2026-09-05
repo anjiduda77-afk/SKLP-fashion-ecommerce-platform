@@ -14,7 +14,7 @@ const marketingAuditLogSchema = new mongoose.Schema({
     enum: [
       'created', 'edited', 'published', 'paused', 'resumed',
       'deleted', 'cloned', 'reordered', 'schedule_changed',
-      'emergency_stop_all'
+      'emergency_stop_all', 'EMERGENCY_STOP'
     ],
     required: true
   },

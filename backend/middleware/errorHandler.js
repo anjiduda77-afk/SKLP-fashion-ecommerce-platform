@@ -14,7 +14,7 @@ export const asyncHandler = (fn) => (req, res, next) => {
 };
 
 // Global error handler middleware
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   let error = err;
 
   // Mongoose Cast Error (Invalid ObjectId)

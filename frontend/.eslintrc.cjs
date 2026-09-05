@@ -36,5 +36,17 @@ module.exports = {
         node: true,
       },
     },
+    {
+      files: ['public/**/*.js'],
+      env: {
+        serviceworker: true,
+        worker: true,
+      },
+      globals: {
+        firebase: 'readonly',
+        importScripts: 'readonly',
+        clients: 'readonly',
+      },
+    },
   ],
 }

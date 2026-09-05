@@ -601,3 +601,134 @@ export const replyToReview = async (req, res) => {
     sellerResponse: review.sellerResponse
   })
 }
+
+/**
+ * GET /api/admin/reviews
+ * Admin endpoint: Retrieve all product reviews with filters, pagination, and populate
+ */
+export const getAdminReviews = async (req, res) => {
+  const { page = 1, limit = 20, status, rating, search, sort = 'newest' } = req.query
+  const pageNum = Math.max(1, parseInt(page, 10) || 1)
+  const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20))
+
+  const query = {}
+  if (status && status !== 'ALL') {
+    query.status = status.toUpperCase()
+  }
+  if (rating && !isNaN(Number(rating))) {
+    query.rating = Number(rating)
+  }
+  if (search && search.trim()) {
+    query.$or = [
+      { title: { $regex: search.trim(), $options: 'i' } },
+      { comment: { $regex: search.trim(), $options: 'i' } },
+      { reviewerName: { $regex: search.trim(), $options: 'i' } }
+    ]
+  }
+
+  let sortOption = { createdAt: -1 }
+  if (sort === 'oldest') sortOption = { createdAt: 1 }
+  else if (sort === 'rating_high') sortOption = { rating: -1, createdAt: -1 }
+  else if (sort === 'rating_low') sortOption = { rating: 1, createdAt: -1 }
+  else if (sort === 'helpful') sortOption = { helpfulCount: -1, createdAt: -1 }
+
+  const [reviews, total] = await Promise.all([
+    Review.find(query)
+      .populate('userId', 'firstName lastName email avatar role')
+      .populate('productId', 'name price images brand')
+      .sort(sortOption)
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(),
+    Review.countDocuments(query)
+  ])
+
+  // Count summaries by status
+  const [pendingCount, approvedCount, rejectedCount] = await Promise.all([
+    Review.countDocuments({ status: 'PENDING' }),
+    Review.countDocuments({ status: 'APPROVED' }),
+    Review.countDocuments({ status: 'REJECTED' })
+  ])
+
+  res.status(200).json({
+    success: true,
+    reviews,
+    summary: {
+      total,
+      pending: pendingCount,
+      approved: approvedCount,
+      rejected: rejectedCount
+    },
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1
+    }
+  })
+}
+
+/**
+ * PUT /api/admin/reviews/:id/status
+ * Admin endpoint: Approve, reject, or hide a review
+ */
+export const updateReviewStatus = async (req, res) => {
+  const { id } = req.params
+  const { status, moderationNotes } = req.body
+
+  const validStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'HIDDEN']
+  if (!status || !validStatuses.includes(status.toUpperCase())) {
+    throw new ApiError(400, `Invalid status. Allowed values: ${validStatuses.join(', ')}`)
+  }
+
+  const review = await Review.findById(id)
+  if (!review) {
+    throw new ApiError(404, 'Review not found')
+  }
+
+  const oldStatus = review.status
+  review.status = status.toUpperCase()
+  if (moderationNotes) {
+    review.moderationNotes = moderationNotes.trim()
+  }
+  review.moderatedBy = req.user.id
+  review.moderatedAt = new Date()
+
+  await review.save()
+
+  // Recalculate product rating if status changed
+  if (oldStatus !== review.status) {
+    await recalculateProductRating(review.productId)
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Review status updated to ${review.status}`,
+    review
+  })
+}
+
+/**
+ * DELETE /api/admin/reviews/:id
+ * Admin endpoint: Delete a review permanently
+ */
+export const deleteReviewAdmin = async (req, res) => {
+  const { id } = req.params
+
+  const review = await Review.findById(id)
+  if (!review) {
+    throw new ApiError(404, 'Review not found')
+  }
+
+  const productId = review.productId
+  await Review.findByIdAndDelete(id)
+
+  // Recalculate product rating
+  await recalculateProductRating(productId)
+
+  res.status(200).json({
+    success: true,
+    message: 'Review deleted successfully by administrator'
+  })
+}
+

@@ -18,6 +18,30 @@ export const CartProvider = ({ children }) => {
     setItemCount(count)
   }, [])
 
+  const normalizeCartItems = useCallback((items = []) => {
+    return items.map((item) => {
+      const product = item.productId && typeof item.productId === 'object' ? item.productId : {}
+      const prodId = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.id)
+      const img = item.image || (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
+      return {
+        _id: item._id,
+        id: prodId,
+        productId: prodId,
+        name: item.productName || product.name || item.name || 'Product',
+        brand: item.brand || product.brand || 'SKLP Fashion',
+        shopName: item.shopName || 'SKLP Official Store',
+        sellerId: item.sellerId,
+        offerId: item.offerId,
+        price: item.price ?? product.price ?? 0,
+        originalPrice: product.originalPrice || product.price || item.price || 0,
+        image: img,
+        quantity: item.quantity,
+        variant: item.variant || {},
+        timestamp: new Date().getTime(),
+      }
+    })
+  }, [])
+
   // Sync cart with backend on auth change
   useEffect(() => {
     const syncCart = async () => {
@@ -25,9 +49,13 @@ export const CartProvider = ({ children }) => {
         // Fallback to localStorage
         const saved = localStorage.getItem('cart')
         if (saved) {
-          const items = JSON.parse(saved)
-          setCartItems(items)
-          calculateTotals(items)
+          try {
+            const items = JSON.parse(saved)
+            setCartItems(items)
+            calculateTotals(items)
+          } catch (_e) {
+            setCartItems([])
+          }
         }
         return
       }
@@ -35,44 +63,28 @@ export const CartProvider = ({ children }) => {
       try {
         const res = await cartService.getCart()
         if (res.data?.success && res.data?.cart?.items) {
-          // Normalize items from backend schema
-          const normalizedItems = res.data.cart.items.map(item => {
-            const product = item.productId || {}
-            const img = item.image || (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
-            return {
-              _id: item._id,
-              id: product._id || product.id || item.productId,
-              name: item.productName || product.name || 'Product',
-              brand: item.brand || product.brand || 'SKLP Fashion',
-              shopName: item.shopName || 'SKLP Official Store',
-              sellerId: item.sellerId,
-              offerId: item.offerId,
-              price: item.price ?? product.price ?? 0,
-              originalPrice: product.originalPrice || product.price || item.price,
-              image: img,
-              quantity: item.quantity,
-              variant: item.variant || {},
-              timestamp: new Date().getTime(),
-            }
-          })
+          const normalizedItems = normalizeCartItems(res.data.cart.items)
           setCartItems(normalizedItems)
           calculateTotals(normalizedItems)
         }
         setCartSynced(true)
       } catch (err) {
         console.warn('Failed to sync cart:', err.message)
-        // Fallback to localStorage
         const saved = localStorage.getItem('cart')
         if (saved) {
-          const items = JSON.parse(saved)
-          setCartItems(items)
-          calculateTotals(items)
+          try {
+            const items = JSON.parse(saved)
+            setCartItems(items)
+            calculateTotals(items)
+          } catch (_e) {
+            setCartItems([])
+          }
         }
       }
     }
 
     syncCart()
-  }, [isAuthenticated, user, calculateTotals])
+  }, [isAuthenticated, user, calculateTotals, normalizeCartItems])
 
   // Save cart to localStorage as backup
   useEffect(() => {
@@ -81,15 +93,17 @@ export const CartProvider = ({ children }) => {
   }, [cartItems, calculateTotals])
 
   const addToCart = async (product, quantity = 1, variant = {}, offerId = null) => {
+    const prodId = product._id || product.id
     const img = (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
     const newItem = {
-      id: product._id || product.id,
+      id: prodId,
+      productId: prodId,
       name: product.name,
       brand: product.brand || 'SKLP Fashion',
       shopName: product.shopName || 'SKLP Official Store',
       offerId: offerId,
-      price: product.discountedPrice || product.price,
-      originalPrice: product.originalPrice || product.price,
+      price: product.discountedPrice || product.price || 0,
+      originalPrice: product.originalPrice || product.price || 0,
       image: img,
       quantity,
       variant: variant || {},
@@ -98,7 +112,13 @@ export const CartProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await cartService.addToCart(newItem.id, quantity, variant, offerId)
+        const res = await cartService.addToCart(prodId, quantity, variant, offerId)
+        if (res.data?.success && res.data?.cart?.items) {
+          const normalized = normalizeCartItems(res.data.cart.items)
+          setCartItems(normalized)
+          calculateTotals(normalized)
+          return
+        }
       } catch (err) {
         console.error('Failed to add to backend cart', err)
       }
@@ -106,14 +126,14 @@ export const CartProvider = ({ children }) => {
 
     setCartItems((prevItems) => {
       const existingItem = prevItems.find(
-        (item) => (item.id === newItem.id || item._id === newItem.id) && 
+        (item) => (item.id === newItem.id || item.productId === newItem.id || item._id === newItem.id) && 
           (!offerId || item.offerId === offerId) &&
           JSON.stringify(item.variant || {}) === JSON.stringify(newItem.variant || {})
       )
 
       if (existingItem) {
         return prevItems.map((item) =>
-          (item.id === newItem.id || item._id === newItem.id) && 
+          (item.id === newItem.id || item.productId === newItem.id || item._id === newItem.id) && 
           (!offerId || item.offerId === offerId) &&
           JSON.stringify(item.variant || {}) === JSON.stringify(newItem.variant || {})
             ? { ...item, quantity: item.quantity + quantity }
@@ -128,9 +148,17 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId, variant = {}) => {
     if (isAuthenticated) {
       try {
-        const item = cartItems.find(i => (i.id === productId || i._id === productId) && JSON.stringify(i.variant || {}) === JSON.stringify(variant || {}))
-        if (item && item._id) {
-          await cartService.removeFromCart(item._id) 
+        const item = cartItems.find(i => 
+          (i.id === productId || i.productId === productId || i._id === productId) && 
+          JSON.stringify(i.variant || {}) === JSON.stringify(variant || {})
+        )
+        const targetId = item?._id || productId
+        const res = await cartService.removeFromCart(targetId)
+        if (res.data?.success && res.data?.cart?.items) {
+          const normalized = normalizeCartItems(res.data.cart.items)
+          setCartItems(normalized)
+          calculateTotals(normalized)
+          return
         }
       } catch (err) {
         console.error('Failed to remove from backend cart', err)
@@ -139,7 +167,8 @@ export const CartProvider = ({ children }) => {
     
     setCartItems((prevItems) =>
       prevItems.filter(
-        (item) => !((item.id === productId || item._id === productId) && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {}))
+        (item) => !((item.id === productId || item.productId === productId || item._id === productId) && 
+          JSON.stringify(item.variant || {}) === JSON.stringify(variant || {}))
       )
     )
   }
@@ -152,9 +181,17 @@ export const CartProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        const item = cartItems.find(i => (i.id === productId || i._id === productId) && JSON.stringify(i.variant || {}) === JSON.stringify(variant || {}))
-        if (item && item._id) {
-          await cartService.updateCartItem(item._id, quantity)
+        const item = cartItems.find(i => 
+          (i.id === productId || i.productId === productId || i._id === productId) && 
+          JSON.stringify(i.variant || {}) === JSON.stringify(variant || {})
+        )
+        const targetId = item?._id || productId
+        const res = await cartService.updateCartItem(targetId, quantity)
+        if (res.data?.success && res.data?.cart?.items) {
+          const normalized = normalizeCartItems(res.data.cart.items)
+          setCartItems(normalized)
+          calculateTotals(normalized)
+          return
         }
       } catch (err) {
         console.error('Failed to update backend cart', err)
@@ -163,12 +200,14 @@ export const CartProvider = ({ children }) => {
 
     setCartItems((prevItems) =>
       prevItems.map((item) =>
-        (item.id === productId || item._id === productId) && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {})
+        (item.id === productId || item.productId === productId || item._id === productId) && 
+        JSON.stringify(item.variant || {}) === JSON.stringify(variant || {})
           ? { ...item, quantity }
           : item
       )
     )
   }
+
 
   const clearCart = async () => {
     if (isAuthenticated) {

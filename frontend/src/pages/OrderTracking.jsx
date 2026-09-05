@@ -78,12 +78,12 @@ function OrderTracking() {
   const activeIdx = getActiveStepIdx(trackingInfo.status)
 
   return (
-    <div className="container-custom py-16 min-h-screen">
-      <nav className="text-xs uppercase tracking-widest opacity-60 mb-8">
+    <div className="container-custom py-8 md:py-16 min-h-screen">
+      <nav className="text-xs uppercase tracking-widest opacity-60 mb-6 md:mb-8">
         <Link to="/orders">← {t('orderTracking.backToOrders', 'Back to My Orders')}</Link>
       </nav>
 
-      <h1 className="text-4xl font-serif font-bold mb-12 tracking-wide uppercase">{t('orderTracking.title', 'Track Order')}</h1>
+      <h1 className="text-2xl md:text-4xl font-serif font-bold mb-8 md:mb-12 tracking-wide uppercase">{t('orderTracking.title', 'Track Order')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* LEFT/MID: Stepper and Status History */}
@@ -109,6 +109,13 @@ function OrderTracking() {
                   style={{ width: `${(activeIdx / (steps.length - 1)) * 100}%` }}
                 />
 
+                {/* Vertical connector line on mobile */}
+                <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-white/10 md:hidden z-0" />
+                <div
+                  className="absolute left-6 top-6 w-0.5 bg-luxury-gold md:hidden z-0 transition-all duration-500"
+                  style={{ height: `${Math.max(0, (activeIdx / (steps.length - 1)) * 100)}%` }}
+                />
+
                 {steps.map((st, index) => {
                   const Icon = st.icon
                   const isCompleted = index <= activeIdx
@@ -117,17 +124,17 @@ function OrderTracking() {
                   return (
                     <div key={index} className="flex md:flex-col items-center gap-4 md:gap-2 z-10 w-full md:w-auto relative">
                       <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
+                        className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center border-2 transition-all ${
                           isCompleted
-                            ? 'bg-luxury-gold border-luxury-gold text-luxury-black'
-                            : 'bg-luxury-charcoal border-white/10 text-white/40'
-                        } ${isActive ? 'ring-4 ring-luxury-gold/30 scale-110' : ''}`}
+                            ? 'bg-luxury-gold border-luxury-gold text-luxury-black shadow-lg shadow-amber-500/20'
+                            : 'bg-luxury-charcoal border-white/15 text-white/40'
+                        } ${isActive ? 'ring-4 ring-luxury-gold/30 scale-105' : ''}`}
                       >
                         <Icon size={18} />
                       </div>
-                      <div className="text-left md:text-center">
+                      <div className="text-left md:text-center flex-1">
                         <p className={`font-bold text-sm ${isCompleted ? 'text-luxury-gold' : 'opacity-40'}`}>{t(`orderTracking.steps.${st.status}`, st.label)}</p>
-                        <p className="text-[10px] opacity-60 hidden md:block max-w-[120px] mx-auto mt-1">{t(`orderTracking.steps.${st.status}Desc`, st.desc)}</p>
+                        <p className="text-[10px] opacity-60 max-w-[140px] md:mx-auto mt-0.5">{t(`orderTracking.steps.${st.status}Desc`, st.desc)}</p>
                       </div>
                     </div>
                   )

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import Order from '../models/Order.js'
+import SellerSettlement from '../models/SellerSettlement.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 /**
@@ -155,12 +156,33 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     // If setting to delivered, verify OTP if provided
-    if (status === 'delivered' && otp) {
-      if (order.deliveryOTP && order.deliveryOTP !== otp.trim()) {
-        throw new ApiError(400, 'Invalid door delivery OTP code')
+    if (status === 'delivered') {
+      if (otp) {
+        if (order.deliveryOTP && order.deliveryOTP !== otp.trim()) {
+          throw new ApiError(400, 'Invalid door delivery OTP code')
+        }
       }
       order.paymentStatus = 'completed'
-      order.actualDeliveryDate = new Date()
+      order.actualDeliveryDate = order.actualDeliveryDate || new Date()
+
+      // Mark all seller suborders as delivered
+      if (order.sellerSuborders && order.sellerSuborders.length > 0) {
+        order.sellerSuborders.forEach(sub => {
+          sub.status = 'delivered'
+          sub.deliveredAt = sub.deliveredAt || new Date()
+        })
+      }
+
+      // Update 7-day post-delivery settlement hold
+      await SellerSettlement.updateMany(
+        { orderId: order._id, status: 'PENDING' },
+        { 
+          $set: { 
+            deliveredAt: new Date(),
+            holdUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          } 
+        }
+      )
     }
 
     // Update order

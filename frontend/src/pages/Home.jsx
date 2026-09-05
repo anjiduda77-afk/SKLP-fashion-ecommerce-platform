@@ -9,6 +9,7 @@ import { useTheme } from '@context/ThemeContext'
 import { useCart } from '@context/CartContext'
 import { useWishlist } from '@context/WishlistContext'
 import { toast } from 'react-toastify'
+import DynamicCampaignBanner from '@components/Marketing/DynamicCampaignBanner'
 
 const heroSlides = [
   {
@@ -62,10 +63,10 @@ const servicesList = [
 ]
 
 const designerLabels = [
-  { brand: 'Traditional Handlooms', desc: 'Exquisite silk weaving & hand craftsmanship' },
-  { brand: 'Modern Blazers', desc: 'Deep velvet evening wear & elegant blazers' },
-  { brand: 'Studio SKLP', desc: 'Contemporary activewear with gold accents' },
-  { brand: 'Premium Leather', desc: 'Fine genuine leather boots & shoes' }
+  { brand: 'SKLP Heritage', desc: 'Exquisite silk weaving & royal handloom sarees' },
+  { brand: 'SKLP Royale', desc: 'Deep velvet evening wear & bespoke blazers' },
+  { brand: 'SKLP Studio', desc: 'Contemporary trench coats & modern silhouettes' },
+  { brand: 'SKLP Footwear', desc: 'Fine Italian leather boots & luxury stilettos' }
 ]
 
 const mockProductsData = [
@@ -120,9 +121,9 @@ function ProductCard({ product, isDarkMode }) {
       className="group relative"
     >
       <div 
-        className={`relative overflow-hidden rounded-[2.2rem] border transition-all duration-500 flex flex-col h-full
+        className={`relative overflow-hidden rounded-2xl sm:rounded-[2rem] border transition-all duration-500 flex flex-col h-full
           ${isDarkMode 
-            ? 'bg-luxury-black/60 border-white/10 text-white shadow-dark-glow hover:border-luxury-gold/50' 
+            ? 'bg-luxury-black/70 border-white/10 text-white shadow-dark-glow hover:border-luxury-gold/50' 
             : 'bg-white border-luxury-gold/20 text-luxury-darkBlack shadow-card hover:border-luxury-darkGold'
           }`}
         onMouseEnter={() => setIsHovered(true)}
@@ -138,102 +139,98 @@ function ProductCard({ product, isDarkMode }) {
           />
           
           {/* Glassmorphic Action Tray Overlay on Hover */}
-          <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center gap-3 transition-opacity duration-300
-            ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+          <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center gap-2 sm:gap-3 transition-opacity duration-300
+            ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none md:pointer-events-auto'}`}
           >
             <button 
               onClick={handleAddToCart}
-              className="w-12 h-12 rounded-full bg-luxury-gold text-black flex items-center justify-center hover:scale-110 active:scale-95 transition"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-luxury-gold text-black flex items-center justify-center hover:scale-110 active:scale-95 transition shadow-glow touch-target"
               title="Quick Add to Cart"
+              aria-label="Add to cart"
             >
-              <FiShoppingBag size={18} />
+              <FiShoppingBag size={17} />
             </button>
             <button 
               onClick={handleWishlistToggle}
-              className={`w-12 h-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition
-                ${wishlisted ? 'bg-red-500 text-white' : 'bg-white/15 text-white'}`}
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition touch-target
+                ${wishlisted ? 'bg-red-500 text-white shadow-md' : 'bg-white/20 text-white backdrop-blur-md'}`}
               title="Add to Wishlist"
+              aria-label="Wishlist"
             >
-              <FiHeart size={18} className={wishlisted ? 'fill-current' : ''} />
+              <FiHeart size={17} className={wishlisted ? 'fill-current' : ''} />
             </button>
           </div>
 
           {/* Discount badge */}
           {product.discount > 0 && (
-            <span className="absolute top-4 left-4 rounded-full bg-luxury-gold px-3.5 py-1 text-[10px] font-extrabold text-black shadow-glow">
+            <span className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 rounded-full bg-luxury-gold px-2 py-0.5 sm:px-3 sm:py-1 text-[9px] sm:text-[10px] font-black text-black shadow-glow">
               -{product.discount}%
             </span>
           )}
 
           {/* Stock Alert Badge */}
           {product.stockLeft <= 3 && (
-            <span className="absolute top-4 right-4 rounded-full bg-red-500 px-3 py-1 text-[9px] font-bold text-white shadow-lg animate-pulse">
-              Only {product.stockLeft} Left
+            <span className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 rounded-full bg-red-500 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[9px] font-bold text-white shadow-lg animate-pulse">
+              Only {product.stockLeft}
             </span>
           )}
         </div>
 
         {/* Product Meta */}
-        <div className="p-5 flex-1 flex flex-col justify-between">
+        <div className="p-3 sm:p-5 flex-1 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold">{product.brand}</p>
-              <span className={`text-[9px] uppercase tracking-wider font-bold rounded-full px-2 py-0.5
+            <div className="flex items-center justify-between gap-1.5 mb-1.5">
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-luxury-gold font-bold truncate">{product.brand}</p>
+              <span className={`text-[8px] sm:text-[9px] uppercase tracking-wider font-bold rounded-full px-1.5 py-0.5 shrink-0
                 ${product.inStock ? 'bg-luxury-gold/10 text-luxury-gold' : 'bg-red-500/10 text-red-500'}`}>
-                {product.inStock ? 'In Stock' : 'Out of Stock'}
+                {product.inStock ? 'In Stock' : 'Out'}
               </span>
             </div>
             
             <Link to={`/products/${product.id}`} className="block group-hover:text-luxury-gold transition-colors">
-              <h3 className="font-serif font-bold text-base leading-tight mb-2 line-clamp-2">
+              <h3 className="font-serif font-bold text-xs xs:text-sm sm:text-base leading-snug mb-1.5 line-clamp-2">
                 {product.name}
               </h3>
             </Link>
 
             {/* Rating */}
-            <div className="flex items-center gap-1.5 mb-3">
+            <div className="flex items-center gap-1 mb-2 sm:mb-3">
               <div className="flex items-center gap-0.5 text-luxury-gold">
                 {[...Array(5)].map((_, idx) => (
                   <FiStar 
                     key={idx} 
-                    size={12} 
+                    size={10} 
                     className={idx < Math.round(product.rating) ? 'fill-current text-luxury-gold' : 'text-current/20'} 
                   />
                 ))}
               </div>
-              <span className="text-[10px] font-semibold opacity-60">({(product.rating || 4.5).toFixed(1)})</span>
+              <span className="text-[9px] sm:text-[10px] font-semibold opacity-60">({(product.rating || 4.5).toFixed(1)})</span>
             </div>
           </div>
 
           <div>
             {/* Price section */}
-            <div className="flex flex-wrap items-baseline gap-2 mb-3">
-              <span className="text-lg font-bold text-luxury-gold">
+            <div className="flex flex-wrap items-baseline gap-1.5 mb-2 sm:mb-3">
+              <span className="text-sm sm:text-lg font-bold text-luxury-gold">
                 ₹{product.price.toLocaleString()}
               </span>
               {product.originalPrice && (
-                <span className="text-xs line-through opacity-40">
+                <span className="text-[10px] sm:text-xs line-through opacity-40">
                   ₹{product.originalPrice.toLocaleString()}
                 </span>
               )}
             </div>
 
-            {/* Delivery Info */}
-            <div className="flex items-center gap-1.5 text-[10px] opacity-60 mb-4">
-              <FiTruck size={12} className="text-luxury-gold" />
-              <span>{product.delivery}</span>
-            </div>
-
             {/* Quick Add Bottom Row */}
             <button 
               onClick={handleAddToCart}
-              className={`w-full py-3 rounded-xl text-[10px] uppercase tracking-[0.25em] font-extrabold transition-all duration-300 border flex items-center justify-center gap-2
+              className={`w-full py-2.5 sm:py-3 rounded-xl text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold transition-all duration-300 border flex items-center justify-center gap-1.5 touch-target
                 ${isDarkMode 
                   ? 'bg-white/5 border-white/10 text-white hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm' 
                   : 'bg-luxury-offWhite border-luxury-gold/30 text-luxury-darkBlack hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm'
                 }`}
             >
-              <FiShoppingBag size={12} />
+              <FiShoppingBag size={13} className="shrink-0" />
               <span>Add to Cart</span>
             </button>
           </div>
@@ -486,6 +483,8 @@ function Home() {
       {/* 4. DYNAMIC FEED - PERSONALIZED RECOMMENDATIONS */}
       <section className={`py-16 transition-colors duration-300 ${isDarkMode ? 'bg-[#090909]' : 'bg-[#fafafa]'}`}>
         <div className="container-custom">
+          {/* Dynamic Marketing Campaign Banner */}
+          <DynamicCampaignBanner placement="homepage" className="mb-10" />
           
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-10">
             <div>
@@ -509,7 +508,7 @@ function Home() {
 
           {/* Product grid with filtered list */}
           {filteredProducts.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredProducts.map((prod) => (
                 <ProductCard key={prod.id} product={prod} isDarkMode={isDarkMode} />
               ))}
@@ -585,18 +584,22 @@ function Home() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {designerLabels.map((item, idx) => (
-              <div 
+              <Link 
                 key={idx} 
-                className={`rounded-[2rem] border p-8 text-center transition-all duration-300 hover:-translate-y-1
+                to={`/products?brand=${encodeURIComponent(item.brand)}`}
+                className={`rounded-[2rem] border p-8 text-center transition-all duration-300 hover:-translate-y-1 block group cursor-pointer
                   ${isDarkMode 
                     ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-luxury-gold/50 shadow-dark-glow' 
                     : 'bg-white border-luxury-gold/25 hover:border-luxury-darkGold shadow-card'
                   }`}
               >
-                <span className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold mb-3 block">BRAND</span>
-                <h3 className="text-xl font-serif font-bold uppercase mb-2">{item.brand}</h3>
+                <span className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold mb-3 block group-hover:scale-105 transition-transform">BRAND HOUSE</span>
+                <h3 className="text-xl font-serif font-bold uppercase mb-2 group-hover:text-luxury-gold transition-colors">{item.brand}</h3>
                 <p className="text-[11px] opacity-60 leading-normal">{item.desc}</p>
-              </div>
+                <span className="mt-4 inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider text-luxury-gold group-hover:underline">
+                  View Collection →
+                </span>
+              </Link>
             ))}
           </div>
 

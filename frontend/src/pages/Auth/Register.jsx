@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -6,30 +6,48 @@ import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { authService } from '@services/apiServices'
 import apiClient from '@services/apiClient'
-import { auth, googleProvider, signInWithPopup, FIREBASE_CONFIGURED } from '../../config/firebase'
+import { 
+  auth, 
+  googleProvider, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult, 
+  FIREBASE_CONFIGURED 
+} from '../../config/firebase'
 import { toast } from 'react-toastify'
 import { 
   FiUser, FiMail, FiLock, FiEye, FiEyeOff, 
-  FiLoader, FiArrowRight, FiShield, FiCheck 
+  FiLoader, FiArrowRight, FiShield, FiCheck, FiAlertTriangle, FiCheckCircle 
 } from 'react-icons/fi'
 import { FcGoogle } from 'react-icons/fc'
 
 // Helper to map Firebase Google Auth error codes to user-friendly messages
 const getFirebaseGoogleErrorMessage = (error) => {
   if (!error) return 'Google signup failed. Please try again.'
+
+  // 1. Check if backend API returned a specific business error message
+  if (error.response?.data?.message) {
+    return error.response.data.message
+  }
+
+  // 2. Check Firebase SDK error codes
   switch (error.code) {
     case 'auth/popup-closed-by-user':
       return 'Google signup was cancelled before completion.'
     case 'auth/popup-blocked':
-      return 'Popup was blocked by your browser. Please allow popups for this site.'
+      return 'Popup was blocked by your browser. Redirecting to Google Sign-In...'
     case 'auth/unauthorized-domain':
-      return 'Domain not authorized in Firebase Console. Please add this domain in Firebase Authentication settings.'
+      return 'Domain not authorized in Firebase Console. Please add this domain under Firebase Authentication settings.'
     case 'auth/cancelled-popup-request':
       return 'Previous signup request was cancelled.'
     case 'auth/network-request-failed':
       return 'Network connection error. Please check your internet connection.'
     case 'auth/operation-not-allowed':
-      return 'Google Sign-In is not enabled in Firebase Console. Please enable Google provider.'
+      return 'Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google). Please enable it.'
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Please contact support.'
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method.'
     default:
       return error.message || 'Unable to sign up with Google. Please try again.'
   }
@@ -105,6 +123,7 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [showDevGoogleFallback, setShowDevGoogleFallback] = useState(false)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -135,6 +154,35 @@ function Register() {
       navigate('/')
     }
   }, [navigate, redirectUrl])
+
+  // ── 0. Handle Google Redirect Return ─────────────────────────────────────────
+  useEffect(() => {
+    if (!auth) return
+    let isMounted = true
+
+    getRedirectResult(auth)
+      .then(async (userCredential) => {
+        if (userCredential && isMounted) {
+          setGoogleLoading(true)
+          toast.info('Completing Google authentication...')
+          const idToken = await userCredential.user.getIdToken()
+          const res = await authService.firebaseLogin(idToken)
+          if (res.data?.success && res.data?.token) {
+            const { user: userObj, token: authToken, refreshToken } = res.data
+            login(userObj, authToken, refreshToken)
+            handleRedirectAfterLogin(userObj)
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('[REGISTER] Redirect sign-in note:', err.message)
+      })
+      .finally(() => {
+        if (isMounted) setGoogleLoading(false)
+      })
+
+    return () => { isMounted = false }
+  }, [login, handleRedirectAfterLogin])
 
   // ── 1. Email & Password Signup Handler ─────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -249,7 +297,7 @@ function Register() {
     }
   }
 
-  // ── 2. Google Signup with Firebase ─────────────────────────────────────────
+  // ── 2. Google Signup with Firebase Popup & Redirect Fallback ───────────────
   const handleGoogleSignup = async () => {
     if (googleLoading || loading) return
 
@@ -274,11 +322,48 @@ function Register() {
     } catch (error) {
       console.error('Google Signup error:', error)
       const msg = getFirebaseGoogleErrorMessage(error)
+
+      if (error.code === 'auth/popup-blocked') {
+        toast.info('Popup blocked. Initiating direct redirect sign-in...')
+        try {
+          await signInWithRedirect(auth, googleProvider)
+          return
+        } catch (redirectErr) {
+          console.error('Redirect signup error:', redirectErr)
+        }
+      }
+
+      if (error.code === 'auth/operation-not-allowed') {
+        setShowDevGoogleFallback(true)
+      }
+
       if (error.code === 'auth/popup-closed-by-user') {
         toast.info(msg)
       } else {
         toast.error(msg)
       }
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  // ── 3. Dev / Sandbox Google Signup Simulator ───────────────────────────────
+  const handleDevGoogleSignup = async () => {
+    setGoogleLoading(true)
+    toast.info('Creating account with Google Simulated Identity...')
+    try {
+      const newEmail = `google.user.${Date.now().toString().slice(-4)}@gmail.com`
+      const res = await authService.firebaseLogin(`test_firebase_token_google:${newEmail}`)
+      if (res.data?.success && res.data?.token) {
+        const { user: userObj, token: authToken, refreshToken } = res.data
+        login(userObj, authToken, refreshToken)
+        handleRedirectAfterLogin(userObj)
+      } else {
+        throw new Error(res.data?.message || 'Dev Google signup failed')
+      }
+    } catch (err) {
+      console.error('Dev Google signup error:', err)
+      toast.error(err.response?.data?.message || 'Dev Google authentication failed')
     } finally {
       setGoogleLoading(false)
     }
@@ -327,7 +412,9 @@ function Register() {
             type="button"
             onClick={handleGoogleSignup}
             disabled={googleLoading || loading}
-            className={`w-full py-3.5 px-4 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 shadow-sm active:scale-[0.98] mb-6 ${
+            className={`w-full py-3.5 px-4 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 shadow-sm active:scale-[0.98] ${
+              showDevGoogleFallback ? 'mb-3' : 'mb-6'
+            } ${
               isDarkMode
                 ? 'border-white/15 bg-white/5 hover:bg-white/10 text-white hover:border-amber-400/40'
                 : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800 hover:border-amber-500/40'
@@ -345,6 +432,34 @@ function Register() {
               </>
             )}
           </button>
+
+          {/* Dev Mode Assistance & Demo Google Sign-Up Fallback */}
+          {showDevGoogleFallback && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-left text-xs space-y-2 mb-6"
+            >
+              <div className="flex items-start gap-2">
+                <FiAlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={15} />
+                <div>
+                  <p className="font-bold text-amber-500">Firebase Setup Notice</p>
+                  <p className="opacity-75 text-[11px] leading-relaxed mt-0.5">
+                    Google Sign-In needs to be enabled in Firebase Console (Authentication &gt; Sign-in method &gt; Google).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDevGoogleSignup}
+                disabled={googleLoading}
+                className="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold rounded-xl border border-amber-500/40 transition-all flex items-center justify-center gap-1.5 text-xs"
+              >
+                <FiCheckCircle size={13} />
+                <span>Simulate Verified Google Sign Up (Dev Mode)</span>
+              </button>
+            </motion.div>
+          )}
 
           {/* ── DIVIDER ── */}
           <div className="relative flex items-center justify-center mb-6">

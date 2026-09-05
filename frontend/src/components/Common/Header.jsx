@@ -1,54 +1,36 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { 
   FiSearch, FiShoppingCart, FiHeart, FiUser, 
-  FiSun, FiMoon, FiMic, FiX, FiArrowRight,
-  FiZap
+  FiMic, FiX, FiArrowRight,
+  FiZap, FiChevronDown, FiTag, FiBell
 } from 'react-icons/fi'
+import { RiStore2Line } from 'react-icons/ri'
+import axios from 'axios'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
-import { useTheme } from '@context/ThemeContext'
 import { useWishlist } from '@context/WishlistContext'
-import { useCurrency } from '../../context/CurrencyContext'
+import { useShop } from '@context/ShopContext'
+import { notificationService } from '@services/apiServices'
+import { onForegroundMessage } from '@config/firebase'
 import Sidebar from '@components/Common/Sidebar'
+import SearchModal from '@components/Search/SearchModal'
 import sklpLogo from '@assets/images/sklp_logo.png'
 
-const searchMockData = {
-  trending: [
-    { query: 'Gold Banarasi Silk Saree', category: 'Women' },
-    { query: 'Velvet Evening Blazer', category: 'Men' },
-    { query: 'Gold Trim Sneakers', category: 'Footwear' },
-    { query: 'Leather Designer Tote', category: 'Accessories' }
-  ],
-  recommended: [
-    { name: 'Embroidered Velvet Sherwani', image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=80&q=80', price: '₹18,999' },
-    { name: 'Royal Banarasi Silk Saree', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=80&q=80', price: '₹24,500' }
-  ],
-  typos: {
-    'sre': 'Saree',
-    'sar': 'Saree',
-    'shrt': 'Shirt',
-    'sneker': 'Sneakers',
-    'blazr': 'Blazer',
-    'watc': 'Watches'
-  }
-}
-
 function Header({ isDarkMode }) {
-
   const { t } = useTranslation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isListening, setIsListening] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
   const { isAuthenticated, user, logout } = useAuth()
-  const { toggleTheme, language, changeLanguage } = useTheme()
-  const { currency, setCurrency, RATES } = useCurrency()
+  const { selectedShop, openShopModal, clearShop } = useShop()
   const navigate = useNavigate()
 
   // Track scrolling to toggle sticky header floating shadow
@@ -69,46 +51,36 @@ function Header({ isDarkMode }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Simple Typo Correction logic
-  const correctedTypo = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    if (!query) return null
-    return searchMockData.typos[query] || null
-  }, [searchQuery])
-
-  // Predictive search filter
-  const predictedSearches = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    if (!query) return []
-    const allOptions = [
-      'Gold Banarasi Silk Saree', 'Velvet Evening Blazer', 'Gold Trim Sneakers', 'Leather Designer Tote',
-      'Premium Linen Shirt', 'Soft Denim Dungarees', 'Italian Oxford Boots', 'Luxe Sport Hoodie'
-    ]
-    return allOptions.filter(item => item.toLowerCase().includes(query))
-  }, [searchQuery])
-
-  // Simulated Voice Search
-  const handleVoiceSearch = () => {
-    setIsListening(true)
-    setTimeout(() => {
-      const simulatedSpeeches = [
-        'Gold Banarasi Silk Saree',
-        'Velvet Evening Blazer',
-        'Gold Trim Sneakers'
-      ]
-      const randomSpeech = simulatedSpeeches[Math.floor(Math.random() * simulatedSpeeches.length)]
-      setSearchQuery(randomSpeech)
-      setIsListening(false)
-    }, 2000)
-  }
-
-  const handleSearchSubmit = (e) => {
-    e?.preventDefault()
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
-      setIsSearchOpen(false)
+  // Sync notifications and listen for foreground push messages
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([])
+      setUnreadCount(0)
+      return
     }
-  }
+
+    const fetchNotifs = () => {
+      notificationService.getNotifications({ limit: 5 })
+        .then((res) => {
+          if (res.data?.notifications) {
+            setNotifications(res.data.notifications)
+            setUnreadCount(res.data.unreadCount || 0)
+          }
+        })
+        .catch(() => {})
+    }
+
+    fetchNotifs()
+
+    const unsubscribe = onForegroundMessage(() => {
+      fetchNotifs()
+    })
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [isAuthenticated])
+
 
   return (
     <>
@@ -122,429 +94,352 @@ function Header({ isDarkMode }) {
           : 'bg-white/90 border-luxury-gold/20 text-luxury-darkBlack'
         }`}
       >
-        <div className="container-custom flex items-center justify-between gap-4">
+        <div className="container-custom flex flex-col gap-2.5">
           
-          {/* LEFT: Hamburger & Brand logo */}
-          <div className="flex items-center gap-3 md:gap-5">
-            {/* Professional Animated Hamburger */}
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-2xl border transition-all duration-300 group
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 hover:bg-white/10 text-luxury-gold' 
-                  : 'bg-luxury-gold/10 border-luxury-gold/20 hover:bg-luxury-gold/25 text-luxury-darkBlack'
-                }`}
-              aria-label="Open sidebar menu"
-            >
-              <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[-4px] group-hover:scale-x-110" />
-              <span className="w-5 h-[2px] bg-current rounded-full transition-all duration-300" />
-              <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[4px] group-hover:scale-x-95" />
-            </button>
-
-            {/* Premium Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <img 
-                src={sklpLogo} 
-                alt="SKLP Logo" 
-                className="w-10 h-10 object-contain rounded-xl"
-              />
-              <div className="hidden sm:block">
-                <p className={`text-sm font-bold uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                  SKLP Fashion Store
-                </p>
-              </div>
-            </Link>
-          </div>
-
-          {/* MIDDLE: Hidden Search Container on Desktop unless activated */}
-          <div className="hidden md:flex flex-1 max-w-lg items-center relative">
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className={`w-full flex items-center gap-3 px-5 py-3 rounded-2xl border text-left text-sm transition-all duration-300
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10' 
-                  : 'bg-luxury-offWhite border-luxury-gold/20 text-luxury-mediumGray hover:text-luxury-darkGray hover:border-luxury-gold/45'
-                }`}
-            >
-              <FiSearch className="text-luxury-gold text-lg" />
-              <span>{t('header.searchPlaceholder', 'Search premium collections, AI styles...')}</span>
-              <span className="ml-auto text-[10px] bg-luxury-gold/20 text-luxury-gold px-2 py-0.5 rounded-md font-mono">
-                ⌘K
-              </span>
-            </button>
-          </div>
-
-          {/* RIGHT: Top Navigation Actions */}
-          <div className="flex items-center gap-2 md:gap-3">
-            
-            {/* Search Toggle Icon */}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-300
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
-                  : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-              aria-label="Expand Search"
-            >
-              <FiSearch size={20} />
-            </button>
-
-            {/* Multi-Language Switcher */}
-            <div className="relative">
-              <select
-                value={language}
-                onChange={(e) => changeLanguage(e.target.value)}
-                className={`h-11 px-2.5 text-xs font-bold rounded-2xl border cursor-pointer outline-none transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10'
-                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-                title="Select Language"
-              >
-                <option value="en" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>English</option>
-                <option value="te" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>తెలుగు</option>
-                <option value="hi" className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>हिन्दी</option>
-              </select>
-            </div>
-
-            {/* Multi-Currency Switcher */}
-            <div className="relative">
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className={`h-11 px-2.5 text-xs font-bold rounded-2xl border cursor-pointer outline-none transition-all duration-300 ${
-                  isDarkMode
-                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10'
-                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-                title="Select Currency"
-              >
-                {Object.keys(RATES).map((code) => (
-                  <option key={code} value={code} className={isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-black'}>
-                    {RATES[code].symbol} {code}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Theme Toggle Icon with smooth micro-animation */}
-            <button
-              onClick={toggleTheme}
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-300 active:scale-95
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
-                  : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-              aria-label="Toggle theme mode"
-            >
-              {isDarkMode ? (
-                <motion.div whileTap={{ rotate: 180 }} transition={{ duration: 0.3 }}>
-                  <FiSun size={18} className="text-luxury-gold" />
-                </motion.div>
-              ) : (
-                <motion.div whileTap={{ rotate: 90 }} transition={{ duration: 0.3 }}>
-                  <FiMoon size={18} className="text-luxury-darkBlack" />
-                </motion.div>
-              )}
-            </button>
-
-            {/* Wishlist Synchronized Badge */}
-            <Link 
-              to="/wishlist" 
-              className={`relative w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-300
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
-                  : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-            >
-              <FiHeart size={20} />
-              <AnimatePresence>
-                {wishlistCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[9px] font-bold text-white shadow-lg"
-                  >
-                    {wishlistCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
-
-            {/* Cart Synchronized Badge */}
-            <Link 
-              to="/cart" 
-              className={`relative w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-300
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
-                  : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
-                }`}
-            >
-              <FiShoppingCart size={20} />
-              <AnimatePresence>
-                {itemCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-luxury-gold px-1.5 text-[9px] font-bold text-black shadow-glow"
-                  >
-                    {itemCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
-
-            {/* Desktop profile login option */}
-            {isAuthenticated ? (
-              <div className="hidden md:flex items-center gap-2">
-                {user?.role && user.role !== 'customer' && (
-                  <Link
-                    to={
-                      user.role === 'admin'
-                        ? '/admin/dashboard'
-                        : user.role === 'seller'
-                        ? '/seller/dashboard'
-                        : '/delivery/dashboard'
-                    }
-                    className={`inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 bg-luxury-gold text-black border-luxury-gold hover:bg-yellow-400 hover:shadow-glow`}
-                  >
-                    <FiZap size={14} className="animate-pulse" />
-                    <span>
-                      {user.role === 'admin'
-                        ? t('header.adminPanel', 'Admin Panel')
-                        : user.role === 'seller'
-                        ? t('header.sellerHub', 'Seller Hub')
-                        : t('header.deliveryHub', 'Delivery Hub')}
-                    </span>
-                  </Link>
-                )}
-                <Link
-                  to="/profile"
-                  className={`inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300
-                    ${isDarkMode 
-                      ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
-                      : 'bg-white border-luxury-gold/30 text-black hover:bg-luxury-offWhite'
-                    }`}
-                >
-                  <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
-                  <span>{t('header.profile', 'Profile')}</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    logout()
-                    navigate('/login')
-                  }}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300 shadow-md"
-                >
-                  <span>{t('header.signOut', 'Sign Out')}</span>
-                </button>
-              </div>
-            ) : (
+          {/* TOP ROW: Brand, Shop, Theme, Lang, Cart, Wishlist, Profile */}
+          <div className="flex items-center justify-between gap-2 md:gap-4">
+            {/* LEFT: Hamburger & Brand logo */}
+            <div className="flex items-center gap-2.5 sm:gap-4">
+              {/* Professional Animated Hamburger */}
               <button
-                onClick={() => navigate('/login')}
-                className={`hidden md:inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300
+                onClick={() => setIsSidebarOpen(true)}
+                className={`relative flex flex-col items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl border transition-all duration-300 group touch-target
                   ${isDarkMode 
-                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
-                    : 'bg-luxury-gold text-black border-luxury-gold/40 hover:bg-luxury-darkGold'
+                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-luxury-gold' 
+                    : 'bg-luxury-gold/10 border-luxury-gold/20 hover:bg-luxury-gold/25 text-luxury-darkBlack'
+                  }`}
+                aria-label="Open sidebar menu"
+              >
+                <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[-4px] group-hover:scale-x-110" />
+                <span className="w-5 h-[2px] bg-current rounded-full transition-all duration-300" />
+                <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[4px] group-hover:scale-x-95" />
+              </button>
+
+              {/* Premium Logo */}
+              <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
+                <img 
+                  src={sklpLogo} 
+                  alt="SKLP Logo" 
+                  className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl shadow-sm"
+                />
+                <div className="flex flex-col">
+                  <p className={`text-xs sm:text-sm font-serif font-black tracking-wider leading-tight ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    SKLP <span className="text-luxury-gold">LUXE</span>
+                  </p>
+                  <span className="text-[9px] uppercase tracking-widest text-luxury-gold font-bold hidden xs:block">
+                    Fashion Store
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+            {/* MIDDLE: Desktop-Only Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-md lg:max-w-lg items-center relative mx-2">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl border text-left text-sm transition-all duration-300
+                  ${isDarkMode 
+                    ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10' 
+                    : 'bg-luxury-offWhite border-luxury-gold/20 text-luxury-mediumGray hover:text-luxury-darkGray hover:border-luxury-gold/45'
                   }`}
               >
-                <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-black'} />
-                <span>{t('header.signIn', 'Sign In')}</span>
+                <FiSearch className="text-luxury-gold text-lg shrink-0" />
+                <span className="truncate">
+                  {selectedShop 
+                    ? `Search in ${selectedShop.brandName || selectedShop.shopName}...`
+                    : t('header.searchPlaceholder', 'Search luxury couture, brands...')}
+                </span>
+                <span className="ml-auto text-[10px] bg-luxury-gold/20 text-luxury-gold px-2 py-0.5 rounded-md font-mono shrink-0">
+                  ⌘K
+                </span>
               </button>
-            )}
+            </div>
 
-
-          </div>
-        </div>
-      </header>
-
-      {/* FULL WIDTH AI SEARCH OVERLAY */}
-      <AnimatePresence>
-        {isSearchOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col justify-start p-4 pt-16 md:pt-24"
-          >
-            {/* Search Modal container */}
-            <motion.div
-              initial={{ y: -50, scale: 0.95 }}
-              animate={{ y: 0, scale: 1 }}
-              exit={{ y: -30, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className={`w-full max-w-4xl mx-auto rounded-[2rem] border overflow-hidden shadow-2xl p-6 md:p-8 relative
-                ${isDarkMode 
-                  ? 'bg-luxury-black border-white/10 text-white shadow-dark-glow' 
-                  : 'bg-white border-luxury-gold/30 text-luxury-darkBlack shadow-hover'
+            {/* RIGHT: Quick Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              
+              {/* Shop / Brand Selector Pill */}
+              <button
+                onClick={openShopModal}
+                className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex items-center gap-1.5 text-xs font-bold transition-all duration-300 ${
+                  selectedShop
+                    ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-glow'
+                    : isDarkMode
+                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10 hover:border-luxury-gold/40'
+                    : 'bg-luxury-gold/10 border-luxury-gold/30 text-luxury-darkBlack hover:bg-luxury-gold/25'
                 }`}
-            >
-              {/* Header inside search modal */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <FiZap className="text-luxury-gold animate-pulse" />
-                  <span className="text-xs uppercase tracking-[0.3em] text-luxury-gold font-bold">{t('header.predictiveAi', 'SKLP Smart Search')}</span>
-                </div>
+                title="Choose a Shop / Brand"
+              >
+                {selectedShop?.logo?.url ? (
+                  <img
+                    src={selectedShop.logo.url}
+                    alt={selectedShop.brandName || selectedShop.shopName}
+                    className="w-4 h-4 rounded-full object-cover border border-amber-400/50 shrink-0"
+                  />
+                ) : (
+                  <RiStore2Line size={16} className="text-luxury-gold shrink-0" />
+                )}
+                <span className="max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
+                  {selectedShop ? (selectedShop.brandName || selectedShop.shopName) : t('header.allShops', 'Brands')}
+                </span>
+                <FiChevronDown size={12} className="text-luxury-gold opacity-80 shrink-0" />
+              </button>
+
+              {/* Notifications Popover Dropdown */}
+              <div className="relative">
                 <button
-                  onClick={() => setIsSearchOpen(false)}
-                  className={`p-2.5 rounded-full border transition-all
-                    ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-luxury-offWhite hover:bg-luxury-lightGray'}`}
+                  type="button"
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-300 touch-target active:scale-95 ${
+                    isDarkMode 
+                      ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
+                      : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
+                  }`}
+                  aria-label="Notifications"
                 >
-                  <FiX size={18} />
+                  <FiBell size={18} />
+                  <AnimatePresence>
+                    {unreadCount > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] font-bold text-black shadow-glow"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </button>
+
+                {/* Notifications Dropdown Panel */}
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setIsNotificationsOpen(false)} 
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className={`absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl border p-4 shadow-2xl z-50 backdrop-blur-2xl ${
+                          isDarkMode 
+                            ? 'bg-[#0f0f0f]/95 border-white/15 text-white shadow-black/80' 
+                            : 'bg-white/95 border-gray-200 text-gray-900 shadow-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-3 border-b border-current/10">
+                          <div className="flex items-center gap-2">
+                            <FiBell className="text-amber-500" />
+                            <span className="font-bold text-xs uppercase tracking-wider font-serif">Notifications</span>
+                          </div>
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await notificationService.markAllAsRead()
+                                setUnreadCount(0)
+                                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+                              }}
+                              className="text-[10px] text-amber-500 font-bold hover:underline"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="py-2 space-y-2 max-h-72 overflow-y-auto pr-1">
+                          {notifications.length > 0 ? (
+                            notifications.map((n) => (
+                              <div
+                                key={n._id}
+                                onClick={() => {
+                                  if (!n.isRead) {
+                                    notificationService.markAsRead(n._id).catch(() => {})
+                                    setNotifications(prev => prev.map(item => item._id === n._id ? { ...item, isRead: true } : item))
+                                    setUnreadCount(c => Math.max(0, c - 1))
+                                  }
+                                  if (n.actionUrl) {
+                                    navigate(n.actionUrl)
+                                    setIsNotificationsOpen(false)
+                                  }
+                                }}
+                                className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                                  n.isRead
+                                    ? isDarkMode ? 'border-white/5 bg-white/5 opacity-60' : 'border-gray-100 bg-gray-50 opacity-70'
+                                    : isDarkMode ? 'border-amber-500/30 bg-amber-500/10 shadow-sm' : 'border-amber-400/40 bg-amber-50 shadow-sm'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="font-bold text-xs text-amber-500">{n.title}</p>
+                                  <span className="text-[9px] opacity-50 font-mono">{new Date(n.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-[11px] opacity-80 line-clamp-2 leading-relaxed">{n.message}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-8 text-center text-xs opacity-50 space-y-2">
+                              <FiBell className="mx-auto opacity-40 text-amber-500" size={24} />
+                              <p>No notifications yet</p>
+                              <p className="text-[10px] opacity-75">You will receive alerts for orders and private couture drops.</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-current/10 text-center">
+                          <Link
+                            to="/profile"
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="text-[10px] uppercase font-bold text-amber-500 tracking-wider hover:underline inline-flex items-center gap-1"
+                          >
+                            <span>Notification Preferences</span>
+                            <FiArrowRight size={10} />
+                          </Link>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {/* Form Input with Mic inside search */}
-              <form onSubmit={handleSearchSubmit} className="relative mb-6">
-                <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 md:py-4
-                  ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-luxury-offWhite border-luxury-gold/30'}`}>
-                  <FiSearch className="text-luxury-gold text-xl" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={t('header.inputPlaceholder', 'Enter what you desire (e.g. Silk Sarees, leather shoes, AI outfit planner)...')}
-                    className="w-full bg-transparent text-base outline-none focus:ring-0 border-0 p-0 text-current placeholder:text-current/40"
-                    autoFocus
-                  />
-                  
-                  {/* Voice Trigger with Listening micro-animation */}
-                  <button
-                    type="button"
-                    onClick={handleVoiceSearch}
-                    className={`relative p-2.5 rounded-xl transition-all duration-300 flex items-center justify-center
-                      ${isListening 
-                        ? 'bg-red-500 text-white animate-pulse' 
-                        : isDarkMode ? 'bg-white/10 text-luxury-gold hover:bg-white/20' : 'bg-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/30'}`}
-                    title="Voice Search"
-                  >
-                    <FiMic size={18} />
-                    {isListening && (
-                      <span className="absolute -inset-1 rounded-xl border border-red-500 animate-ping opacity-75" />
-                    )}
-                  </button>
-                </div>
-              </form>
+              {/* Wishlist Synchronized Badge */}
+              <Link 
+                to="/wishlist" 
+                className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-300 touch-target
+                  ${isDarkMode 
+                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
+                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
+                  }`}
+                aria-label="Wishlist"
+              >
+                <FiHeart size={18} />
+                <AnimatePresence>
+                  {wishlistCount > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-bold text-white shadow-lg"
+                    >
+                      {wishlistCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
 
-              {/* Typo Suggestion alerts */}
-              {correctedTypo && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 5 }} 
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 flex items-center gap-2 text-sm text-luxury-gold bg-luxury-gold/10 px-4 py-2.5 rounded-xl border border-luxury-gold/20"
-                >
-                  <FiZap />
-                  <span>{t('header.didYouMean', 'Did you mean:')}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setSearchQuery(correctedTypo)} 
-                    className="font-bold underline uppercase tracking-wider text-luxury-gold hover:text-luxury-lightGold"
+              {/* Cart Synchronized Badge */}
+              <Link 
+                to="/cart" 
+                className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-300 touch-target
+                  ${isDarkMode 
+                    ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
+                    : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
+                  }`}
+                aria-label="Cart"
+              >
+                <FiShoppingCart size={18} />
+                <AnimatePresence>
+                  {itemCount > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-luxury-gold px-1 text-[8px] font-bold text-black shadow-glow"
+                    >
+                      {itemCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+
+              {/* Authentication States */}
+              {isAuthenticated ? (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {user?.role && user.role !== 'customer' && (
+                    <Link
+                      to={
+                        user.role === 'admin'
+                          ? '/admin/dashboard'
+                          : user.role === 'seller'
+                          ? '/seller/dashboard'
+                          : '/delivery/dashboard'
+                      }
+                      className="hidden lg:inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 bg-luxury-gold text-black border-luxury-gold hover:bg-yellow-400 hover:shadow-glow"
+                    >
+                      <FiZap size={14} className="animate-pulse" />
+                      <span>
+                        {user.role === 'admin'
+                          ? t('header.adminPanel', 'Admin')
+                          : user.role === 'seller'
+                          ? t('header.sellerHub', 'Seller')
+                          : t('header.deliveryHub', 'Delivery')}
+                      </span>
+                    </Link>
+                  )}
+                  <Link
+                    to="/profile"
+                    className={`w-9 h-9 sm:w-10 sm:h-10 sm:px-3 sm:w-auto rounded-xl sm:rounded-2xl border flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
+                      ${isDarkMode 
+                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                        : 'bg-white border-luxury-gold/30 text-black hover:bg-luxury-offWhite'
+                      }`}
+                    title="Account Profile"
                   >
-                    {correctedTypo}
-                  </button>
-                </motion.div>
+                    <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
+                    <span className="hidden xl:inline-block">{t('header.profile', 'Profile')}</span>
+                  </Link>
+
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate('/login')}
+                  className={`w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
+                    ${isDarkMode 
+                      ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                      : 'bg-luxury-gold text-black border-luxury-gold/40 hover:bg-luxury-darkGold'
+                    }`}
+                >
+                  <FiUser size={15} className={isDarkMode ? 'text-luxury-gold' : 'text-black'} />
+                  <span className="hidden sm:inline-block">{t('header.signIn', 'Sign In')}</span>
+                </button>
               )}
 
-              {/* Suggestions Grid */}
-              <div className="grid gap-6 md:grid-cols-3 mt-4">
-                
-                {/* Predictive Searches */}
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.2em] font-bold text-luxury-gold">{t('header.predictiveMatches', 'Predictive Matches')}</p>
-                  <div className="flex flex-col gap-2">
-                    {searchQuery ? (
-                      predictedSearches.length > 0 ? (
-                        predictedSearches.map(item => (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => setSearchQuery(item)}
-                            className={`w-full text-left text-sm rounded-xl p-3 border transition-colors
-                              ${isDarkMode ? 'border-white/5 hover:bg-white/5 text-white' : 'border-black/5 hover:bg-black/5 text-slate-800'}`}
-                          >
-                            {item}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="text-xs opacity-60">No predictive matches. Try typing 'saree' or 'blazer'.</p>
-                      )
-                    ) : (
-                      searchMockData.trending.map(item => (
-                        <button
-                          key={item.query}
-                          type="button"
-                          onClick={() => setSearchQuery(item.query)}
-                          className={`w-full text-left text-sm rounded-xl p-3 border transition-colors flex items-center justify-between
-                            ${isDarkMode ? 'border-white/5 hover:bg-white/5 text-white' : 'border-black/5 hover:bg-black/5 text-slate-800'}`}
-                        >
-                          <span>{item.query}</span>
-                          <span className="text-[10px] opacity-50 uppercase tracking-widest">{item.category}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
+            </div>
+          </div>
 
-                {/* Visual previews */}
-                <div className="space-y-3 md:col-span-2">
-                  <p className="text-xs uppercase tracking-[0.2em] font-bold text-luxury-gold">{t('header.aiRecommended', 'Recommended Products')}</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {searchMockData.recommended.map((prod, idx) => (
-                      <Link
-                        key={idx}
-                        to="/products"
-                        onClick={() => setIsSearchOpen(false)}
-                        className={`flex items-center gap-3 rounded-xl border p-3 hover:border-luxury-gold/50 transition-all
-                          ${isDarkMode ? 'border-white/5 bg-white/5 text-white' : 'border-black/5 bg-luxury-offWhite text-slate-800'}`}
-                      >
-                        <img 
-                          src={prod.image} 
-                          alt={prod.name} 
-                          className="w-12 h-16 object-cover rounded-lg border border-white/10" 
-                        />
-                        <div>
-                          <h4 className="text-sm font-semibold truncate max-w-[150px]">{prod.name}</h4>
-                          <p className="text-xs text-luxury-gold font-bold mt-1">{prod.price}</p>
-                          <span className="text-[9px] uppercase tracking-wider text-green-500 font-bold block mt-0.5">Best Seller</span>
-                        </div>
-                        <FiArrowRight className="ml-auto text-luxury-gold text-lg animate-pulse" />
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+          {/* SECOND ROW (Mobile & Tablet): Full-Width Dedicated Search Bar */}
+          <div className="md:hidden w-full">
+            <div 
+              onClick={() => setIsSearchOpen(true)}
+              className={`w-full h-11 px-3.5 rounded-2xl border flex items-center gap-2.5 text-xs transition-all cursor-pointer shadow-sm touch-target ${
+                isDarkMode 
+                  ? 'bg-white/5 border-white/10 text-white/70 hover:border-luxury-gold/40' 
+                  : 'bg-luxury-offWhite border-luxury-gold/30 text-gray-700 hover:border-luxury-gold/60'
+              }`}
+            >
+              <FiSearch className="text-luxury-gold text-base shrink-0" />
+              <span className="truncate flex-1 text-left">
+                {selectedShop 
+                  ? `Search in ${selectedShop.brandName || selectedShop.shopName}...`
+                  : t('header.searchPlaceholder', 'Search products, brands, couture...')}
+              </span>
+              {selectedShop ? (
+                <span className="text-[10px] bg-luxury-gold/20 text-luxury-gold px-2 py-0.5 rounded-full shrink-0 font-bold">
+                  {selectedShop.brandName || selectedShop.shopName}
+                </span>
+              ) : (
+                <FiMic className="text-luxury-gold text-sm shrink-0 opacity-80" />
+              )}
+            </div>
+          </div>
 
-              </div>
-              
-              {/* Voice Listening Overlay simulation status */}
-              <AnimatePresence>
-                {isListening && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/95 rounded-[2rem] flex flex-col items-center justify-center p-6 text-center text-white z-50"
-                  >
-                    <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center text-white mb-4 animate-bounce">
-                      <FiMic size={36} />
-                    </div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">{t('header.listening', 'Listening for luxury selections...')}</h3>
-                    <p className="text-sm text-white/70 max-w-sm mb-4">{t('header.listeningInstructions', 'Speak clearly into your microphone. Say something like "Velvet blazer" or "Silk saree".')}</p>
-                    <div className="flex gap-1.5 items-center justify-center">
-                      <span className="w-2 h-2 rounded-full bg-luxury-gold animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-luxury-gold animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-luxury-gold animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      </header>
+      {/* ADVANCED AI-STYLE SEARCH SYSTEM MODAL */}
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       {/* Slide-out Sidebar Drawer Component */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />

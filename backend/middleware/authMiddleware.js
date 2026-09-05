@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { ApiError, asyncHandler } from './errorHandler.js';
 import { verifyFirebaseIdToken } from '../config/firebaseAdmin.js';
+import { normalizeIndianPhone } from '../controllers/authController.js';
 import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sklp_fashion_key_anji7206';
@@ -8,7 +9,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || '1b5bc5004ff832818f
 
 // Verify JWT or Firebase ID Token
 export const verifyToken = asyncHandler(async (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.header('Authorization')?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
     throw new ApiError(401, 'No authentication token provided');
@@ -23,9 +24,14 @@ export const verifyToken = asyncHandler(async (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       throw new ApiError(401, 'Token expired');
     }
-    // Only try Firebase if token looks like a real JWT (3 dot-separated segments ≥ 100 chars)
+    // Only try Firebase / Google verification if token looks like a real JWT, Google OAuth token, or test token
     const segments = token.split('.');
-    if (segments.length !== 3 || token.length < 100) {
+    const isLikelyFirebaseOrGoogleToken = 
+      (segments.length === 3 && token.length >= 80) || 
+      token.startsWith('ya29.') || 
+      token.includes('test_firebase_token_');
+
+    if (!isLikelyFirebaseOrGoogleToken) {
       throw new ApiError(401, 'Invalid authentication token');
     }
   }
@@ -33,24 +39,33 @@ export const verifyToken = asyncHandler(async (req, res, next) => {
   // 2. Try Firebase ID Token verification (only for valid JWT-format tokens)
   try {
     const decodedFirebase = await verifyFirebaseIdToken(token);
-    if (decodedFirebase && (decodedFirebase.uid || decodedFirebase.email)) {
-      const user = await User.findOne({
-        $or: [
-          ...(decodedFirebase.uid ? [{ firebaseUid: decodedFirebase.uid }] : []),
-          ...(decodedFirebase.email ? [{ email: decodedFirebase.email.toLowerCase() }] : [])
-        ]
-      });
+    if (decodedFirebase && (decodedFirebase.uid || decodedFirebase.email || decodedFirebase.phone_number)) {
+      const cleanPhone = decodedFirebase.phone_number ? normalizeIndianPhone(decodedFirebase.phone_number) : null;
+      const orConditions = [
+        ...(decodedFirebase.uid ? [{ firebaseUid: decodedFirebase.uid }] : []),
+        ...(decodedFirebase.email ? [{ email: decodedFirebase.email.toLowerCase().trim() }] : []),
+        ...(cleanPhone ? [{ phone: cleanPhone }] : [])
+      ];
 
-      if (user) {
-        req.user = {
-          id: user._id.toString(),
-          uid: user.firebaseUid || decodedFirebase.uid,
-          email: user.email,
-          role: user.role,
-          provider: user.authProvider || 'google'
-        };
-        req.firebaseUser = decodedFirebase;
-        return next();
+      if (orConditions.length > 0) {
+        const user = await User.findOne({ $or: orConditions });
+
+        if (user) {
+          if (decodedFirebase.uid && !user.firebaseUid) {
+            user.firebaseUid = decodedFirebase.uid;
+            await user.save().catch(() => {});
+          }
+
+          req.user = {
+            id: user._id.toString(),
+            uid: user.firebaseUid || decodedFirebase.uid,
+            email: user.email,
+            role: user.role,
+            provider: user.authProvider || 'google'
+          };
+          req.firebaseUser = decodedFirebase;
+          return next();
+        }
       }
     }
   } catch (fbErr) {
@@ -62,7 +77,7 @@ export const verifyToken = asyncHandler(async (req, res, next) => {
 
 // Dedicated Firebase ID Token verification middleware
 export const verifyFirebaseToken = asyncHandler(async (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.header('Authorization')?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
     throw new ApiError(401, 'No authentication token provided');
@@ -70,24 +85,35 @@ export const verifyFirebaseToken = asyncHandler(async (req, res, next) => {
 
   try {
     const decodedFirebase = await verifyFirebaseIdToken(token);
-    const user = await User.findOne({
-      $or: [
-        ...(decodedFirebase.uid ? [{ firebaseUid: decodedFirebase.uid }] : []),
-        ...(decodedFirebase.email ? [{ email: decodedFirebase.email.toLowerCase() }] : [])
-      ]
-    });
+    const cleanPhone = decodedFirebase.phone_number ? normalizeIndianPhone(decodedFirebase.phone_number) : null;
+    const orConditions = [
+      ...(decodedFirebase.uid ? [{ firebaseUid: decodedFirebase.uid }] : []),
+      ...(decodedFirebase.email ? [{ email: decodedFirebase.email.toLowerCase().trim() }] : []),
+      ...(cleanPhone ? [{ phone: cleanPhone }] : [])
+    ];
+
+    if (orConditions.length === 0) {
+      throw new ApiError(401, 'No searchable identity found in Firebase token');
+    }
+
+    const user = await User.findOne({ $or: orConditions });
 
     if (!user) {
       throw new ApiError(401, 'User not found for this Firebase token');
     }
 
+    if (decodedFirebase.uid && !user.firebaseUid) {
+      user.firebaseUid = decodedFirebase.uid;
+      await user.save().catch(() => {});
+    }
+
     req.user = {
+      ...user.toJSON(),
       id: user._id.toString(),
       uid: user.firebaseUid || decodedFirebase.uid,
       email: user.email,
       role: user.role,
-      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      ...user.toJSON()
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim()
     };
     req.firebaseUser = decodedFirebase;
     next();
@@ -135,6 +161,32 @@ export const sellerOrAdmin = asyncHandler((req, res, next) => {
   next();
 });
 
+// Verify delivery partner role
+export const deliveryOnly = asyncHandler((req, res, next) => {
+  if (!req.user) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  if (req.user.role !== 'delivery' && req.user.role !== 'deliveryPartner' && req.user.role !== 'deliverypartner') {
+    throw new ApiError(403, 'Delivery Partner access required');
+  }
+
+  next();
+});
+
+// Verify customer role
+export const customerOnly = asyncHandler((req, res, next) => {
+  if (!req.user) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  if (req.user.role !== 'customer') {
+    throw new ApiError(403, 'Customer access required');
+  }
+
+  next();
+});
+
 // Verify user ownership or admin status
 export const ownerOrAdmin = asyncHandler((req, res, next) => {
   if (!req.user) {
@@ -154,7 +206,7 @@ export const ownerOrAdmin = asyncHandler((req, res, next) => {
 
 // Optional authentication - doesn't fail if token is missing
 export const optionalAuth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.header('Authorization')?.replace(/^Bearer\s+/i, '');
 
   if (token) {
     try {
@@ -162,12 +214,12 @@ export const optionalAuth = (req, res, next) => {
       req.user = decoded;
     } catch (error) {
       // Token is invalid but it's optional, so we don't fail
-      console.warn('Invalid token provided:', error.message);
     }
   }
 
   next();
 };
+
 
 // Refresh token verification
 export const verifyRefreshToken = asyncHandler((req, res, next) => {

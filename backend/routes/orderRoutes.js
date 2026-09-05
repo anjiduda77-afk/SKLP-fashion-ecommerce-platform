@@ -1,6 +1,6 @@
 import express from 'express'
 import { asyncHandler } from '../middleware/errorHandler.js'
-import { verifyToken, ownerOrAdmin } from '../middleware/authMiddleware.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import * as orderController from '../controllers/orderController.js'
 import { verifyRazorpayPayment } from '../controllers/paymentController.js'
 

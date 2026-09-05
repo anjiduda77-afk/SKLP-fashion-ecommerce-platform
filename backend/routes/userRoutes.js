@@ -1,6 +1,6 @@
 import express from 'express'
 import { asyncHandler } from '../middleware/errorHandler.js'
-import { verifyToken, ownerOrAdmin } from '../middleware/authMiddleware.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
 import * as userController from '../controllers/userController.js'
 
 const router = express.Router()
@@ -21,5 +21,12 @@ router.get('/export-data', verifyToken, asyncHandler(userController.exportUserDa
 router.post('/deactivate', verifyToken, asyncHandler(userController.deactivateAccount))
 router.get('/wishlist', verifyToken, asyncHandler(userController.getWishlist))
 router.get('/recently-viewed', verifyToken, asyncHandler(userController.getRecentlyViewed))
+
+// Notifications & FCM Device Token Management
+router.post('/fcm-token', verifyToken, asyncHandler(userController.registerFcmToken))
+router.get('/notifications', verifyToken, asyncHandler(userController.getUserNotifications))
+router.put('/notifications/read-all', verifyToken, asyncHandler(userController.markAllNotificationsRead))
+router.put('/notifications/:id/read', verifyToken, asyncHandler(userController.markNotificationRead))
+router.post('/notifications/test', verifyToken, asyncHandler(userController.sendTestNotification))
 
 export default router

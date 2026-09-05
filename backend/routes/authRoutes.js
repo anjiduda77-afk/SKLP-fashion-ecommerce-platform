@@ -1,8 +1,8 @@
 import express from 'express'
-import { authRateLimiter, otpRateLimiter } from '../middleware/rateLimiter.js'
+import { authRateLimiter } from '../middleware/rateLimiter.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 import * as authController from '../controllers/authController.js'
-import { verifyToken, verifyRefreshToken } from '../middleware/authMiddleware.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
@@ -12,9 +12,6 @@ router.post('/firebase-login', authRateLimiter, asyncHandler(authController.fire
 router.post('/register', authRateLimiter, asyncHandler(authController.register))
 router.post('/login', authRateLimiter, asyncHandler(authController.login))
 router.post('/google-login', asyncHandler(authController.googleLogin))
-router.post('/send-otp', otpRateLimiter, asyncHandler(authController.sendOTP))
-router.post('/resend-otp', otpRateLimiter, asyncHandler(authController.sendOTP))
-router.post('/verify-otp', otpRateLimiter, asyncHandler(authController.verifyOTP))
 router.post('/forgot-password', authRateLimiter, asyncHandler(authController.forgotPassword))
 router.post('/reset-password', asyncHandler(authController.resetPassword))
 router.post('/refresh-token', asyncHandler(authController.refreshToken))
@@ -30,8 +27,9 @@ router.get('/me', verifyToken, asyncHandler(authController.getCurrentUser))
 router.get('/sessions', verifyToken, asyncHandler(authController.getActiveSessions))
 
 // Account Linking (authenticated)
-router.post('/link-phone/send-otp', verifyToken, otpRateLimiter, asyncHandler(authController.sendLinkPhoneOTP))
-router.post('/link-phone/verify', verifyToken, asyncHandler(authController.verifyLinkPhone))
 router.post('/link-email', verifyToken, asyncHandler(authController.linkEmail))
+router.post('/link-phone/send-otp', verifyToken, asyncHandler(authController.sendLinkPhoneOTP))
+router.post('/link-phone/verify', verifyToken, asyncHandler(authController.verifyLinkPhone))
 
 export default router
+

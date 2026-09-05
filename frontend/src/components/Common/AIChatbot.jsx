@@ -19,7 +19,7 @@ function AIChatbot() {
   const [history, setHistory] = useState([
     { 
       from: 'bot', 
-      text: 'Greetings. I am your personal SKLP AI Couturier. I can assist you with selecting bespoke items, curating outfits, or previewing our latest couture drops. What can I design for you today?' 
+      text: 'Hello! I am your SKLP Shopping Assistant. I can help you find outfits, sarees, blazers, shoes, check sizes, or track your orders. How can I help you today?' 
     }
   ])
 
@@ -44,17 +44,17 @@ function AIChatbot() {
     
     // Simulate AI thinking and replying
     setTimeout(() => {
-      let reply = `I have analyzed our luxury inventory. For "${text}", I recommend matching our premium banarasi silks with gold-trim leather sneakers or a velvet evening blazer. Let me know if you would like me to add these directly to your fitting room.`
+      let reply = `Here are some popular options for "${text}". I recommend checking our festive sarees, blazers, and sneakers. Let me know if you would like to see any specific category!`
       
       const query = text.toLowerCase()
-      if (query.includes('wedding') || query.includes('evening') || query.includes('look')) {
-        reply = 'For a bespoke wedding evening look, I highly recommend our **Royal Banarasi Silk Saree** in classic gold and magenta (₹14,999) or our **Velvet Evening Blazer** in deep charcoal (₹8,999) paired with Italian leather oxford boots. Would you like me to show these collections?'
+      if (query.includes('wedding') || query.includes('evening') || query.includes('look') || query.includes('party')) {
+        reply = 'For weddings and festive occasions, I highly recommend our **Royal Banarasi Silk Saree** (₹14,999) or our **Velvet Evening Blazer** (₹8,999). Would you like me to show these collections?'
       } else if (query.includes('sneaker') || query.includes('shoe') || query.includes('footwear')) {
-        reply = 'Our **Gold Trim Leather Sneakers** (₹2,499) combine street-style comfort with high-fashion gold accents. They pair perfectly with our Luxe Sport Hoodies or casual track trousers.'
+        reply = 'Our **Gold Trim Leather Sneakers** (₹2,499) combine everyday comfort with stylish gold accents. They pair great with jeans, hoodies, and casual outfits.'
       } else if (query.includes('blazer') || query.includes('velvet') || query.includes('men')) {
-        reply = 'The **Premium Velvet Blazer** (₹8,999) features hand-finished satin lapels, deep velvet textures, and gold internal silk linings. It is currently a bestseller in our Men\'s Couture line.'
+        reply = 'The **Premium Velvet Blazer** (₹8,999) features rich velvet texture and a comfortable tailored fit. It is one of our best sellers in Men\'s collection.'
       } else if (query.includes('size') || query.includes('sizing') || query.includes('fit')) {
-        reply = 'My AI sizing engine suggests choosing your standard size for tailored garments. Our premiumBanarasi sarees are one-size-fits-all, measuring 5.5 meters with an additional 0.8-meter blouse fabric.'
+        reply = 'We recommend choosing your standard size. Our Banarasi sarees are standard length (5.5 metres) with an included 0.8-metre unstitched blouse piece.'
       }
 
       setHistory((prev) => [...prev, { from: 'bot', text: reply }])
@@ -85,7 +85,7 @@ function AIChatbot() {
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.25em] text-luxury-gold font-bold">SKLP AI</p>
-                  <h3 className="text-sm font-bold tracking-wide uppercase font-serif">Bespoke Couturier</h3>
+                  <h3 className="text-sm font-bold tracking-wide uppercase font-serif">Shopping Assistant</h3>
                 </div>
               </div>
               <button 

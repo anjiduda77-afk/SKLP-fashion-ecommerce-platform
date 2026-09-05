@@ -1,8 +1,7 @@
 import crypto from 'crypto'
 import Order from '../models/Order.js'
 import Payment from '../models/Payment.js'
-import SellerSettlement from '../models/SellerSettlement.js'
-import { getRazorpayInstance, isRazorpayConfigured } from '../config/razorpay.js'
+import { isRazorpayConfigured } from '../config/razorpay.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 /**

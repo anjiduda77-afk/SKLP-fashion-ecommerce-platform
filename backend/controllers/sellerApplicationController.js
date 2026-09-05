@@ -69,12 +69,13 @@ export const checkShopNameAvailability = async (req, res) => {
  * Submit / Update a Seller Application
  */
 export const submitSellerApplication = async (req, res) => {
-  const userId = req.user.id
+  const userId = req.user?.id || req.user?._id
   const {
     applicantName,
     email,
     phone,
     shopName,
+    brandName,
     businessType,
     businessAddress,
     panNumber,
@@ -83,10 +84,6 @@ export const submitSellerApplication = async (req, res) => {
     documents
   } = req.body
 
-  if (!applicantName || !email || !phone || !shopName) {
-    throw new ApiError(400, 'Please provide applicant name, email, phone, and shop name.')
-  }
-
   const user = await User.findById(userId)
   if (!user) throw new ApiError(404, 'User not found')
 
@@ -94,40 +91,64 @@ export const submitSellerApplication = async (req, res) => {
     throw new ApiError(400, 'You already have an active seller account.')
   }
 
-  // Check shop name availability
-  const slug = slugify(shopName)
-  const existingSeller = await Seller.findOne({
-    $or: [{ shopSlug: slug }, { shopName: new RegExp(`^${shopName.trim()}$`, 'i') }],
+  const resolvedName = (applicantName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || 'Applicant').trim()
+  const resolvedEmail = (email || user.email || '').toLowerCase().trim()
+  const resolvedPhone = (phone || user.phone || '').trim()
+
+  if (!resolvedName || !resolvedEmail || (!shopName && !brandName)) {
+    throw new ApiError(400, 'Please provide applicant name, email, and brand/shop name.')
+  }
+
+  const effectiveBrand = (brandName || shopName).trim()
+  const effectiveShop = (shopName || brandName).trim()
+  const brandNormalized = effectiveBrand.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  // ── Brand Name Uniqueness Check (Case-Insensitive Normalized) ──────────────
+  const existingSellerBrand = await Seller.findOne({
+    $or: [
+      { brandNameNormalized: brandNormalized },
+      { shopSlug: slugify(effectiveShop) }
+    ],
     userId: { $ne: userId }
   })
-  if (existingSeller) {
-    throw new ApiError(400, 'Shop name is already registered by another merchant.')
+  if (existingSellerBrand) {
+    throw new ApiError(400, `The brand "${effectiveBrand}" is already registered by another merchant. Every brand must be unique.`)
   }
 
   // ── Anti-Cheating & Automated Risk Calculation ──────────────────────────────
   let riskScore = 0
   const riskFlags = []
 
-  // Check 1: Duplicate phone / email on previous suspended/rejected applications
+  // Check 1: Duplicate or similar brand name in pending applications
+  const existingPendingApp = await SellerApplication.findOne({
+    brandNameNormalized: brandNormalized,
+    userId: { $ne: userId },
+    status: { $in: ['PENDING_REVIEW', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED'] }
+  })
+  if (existingPendingApp) {
+    riskScore += 50
+    riskFlags.push('DUPLICATE_RISK')
+    riskFlags.push('Brand name matches another pending or active application.')
+  }
+
+  // Check 2: Duplicate phone / email on previous suspended/rejected applications
+  const dupChecks = [{ email: resolvedEmail }]
+  if (resolvedPhone) dupChecks.push({ phone: resolvedPhone })
   const duplicateRejected = await SellerApplication.findOne({
-    $or: [{ phone }, { email: email.toLowerCase() }],
+    $or: dupChecks,
     userId: { $ne: userId },
     status: { $in: ['REJECTED', 'SUSPENDED'] }
   })
   if (duplicateRejected) {
     riskScore += 45
+    riskFlags.push('DUPLICATE_RISK')
     riskFlags.push('Phone or email was associated with a previously rejected/suspended seller application.')
-  }
-
-  // Check 2: Unverified customer phone
-  if (!user.isPhoneVerified && user.phone !== phone) {
-    riskScore += 20
-    riskFlags.push('Applicant phone differs from verified account phone.')
   }
 
   // Check 3: Business documents completeness
   if (!documents || documents.length === 0) {
     riskScore += 25
+    riskFlags.push('REVIEW_REQUIRED')
     riskFlags.push('No identity or business verification documents attached.')
   }
 
@@ -136,15 +157,32 @@ export const submitSellerApplication = async (req, res) => {
     const dupPan = await SellerApplication.findOne({
       panNumber: panNumber.toUpperCase(),
       userId: { $ne: userId },
-      status: { $in: ['APPROVED', 'SUBMITTED', 'UNDER_REVIEW'] }
+      status: { $in: ['APPROVED', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW'] }
     })
     if (dupPan) {
       riskScore += 40
+      riskFlags.push('DUPLICATE_RISK')
       riskFlags.push('PAN number is already associated with another seller account.')
     }
   }
 
-  const riskLevel = riskScore >= 50 ? 'HIGH_RISK' : riskScore >= 20 ? 'MEDIUM_RISK' : 'LOW_RISK'
+  // Check 5: GST number duplicate check
+  if (gstNumber) {
+    const dupGst = await SellerApplication.findOne({
+      gstNumber: gstNumber.toUpperCase(),
+      userId: { $ne: userId },
+      status: { $in: ['APPROVED', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW'] }
+    })
+    if (dupGst) {
+      riskScore += 40
+      riskFlags.push('DUPLICATE_RISK')
+      riskFlags.push('GSTIN is already associated with another seller account.')
+    }
+  }
+
+  const cappedRiskScore = Math.min(100, Math.max(0, riskScore))
+  const riskLevel = cappedRiskScore >= 50 ? 'HIGH_RISK' : cappedRiskScore >= 20 ? 'MEDIUM_RISK' : 'LOW_RISK'
+  const initialStatus = riskFlags.includes('DUPLICATE_RISK') ? 'REVIEW_REQUIRED' : 'PENDING_REVIEW'
 
   // Create or update application
   let application = await SellerApplication.findOne({ userId })
@@ -152,11 +190,15 @@ export const submitSellerApplication = async (req, res) => {
     application = new SellerApplication({ userId })
   }
 
-  application.applicantName = applicantName
-  application.email = email.toLowerCase()
-  application.phone = phone
-  application.shopName = shopName.trim()
-  application.businessType = businessType || 'individual'
+  application.applicantName = resolvedName
+  application.email = resolvedEmail
+  application.phone = resolvedPhone || '0000000000'
+  application.shopName = effectiveShop
+  application.brandName = effectiveBrand
+  application.brandNameNormalized = brandNormalized
+  const normBusinessType = (businessType || 'individual').toLowerCase().trim()
+  const validBusinessTypes = ['individual', 'proprietorship', 'partnership', 'pvt_ltd', 'other']
+  application.businessType = validBusinessTypes.includes(normBusinessType) ? normBusinessType : 'individual'
   application.businessAddress = businessAddress || {}
   application.panNumber = panNumber ? panNumber.toUpperCase() : ''
   application.gstNumber = gstNumber ? gstNumber.toUpperCase() : ''
@@ -164,14 +206,15 @@ export const submitSellerApplication = async (req, res) => {
   if (documents && Array.isArray(documents)) {
     application.documents = documents
   }
-  application.status = 'SUBMITTED'
-  application.riskScore = riskScore
+  application.status = initialStatus
+  application.riskScore = cappedRiskScore
   application.riskLevel = riskLevel
-  application.riskFlags = riskFlags
+  application.riskFlags = [...new Set(riskFlags)]
+  application.reviewFlags = application.riskFlags
 
   application.auditLogs.push({
     action: 'APPLICATION_SUBMITTED',
-    newStatus: 'SUBMITTED',
+    newStatus: initialStatus,
     reason: 'Applicant submitted seller registration details.',
     timestamp: new Date()
   })
@@ -182,6 +225,7 @@ export const submitSellerApplication = async (req, res) => {
     success: true,
     message: 'Seller application submitted successfully. It is now under review.',
     application: {
+      _id: application._id,
       id: application._id,
       shopName: application.shopName,
       status: application.status,
@@ -245,7 +289,7 @@ export const getAdminSellerApplications = async (req, res) => {
 export const reviewSellerApplication = async (req, res) => {
   const { id } = req.params
   const { action, notes, reason } = req.body // action: 'APPROVE', 'REJECT', 'REQUEST_INFO', 'SUSPEND'
-  const adminId = req.user.id
+  const adminId = req.user?.id || req.user?._id
 
   const application = await SellerApplication.findById(id)
   if (!application) {
@@ -269,6 +313,7 @@ export const reviewSellerApplication = async (req, res) => {
     user.role = 'seller'
     user.sellerProfile = {
       storeName: application.shopName,
+      brandName: application.brandName || application.shopName,
       gstNumber: application.gstNumber,
       panNumber: application.panNumber,
       bankDetails: application.bankDetails,
@@ -277,16 +322,22 @@ export const reviewSellerApplication = async (req, res) => {
     }
     await user.save()
 
-    // 2. Create / Activate dedicated Seller record
+    // 2. Create / Activate dedicated Seller record with normalized brand
     const slug = slugify(application.shopName)
+    const brandName = application.brandName || application.shopName
+    const brandNameNormalized = application.brandNameNormalized || brandName.toLowerCase().replace(/[^a-z0-9]/g, '')
+
     let seller = await Seller.findOne({ userId: user._id })
     if (!seller) {
       seller = new Seller({
         userId: user._id,
         shopName: application.shopName,
         shopSlug: slug,
+        brandName,
+        brandNameNormalized,
         businessType: application.businessType,
         bankDetails: { ...application.bankDetails, isVerified: true },
+        approvalStatus: 'APPROVED',
         verificationStatus: 'verified',
         sellerStatus: 'active',
         subscriptionStatus: 'trial',
@@ -296,6 +347,9 @@ export const reviewSellerApplication = async (req, res) => {
     } else {
       seller.shopName = application.shopName
       seller.shopSlug = slug
+      seller.brandName = brandName
+      seller.brandNameNormalized = brandNameNormalized
+      seller.approvalStatus = 'APPROVED'
       seller.verificationStatus = 'verified'
       seller.sellerStatus = 'active'
     }
@@ -322,38 +376,61 @@ export const reviewSellerApplication = async (req, res) => {
       userId: user._id,
       type: 'seller_approved',
       title: '🎉 Congratulations! Your Seller Account is Approved',
-      message: `Your shop "${application.shopName}" is now active with a 30-day Free Trial. Access your Seller Dashboard to start listing products.`,
+      message: `Your brand "${brandName}" is now active with a 30-day Free Trial. Access your Seller Hub to start listing products.`,
       relatedEntity: { entityType: 'seller', entityId: seller._id }
     })
   } else if (action === 'REJECT') {
+    if (!notes && !reason) {
+      throw new ApiError(400, 'A mandatory rejection reason must be provided.')
+    }
     application.status = 'REJECTED'
-    application.adminNotes = notes || reason || 'Application rejected.'
+    application.adminNotes = notes || reason
+    application.rejectionReason = notes || reason
     application.reviewedBy = adminId
     application.reviewedAt = new Date()
+
+    const seller = await Seller.findOne({ userId: user._id })
+    if (seller) {
+      seller.approvalStatus = 'REJECTED'
+      seller.verificationStatus = 'rejected'
+      seller.sellerStatus = 'inactive'
+      await seller.save()
+    }
 
     await Notification.create({
       userId: user._id,
       type: 'seller_rejected',
       title: 'Seller Application Status Update',
-      message: `Your application for "${application.shopName}" could not be approved. Reason: ${reason || notes || 'Documentation requirements not met'}.`
+      message: `Your application for "${application.shopName}" could not be approved. Reason: ${reason || notes}.`
     })
-  } else if (action === 'REQUEST_INFO') {
-    application.status = 'VERIFICATION_REQUIRED'
-    application.adminNotes = notes || 'Additional documents or clarifications required.'
+  } else if (action === 'REQUEST_INFO' || action === 'REQUEST_CHANGES') {
+    application.status = 'REVIEW_REQUIRED'
+    application.adminNotes = notes || reason || 'Additional documents or clarifications required.'
     application.reviewedBy = adminId
     application.reviewedAt = new Date()
 
     await Notification.create({
       userId: user._id,
       type: 'seller_info_required',
-      title: 'Additional Information Required for Seller Application',
-      message: notes || 'Please update your business details or re-upload verification documents.'
+      title: 'Action Required: Seller Application Review',
+      message: notes || reason || 'Please update your business details or re-upload verification documents.'
     })
   } else if (action === 'SUSPEND') {
     application.status = 'SUSPENDED'
     const seller = await Seller.findOne({ userId: user._id })
     if (seller) {
+      seller.approvalStatus = 'SUSPENDED'
+      seller.verificationStatus = 'suspended'
       seller.sellerStatus = 'suspended'
+      await seller.save()
+    }
+  } else if (action === 'REACTIVATE') {
+    application.status = 'APPROVED'
+    const seller = await Seller.findOne({ userId: user._id })
+    if (seller) {
+      seller.approvalStatus = 'APPROVED'
+      seller.verificationStatus = 'verified'
+      seller.sellerStatus = 'active'
       await seller.save()
     }
   }
@@ -375,3 +452,7 @@ export const reviewSellerApplication = async (req, res) => {
     application
   })
 }
+
+// Aliases for unified naming convention
+export const submitApplication = submitSellerApplication
+export const reviewApplication = reviewSellerApplication

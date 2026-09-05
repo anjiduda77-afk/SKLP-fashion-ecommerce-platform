@@ -133,5 +133,20 @@ router.put('/campaigns/:id/status', asyncHandler(async (req, res) => {
   return toggleCampaignStatus(req, res)
 }))
 
+// Reviews Moderation
+router.get('/reviews', asyncHandler(async (req, res) => {
+  const { getAdminReviews } = await import('../controllers/reviewController.js')
+  return getAdminReviews(req, res)
+}))
+router.put('/reviews/:id/status', asyncHandler(async (req, res) => {
+  const { updateReviewStatus } = await import('../controllers/reviewController.js')
+  return updateReviewStatus(req, res)
+}))
+router.delete('/reviews/:id', asyncHandler(async (req, res) => {
+  const { deleteReviewAdmin } = await import('../controllers/reviewController.js')
+  return deleteReviewAdmin(req, res)
+}))
+
 export default router
+
 

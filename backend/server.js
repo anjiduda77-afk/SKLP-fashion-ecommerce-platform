@@ -6,7 +6,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 import compression from 'compression';
 import morgan from 'morgan';
 import connectDB, { getDBStatus } from './config/database.js';
-import { errorHandler, asyncHandler } from './middleware/errorHandler.js';
+import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 
@@ -25,6 +25,7 @@ import deliveryFeeRoutes from './routes/deliveryFeeRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 const app = express();
 
@@ -118,8 +119,10 @@ const healthCheckHandler = (req, res) => {
   const isHealthy = dbStatus.isConnected;
 
   res.status(isHealthy ? 200 : 503).json({ 
+    success: isHealthy,
     status: isHealthy ? 'ok' : 'degraded', 
     service: 'SKLP E-Commerce Backend API',
+    mongodb: dbStatus.state,
     database: dbStatus,
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(process.uptime())}s`,
@@ -155,6 +158,7 @@ app.use('/api/delivery-fee', deliveryFeeRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/campaigns', campaignRoutes);
+app.use('/api/search', searchRoutes);
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {
@@ -184,7 +188,7 @@ const server = app.listen(PORT, () => {
   `);
 });
 
-// ============== Graceful Shutdown ==============
+// ============== Graceful Shutdown & Resilient Error Handling ==============
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
   server.close(() => {
@@ -194,8 +198,20 @@ process.on('SIGTERM', () => {
 });
 
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+  console.error('⚠️ [NON-FATAL] Unhandled Promise Rejection caught:', err?.message || err);
+  if (err?.stack) {
+    console.error(err.stack);
+  }
+  // Do not crash server process on transient third-party/database rejections
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 [FATAL] Uncaught Exception caught:', err?.message || err);
+  if (err?.stack) {
+    console.error(err.stack);
+  }
   server.close(() => process.exit(1));
 });
 
 export default app;
+

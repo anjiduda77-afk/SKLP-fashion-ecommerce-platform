@@ -6,7 +6,9 @@ import {
   FiPlusCircle, FiList, FiTruck, FiMessageSquare, 
   FiEdit, FiTrash2, FiZap, FiFileText, FiUploadCloud, 
   FiStar, FiChevronLeft, FiChevronRight, FiSearch, 
-  FiX, FiSettings
+  FiX, FiSettings, FiAward, FiClock, FiCheckCircle,
+  FiCreditCard, FiArrowRight,
+  FiRefreshCw, FiExternalLink, FiCheck
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerService, uploadService } from '@services/apiServices'
@@ -224,9 +226,13 @@ function SellerDashboard() {
   const [savingProduct, setSavingProduct] = useState(false)
 
   // Seller Profile state
+  const logoInputRef = useRef(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [sellerProfile, setSellerProfile] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    storeName: '', storeDescription: '', gstNumber: '', panNumber: '',
+    storeName: '', brandName: '',
+    logo: { url: '', publicId: '' },
+    storeDescription: '', gstNumber: '', panNumber: '',
     bankDetails: { bankName: '', accountHolder: '', accountNumber: '', ifscCode: '' }
   })
   const [savingProfile, setSavingProfile] = useState(false)
@@ -249,6 +255,21 @@ function SellerDashboard() {
   ])
   const [activeChatId, setActiveChatId] = useState(1)
   const [chatReplyText, setChatReplyText] = useState('')
+
+  // Settlements state
+  const [settlements, setSettlements] = useState([])
+  const [settlementSummary, setSettlementSummary] = useState(null)
+  const [settlementFilter, setSettlementFilter] = useState('ALL')
+  const [settlementPage, setSettlementPage] = useState(1)
+  const [settlementPagination, setSettlementPagination] = useState({ total: 0, page: 1, limit: 20, pages: 1 })
+  const [loadingSettlements, setLoadingSettlements] = useState(false)
+  const [requestingPayout, setRequestingPayout] = useState(false)
+
+  // Studio Membership / Subscriptions state
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null)
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState('monthly')
+  const [, setLoadingSubscription] = useState(false)
+  const [upgradingPlan, setUpgradingPlan] = useState(null)
 
   // ── Data Fetching Functions ────────────────────────────────────────────────
   const loadDashboard = useCallback(async () => {
@@ -299,13 +320,16 @@ function SellerDashboard() {
       const res = await sellerService.getProfile()
       if (res.data?.success) {
         const p = res.data.profile
+        const sellerObj = res.data.seller || p.seller || {}
         setSellerProfile({
           firstName: p.firstName || '',
           lastName: p.lastName || '',
           email: p.email || '',
           phone: p.phone || '',
-          storeName: p.sellerProfile?.storeName || '',
-          storeDescription: p.sellerProfile?.storeDescription || '',
+          storeName: p.sellerProfile?.storeName || sellerObj.shopName || '',
+          brandName: p.sellerProfile?.brandName || sellerObj.brandName || p.sellerProfile?.storeName || sellerObj.shopName || '',
+          logo: p.sellerProfile?.logo || sellerObj.logo || { url: '', publicId: '' },
+          storeDescription: p.sellerProfile?.storeDescription || sellerObj.description || '',
           gstNumber: p.sellerProfile?.gstNumber || '',
           panNumber: p.sellerProfile?.panNumber || '',
           bankDetails: {
@@ -321,6 +345,85 @@ function SellerDashboard() {
     }
   }, [])
 
+  const loadSettlements = useCallback(async (status = settlementFilter, page = settlementPage) => {
+    setLoadingSettlements(true)
+    try {
+      const res = await sellerService.getSettlements({
+        status,
+        page,
+        limit: 20
+      })
+      if (res.data?.success) {
+        setSettlements(res.data.settlements || [])
+        setSettlementSummary(res.data.summary || null)
+        setSettlementPagination(res.data.pagination || { total: 0, page: 1, limit: 20, pages: 1 })
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load settlements ledger')
+    } finally {
+      setLoadingSettlements(false)
+    }
+  }, [settlementFilter, settlementPage])
+
+  const loadSubscription = useCallback(async () => {
+    setLoadingSubscription(true)
+    try {
+      const res = await sellerService.getSubscription()
+      if (res.data?.success) {
+        setSubscriptionInfo(res.data)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load subscription info')
+    } finally {
+      setLoadingSubscription(false)
+    }
+  }, [])
+
+  const handleRequestPayout = async () => {
+    if (!settlementSummary?.isBankConfigured) {
+      toast.warn('Please complete your bank details in Store Settings first!')
+      setActiveTab('profile')
+      return
+    }
+    if (!settlementSummary?.availableAmount || settlementSummary.availableAmount <= 0) {
+      toast.info('No available settlement funds are mature for payout at this time.')
+      return
+    }
+    setRequestingPayout(true)
+    try {
+      const res = await sellerService.requestPayout({})
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Payout requested successfully!')
+        await loadSettlements(settlementFilter, settlementPage)
+        await loadDashboard()
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to request payout')
+    } finally {
+      setRequestingPayout(false)
+    }
+  }
+
+  const handleSelectPlan = async (planId) => {
+    setUpgradingPlan(planId)
+    try {
+      const res = await sellerService.selectSubscriptionPlan({
+        planId,
+        billingCycle: selectedBillingCycle,
+        paymentMethod: 'razorpay'
+      })
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Subscription plan activated successfully!')
+        await loadSubscription()
+        await loadDashboard()
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update subscription')
+    } finally {
+      setUpgradingPlan(null)
+    }
+  }
+
   // Hook trigger for tab changes
   useEffect(() => {
     if (activeTab === 'overview') {
@@ -329,10 +432,14 @@ function SellerDashboard() {
       loadProducts()
     } else if (activeTab === 'orders') {
       loadOrders()
+    } else if (activeTab === 'settlements') {
+      loadSettlements(settlementFilter, settlementPage)
+    } else if (activeTab === 'subscription') {
+      loadSubscription()
     } else if (activeTab === 'profile') {
       loadProfile()
     }
-  }, [activeTab, loadDashboard, loadProducts, loadOrders, loadProfile])
+  }, [activeTab, loadDashboard, loadProducts, loadOrders, loadSettlements, loadSubscription, loadProfile, settlementFilter, settlementPage])
 
   // ── Action Handlers ────────────────────────────────────────────────────────
   const handleProductSubmit = async (e) => {
@@ -439,7 +546,7 @@ function SellerDashboard() {
     try {
       const res = await sellerService.updateProfile(sellerProfile)
       if (res.data?.success) {
-        toast.success('Store profile information saved successfully!')
+        toast.success('Store settings saved successfully!')
         loadProfile()
       }
     } catch (err) {
@@ -447,6 +554,51 @@ function SellerDashboard() {
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
+      toast.error('Invalid file format. Only JPG, PNG, and WebP images are allowed for Brand DP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image file too large (maximum 5MB).')
+      return
+    }
+    setUploadingLogo(true)
+    try {
+      const res = await uploadService.uploadImages([file])
+      if (res.data?.success && res.data.images?.length > 0) {
+        const img = res.data.images[0]
+        setSellerProfile(prev => ({
+          ...prev,
+          logo: { url: img.url, publicId: img.publicId }
+        }))
+        toast.success('Shop/Brand DP uploaded! Click "Save Store Settings" to apply.')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload Brand DP')
+    } finally {
+      setUploadingLogo(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    if (sellerProfile.logo?.publicId && !sellerProfile.logo.publicId.startsWith('local_')) {
+      try {
+        await uploadService.deleteImage(sellerProfile.logo.publicId)
+      } catch (err) {
+        console.warn('Failed to delete image from Cloudinary:', err)
+      }
+    }
+    setSellerProfile(prev => ({
+      ...prev,
+      logo: { url: '', publicId: '' }
+    }))
+    toast.info('Brand DP removed. Click "Save Store Settings" to update.')
   }
 
   const handleSendChatMessage = (e) => {
@@ -496,6 +648,8 @@ function SellerDashboard() {
     { id: 'inventory', name: 'Garment Inventory', icon: <FiShoppingBag /> },
     { id: 'upload', name: editingProduct ? 'Edit Couture' : 'Publish Couture', icon: <FiPlusCircle /> },
     { id: 'orders', name: 'Order Logs', icon: <FiInbox /> },
+    { id: 'settlements', name: 'Payout Ledger', icon: <FiDollarSign /> },
+    { id: 'subscription', name: 'Studio Membership', icon: <FiAward /> },
     { id: 'profile', name: 'Store Settings', icon: <FiSettings /> },
     { id: 'delivery', name: 'Courier Settings', icon: <FiTruck /> },
     { id: 'chat', name: 'Client Inquiries', icon: <FiMessageSquare /> }
@@ -513,7 +667,7 @@ function SellerDashboard() {
       <div className="container-custom">
         
         {/* Banner Welcome Panel */}
-        <div className={`rounded-[2rem] border p-6 md:p-8 mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm transition-all duration-300
+        <div className={`rounded-[1.5rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-6 sm:mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm transition-all duration-300
           ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white shadow-dark-glow' : 'bg-white border-luxury-gold/25 text-luxury-darkBlack shadow-hover'}`}
         >
           <div>
@@ -521,7 +675,7 @@ function SellerDashboard() {
               <FiZap className="animate-pulse" />
               <span className="text-[10px] uppercase font-bold tracking-widest">SKLP Partner Portal</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-serif font-black uppercase tracking-wide">Seller Studio</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-wide">Seller Studio</h1>
             <p className="text-xs opacity-70 mt-1">
               Manage listings, analytics, and dispatch logistics for <strong>{sellerProfile.storeName || user?.firstName || 'Premium House'}</strong>
             </p>
@@ -537,11 +691,38 @@ function SellerDashboard() {
           </div>
         </div>
 
+        {/* ── Mobile Horizontal Tab Bar (hidden on lg+) ── */}
+        <div className={`lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-4 px-4`}>
+          {tabItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id !== 'upload' && editingProduct) {
+                  setEditingProduct(null)
+                  setForm(EMPTY_FORM)
+                  setImages([])
+                }
+                setActiveTab(item.id)
+              }}
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wider transition-all duration-300 touch-target ${
+                activeTab === item.id
+                  ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow'
+                  : isDarkMode
+                    ? 'bg-white/5 border-white/10 text-white/70'
+                    : 'bg-white border-black/10 text-slate-700'
+              }`}
+            >
+              {item.icon}
+              <span className="whitespace-nowrap">{item.name}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Outer Grid layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
           
-          {/* LEFT SIDEBAR: Nav Items */}
-          <div className="space-y-3">
+          {/* LEFT SIDEBAR: Nav Items (desktop only) */}
+          <div className="hidden lg:block space-y-3">
             {tabItems.map((item) => (
               <button
                 key={item.id}
@@ -676,6 +857,87 @@ function SellerDashboard() {
                     </div>
                   </div>
 
+                </div>
+
+                {/* Payout Settlements & Studio Membership Snapshot */}
+                <div className={`p-6 md:p-8 rounded-[2rem] border shadow-sm transition-all duration-300
+                  ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-current/10">
+                    <div>
+                      <div className="flex items-center gap-2 text-luxury-gold mb-1">
+                        <FiDollarSign className="text-base" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider">Settlement & Studio Tier Status</h3>
+                      </div>
+                      <p className="text-xs opacity-65">
+                        Direct 7-day automated post-delivery disbursements to your registered bank account.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setActiveTab('settlements')}
+                        className="px-4 py-2 bg-luxury-gold/15 hover:bg-luxury-gold/25 text-luxury-gold border border-luxury-gold/30 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                      >
+                        <span>Payout Ledger</span>
+                        <FiArrowRight size={13} />
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('subscription')}
+                        className="px-4 py-2 bg-luxury-gold hover:bg-luxury-darkGold text-black font-bold rounded-xl text-[11px] uppercase tracking-wider shadow-glow transition-all flex items-center gap-1.5"
+                      >
+                        <FiAward size={13} />
+                        <span>Manage Plan</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Settlement Ready Card */}
+                    <div className={`p-4 rounded-2xl border flex flex-col justify-between
+                      ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Available Payout</span>
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      </div>
+                      <p className="text-xl font-black text-green-500">
+                        ₹{(metrics?.availableSettlement || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[9px] opacity-60 mt-1">Ready for direct bank transfer</p>
+                    </div>
+
+                    {/* Settlement Pending Hold Card */}
+                    <div className={`p-4 rounded-2xl border flex flex-col justify-between
+                      ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">In 7-Day Hold</span>
+                        <FiClock className="text-yellow-500 text-xs" />
+                      </div>
+                      <p className="text-xl font-black text-yellow-500">
+                        ₹{(metrics?.pendingSettlement || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-[9px] opacity-60 mt-1">Post-delivery return window hold</p>
+                    </div>
+
+                    {/* Studio Tier Card */}
+                    <div className={`p-4 rounded-2xl border flex flex-col justify-between
+                      ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Active Studio Plan</span>
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-luxury-gold/20 text-luxury-gold border border-luxury-gold/30">
+                          {sellerProfile.currentPlan || 'Trial'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-luxury-gold truncate">
+                        {sellerProfile.currentPlan === 'business' ? 'Enterprise 4% Commission' : 
+                         sellerProfile.currentPlan === 'pro' ? 'Pro Seller Boost' : 
+                         sellerProfile.currentPlan === 'basic' ? 'Basic Seller' : '30-Day Free Trial'}
+                      </p>
+                      <p className="text-[9px] opacity-60 mt-1">5% Standard Platform Commission</p>
+                    </div>
+                  </div>
                 </div>
 
               </div>
@@ -1200,15 +1462,639 @@ function SellerDashboard() {
               </div>
             )}
 
+            {/* TAB: SETTLEMENTS & PAYOUT LEDGER */}
+            {activeTab === 'settlements' && (
+              <div className="space-y-8">
+                
+                {/* Header Card */}
+                <div className={`p-6 md:p-8 rounded-[2rem] border shadow-sm transition-all duration-300
+                  ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-luxury-gold mb-1">
+                        <FiDollarSign className="text-lg" />
+                        <h2 className="text-base font-bold uppercase tracking-wider">Settlement & Payout Ledger</h2>
+                      </div>
+                      <p className="text-xs opacity-70 max-w-xl">
+                        7-day post-delivery settlement cycle. When customer delivery is confirmed, earnings remain under safe hold for 7 days to cover returns, then automatically release to Available for direct bank deposit.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                      <button
+                        onClick={handleRequestPayout}
+                        disabled={requestingPayout || !settlementSummary?.availableAmount || settlementSummary?.availableAmount <= 0}
+                        className="px-6 py-3 bg-luxury-gold hover:bg-luxury-darkGold text-black font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-glow transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        {requestingPayout ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FiCreditCard className="text-sm" />
+                            <span>Request Payout (₹{(settlementSummary?.availableAmount || 0).toLocaleString('en-IN')})</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => loadSettlements(settlementFilter, settlementPage)}
+                        disabled={loadingSettlements}
+                        className={`p-3 rounded-2xl border text-xs transition-all flex items-center justify-center
+                          ${isDarkMode ? 'border-white/10 hover:bg-white/5 text-white' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}`}
+                        title="Refresh Ledger"
+                      >
+                        <FiRefreshCw className={loadingSettlements ? 'animate-spin' : ''} size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Financial Metrics Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                    {[
+                      {
+                        title: 'In 7-Day Hold',
+                        value: `₹${(settlementSummary?.pendingAmount || 0).toLocaleString('en-IN')}`,
+                        sub: 'Under delivery return hold',
+                        color: 'text-yellow-500',
+                        bg: 'bg-yellow-500/10 border-yellow-500/20',
+                        icon: <FiClock size={16} />
+                      },
+                      {
+                        title: 'Available for Payout',
+                        value: `₹${(settlementSummary?.availableAmount || 0).toLocaleString('en-IN')}`,
+                        sub: 'Ready for bank deposit',
+                        color: 'text-green-500',
+                        bg: 'bg-green-500/10 border-green-500/20',
+                        icon: <FiCheckCircle size={16} />
+                      },
+                      {
+                        title: 'In Processing',
+                        value: `₹${(settlementSummary?.processingAmount || 0).toLocaleString('en-IN')}`,
+                        sub: 'Bank transfer in progress',
+                        color: 'text-blue-500',
+                        bg: 'bg-blue-500/10 border-blue-500/20',
+                        icon: <FiRefreshCw size={16} />
+                      },
+                      {
+                        title: 'Total Disbursed',
+                        value: `₹${(settlementSummary?.paidAmount || 0).toLocaleString('en-IN')}`,
+                        sub: 'Paid all-time to bank',
+                        color: 'text-luxury-gold',
+                        bg: 'bg-luxury-gold/10 border-luxury-gold/20',
+                        icon: <FiDollarSign size={16} />
+                      }
+                    ].map((stat, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`p-4 rounded-2xl border ${stat.bg} flex flex-col justify-between transition-all`}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-75">{stat.title}</span>
+                          <span className={stat.color}>{stat.icon}</span>
+                        </div>
+                        <p className={`text-xl font-extrabold ${stat.color} tracking-tight`}>{stat.value}</p>
+                        <p className="text-[9px] opacity-60 mt-1">{stat.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bank Account Details Banner */}
+                  <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs
+                    ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-luxury-gold/15 text-luxury-gold flex items-center justify-center font-bold">
+                        <FiCreditCard size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold uppercase tracking-wider text-[11px]">
+                            {settlementSummary?.bankDetails?.bankName || 'Bank Account Not Configured'}
+                          </p>
+                          {settlementSummary?.isBankConfigured ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-500/15 text-green-500 border border-green-500/25">
+                              Direct Deposit Active
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/15 text-red-500 border border-red-500/25">
+                              Bank Details Required
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] opacity-60 font-mono mt-0.5">
+                          {settlementSummary?.bankDetails?.accountNumber
+                            ? `A/C: ••••••••${settlementSummary.bankDetails.accountNumber.slice(-4)}  |  IFSC: ${settlementSummary.bankDetails.ifscCode}  |  Beneficiary: ${settlementSummary.bankDetails.accountHolder || 'Registered Seller'}`
+                            : 'Add your account number and IFSC in Store Settings to receive automated weekly payouts.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className="text-xs font-bold text-luxury-gold hover:underline whitespace-nowrap self-end sm:self-center flex items-center gap-1"
+                    >
+                      <span>Update Bank Info</span>
+                      <FiExternalLink size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Filter Tabs & Ledger Table */}
+                <div className={`p-6 rounded-[2rem] border shadow-sm transition-all duration-300
+                  ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <FiList className="text-luxury-gold text-sm" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider">Suborder Transaction Ledger</h3>
+                      <span className="text-[10px] opacity-60">({settlementPagination.total} entries)</span>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {['ALL', 'PENDING', 'AVAILABLE', 'PROCESSING', 'PAID', 'HELD', 'CANCELLED'].map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => {
+                            setSettlementFilter(st)
+                            setSettlementPage(1)
+                            loadSettlements(st, 1)
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all
+                            ${settlementFilter === st
+                              ? 'bg-luxury-gold text-black shadow-glow'
+                              : isDarkMode 
+                                ? 'bg-white/5 text-white/70 hover:bg-white/10' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className={`border-b text-[10px] font-bold uppercase tracking-wider
+                          ${isDarkMode ? 'border-white/10 text-white/50' : 'border-slate-200 text-slate-400'}`}
+                        >
+                          <th className="py-3 px-4">Settlement ID</th>
+                          <th className="py-3 px-4">Order Details</th>
+                          <th className="py-3 px-4">Gross Sale</th>
+                          <th className="py-3 px-4">Commission (5%)</th>
+                          <th className="py-3 px-4">Net Payout</th>
+                          <th className="py-3 px-4">Hold / Maturity</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-current/5">
+                        {loadingSettlements ? (
+                          <tr>
+                            <td colSpan="7" className="py-12 text-center text-xs opacity-60">
+                              <div className="w-6 h-6 border-2 border-luxury-gold border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                              Loading settlement ledger...
+                            </td>
+                          </tr>
+                        ) : settlements.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="py-12 text-center text-xs opacity-60">
+                              <FiInbox className="text-3xl mx-auto mb-2 opacity-40" />
+                              No settlement records found for filter &quot;{settlementFilter}&quot;.
+                            </td>
+                          </tr>
+                        ) : (
+                          settlements.map((s) => {
+                            const holdDate = s.holdUntil ? new Date(s.holdUntil) : null
+                            const msLeft = holdDate ? holdDate.getTime() - Date.now() : 0
+                            const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
+
+                            return (
+                              <tr 
+                                key={s._id} 
+                                className={`transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
+                              >
+                                <td className="py-4 px-4 font-mono font-bold text-[11px] text-luxury-gold">
+                                  {s.settlementId}
+                                  {s.payoutReference && (
+                                    <p className="text-[9px] font-normal opacity-60 font-mono mt-0.5">
+                                      Ref: {s.payoutReference}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className="font-bold">Order #{s.orderNumber || s.suborderId?.slice(0, 8)}</span>
+                                  <p className="text-[10px] opacity-60">
+                                    Suborder: {s.suborderId}
+                                  </p>
+                                </td>
+                                <td className="py-4 px-4 font-semibold">
+                                  ₹{(s.eligibleAmount || 0).toLocaleString('en-IN')}
+                                </td>
+                                <td className="py-4 px-4 font-semibold text-red-400">
+                                  -₹{(s.platformCommission || 0).toLocaleString('en-IN')}
+                                  <span className="text-[9px] opacity-60 block">({s.commissionRate || 5}%)</span>
+                                </td>
+                                <td className="py-4 px-4 font-extrabold text-sm text-green-500">
+                                  ₹{(s.sellerPayout || 0).toLocaleString('en-IN')}
+                                </td>
+                                <td className="py-4 px-4 text-[11px]">
+                                  {s.status === 'PAID' ? (
+                                    <span className="text-luxury-gold font-medium">
+                                      Disbursed {s.paidAt ? new Date(s.paidAt).toLocaleDateString() : 'Paid'}
+                                    </span>
+                                  ) : s.status === 'PROCESSING' ? (
+                                    <span className="text-blue-400 font-medium">
+                                      Bank Transfer Queued
+                                    </span>
+                                  ) : s.status === 'AVAILABLE' ? (
+                                    <span className="text-green-500 font-bold flex items-center gap-1">
+                                      <FiCheckCircle size={12} /> Ready for Payout
+                                    </span>
+                                  ) : s.status === 'PENDING' ? (
+                                    <div>
+                                      <span className="text-yellow-500 font-bold flex items-center gap-1">
+                                        <FiClock size={12} /> {daysLeft > 0 ? `Matures in ${daysLeft}d` : 'Matured'}
+                                      </span>
+                                      <span className="text-[9px] opacity-60">
+                                        Hold until {holdDate ? holdDate.toLocaleDateString() : '7 days'}
+                                      </span>
+                                    </div>
+                                  ) : s.status === 'CANCELLED' ? (
+                                    <span className="text-red-400 opacity-80">
+                                      {s.adjustmentReason || 'Order cancelled / refunded'}
+                                    </span>
+                                  ) : (
+                                    <span className="opacity-70">{s.status}</span>
+                                  )}
+                                </td>
+                                <td className="py-4 px-4 text-center">
+                                  <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1
+                                    ${s.status === 'AVAILABLE' 
+                                      ? 'bg-green-500/15 text-green-500 border border-green-500/25'
+                                      : s.status === 'PENDING'
+                                      ? 'bg-yellow-500/15 text-yellow-500 border border-yellow-500/25'
+                                      : s.status === 'PROCESSING'
+                                      ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
+                                      : s.status === 'PAID'
+                                      ? 'bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/25'
+                                      : 'bg-red-500/15 text-red-500 border border-red-500/25'}`}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${s.status === 'AVAILABLE' ? 'bg-green-500' : s.status === 'PENDING' ? 'bg-yellow-500' : s.status === 'PAID' ? 'bg-luxury-gold' : 'bg-red-500'}`} />
+                                    {s.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {settlementPagination.pages > 1 && (
+                    <div className="flex justify-between items-center pt-6 border-t border-current/10 mt-4 text-xs">
+                      <span className="opacity-60 text-[10px]">
+                        Page {settlementPagination.page} of {settlementPagination.pages} ({settlementPagination.total} total)
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const newP = Math.max(1, settlementPage - 1)
+                            setSettlementPage(newP)
+                            loadSettlements(settlementFilter, newP)
+                          }}
+                          disabled={settlementPage === 1}
+                          className={`p-2 rounded-xl border text-xs transition disabled:opacity-30
+                            ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}
+                        >
+                          <FiChevronLeft size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newP = Math.min(settlementPagination.pages, settlementPage + 1)
+                            setSettlementPage(newP)
+                            loadSettlements(settlementFilter, newP)
+                          }}
+                          disabled={settlementPage === settlementPagination.pages}
+                          className={`p-2 rounded-xl border text-xs transition disabled:opacity-30
+                            ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}
+                        >
+                          <FiChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB: STUDIO MEMBERSHIP & PLANS */}
+            {activeTab === 'subscription' && (
+              <div className="space-y-8">
+                
+                {/* Active Plan Banner Card */}
+                <div className={`p-6 md:p-8 rounded-[2rem] border shadow-sm transition-all duration-300
+                  ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-current/10">
+                    <div>
+                      <div className="flex items-center gap-2 text-luxury-gold mb-1">
+                        <FiAward className="text-lg" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">SKLP Designer Membership</span>
+                      </div>
+                      <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">
+                        {subscriptionInfo?.currentPlanConfig?.name || 'Studio Seller Tier'}
+                      </h2>
+                      <p className="text-xs opacity-70 mt-1">
+                        Enjoy priority recommendation boosts, verified designer insignia, and lowered platform commissions.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider border
+                        ${subscriptionInfo?.currentSubscription?.status === 'ACTIVE'
+                          ? 'bg-green-500/15 text-green-500 border-green-500/25'
+                          : subscriptionInfo?.currentSubscription?.status === 'TRIAL'
+                          ? 'bg-luxury-gold/15 text-luxury-gold border-luxury-gold/25'
+                          : 'bg-yellow-500/15 text-yellow-500 border-yellow-500/25'}`}
+                      >
+                        {subscriptionInfo?.currentSubscription?.status || 'Active'}
+                      </span>
+
+                      <span className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider bg-luxury-gold text-black shadow-glow">
+                        {subscriptionInfo?.daysRemaining || 30} Days Remaining
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Usage & Plan Limits Bar */}
+                  <div className="mt-6">
+                    <div className="flex justify-between items-center text-xs mb-2">
+                      <span className="font-bold uppercase tracking-wider text-[10px] opacity-75">
+                        Active Garment Listings Quota
+                      </span>
+                      <span className="font-mono text-luxury-gold font-bold">
+                        {subscriptionInfo?.usage?.activeListings || 0} / {subscriptionInfo?.usage?.maxListings || 50} listings ({subscriptionInfo?.usage?.usagePercent || 0}%)
+                      </span>
+                    </div>
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}>
+                      <div 
+                        className="h-full bg-gradient-to-r from-luxury-gold to-yellow-400 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(5, subscriptionInfo?.usage?.usagePercent || 10)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Cycle Switcher */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-luxury-gold">Available Studio Plans</h3>
+                    <p className="text-xs opacity-60">Upgrade anytime to scale listing capacity and lower marketplace commission.</p>
+                  </div>
+
+                  <div className={`p-1.5 rounded-2xl border flex items-center gap-1 text-xs
+                    ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}
+                  >
+                    <button
+                      onClick={() => setSelectedBillingCycle('monthly')}
+                      className={`px-4 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all
+                        ${selectedBillingCycle === 'monthly'
+                          ? 'bg-luxury-gold text-black shadow-glow'
+                          : 'opacity-70 hover:opacity-100'}`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setSelectedBillingCycle('annual')}
+                      className={`px-4 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5
+                        ${selectedBillingCycle === 'annual'
+                          ? 'bg-luxury-gold text-black shadow-glow'
+                          : 'opacity-70 hover:opacity-100'}`}
+                    >
+                      <span>Annual</span>
+                      <span className="bg-green-500 text-white px-1.5 py-0.2 rounded text-[8px] font-black">SAVE 16%</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Pricing Tier Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {(subscriptionInfo?.plans || []).map((plan) => {
+                    const isCurrent = subscriptionInfo?.currentSubscription?.plan === plan.id
+                    const displayPrice = selectedBillingCycle === 'annual' ? plan.annualPrice : plan.price
+
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`rounded-[2rem] border p-6 flex flex-col justify-between transition-all duration-300 relative
+                          ${isCurrent 
+                            ? 'border-luxury-gold shadow-glow ring-2 ring-luxury-gold/30' 
+                            : isDarkMode 
+                              ? 'bg-luxury-charcoal border-white/5 hover:border-luxury-gold/40' 
+                              : 'bg-white border-black/5 hover:border-luxury-gold/40 shadow-sm'}
+                          ${isDarkMode ? 'bg-luxury-charcoal text-white' : 'bg-white text-slate-900'}`}
+                      >
+                        {plan.popular && (
+                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-luxury-gold text-black text-[9px] font-black uppercase px-3 py-0.5 rounded-full shadow-glow">
+                            Most Popular
+                          </span>
+                        )}
+
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-luxury-gold opacity-80">
+                              {plan.badge || 'Tier'}
+                            </span>
+                            {isCurrent && (
+                              <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-green-500/20 text-green-500 border border-green-500/30">
+                                Current Plan
+                              </span>
+                            )}
+                          </div>
+
+                          <h4 className="text-base font-black uppercase tracking-wide mb-3">{plan.name}</h4>
+
+                          <div className="mb-4">
+                            <span className="text-3xl font-black text-luxury-gold">₹{displayPrice}</span>
+                            <span className="text-xs opacity-60 ml-1 font-mono">
+                              /{selectedBillingCycle === 'annual' ? 'yr' : 'mo'}
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-luxury-gold/90 mb-4 pb-3 border-b border-current/10">
+                            Commission: {plan.commissionRate}% per sale
+                          </p>
+
+                          {/* Features list */}
+                          <ul className="space-y-2.5 text-xs opacity-80 mb-6">
+                            {plan.features.map((feat, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <FiCheck className="text-luxury-gold text-sm shrink-0 mt-0.5" />
+                                <span className="text-[11px] leading-tight">{feat}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <button
+                          onClick={() => handleSelectPlan(plan.id)}
+                          disabled={isCurrent || upgradingPlan === plan.id}
+                          className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2
+                            ${isCurrent
+                              ? 'bg-white/10 text-white/50 border border-white/10 cursor-default'
+                              : 'bg-luxury-gold hover:bg-luxury-darkGold text-black shadow-glow active:scale-95'}`}
+                        >
+                          {upgradingPlan === plan.id ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                              <span>Activating...</span>
+                            </>
+                          ) : isCurrent ? (
+                            <span>Active Plan</span>
+                          ) : (
+                            <span>Choose {plan.name}</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Plan Billing History */}
+                {subscriptionInfo?.currentSubscription?.history?.length > 0 && (
+                  <div className={`p-6 rounded-[2rem] border shadow-sm transition-all duration-300
+                    ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
+                  >
+                    <h3 className="text-xs font-bold uppercase tracking-wider mb-4 text-luxury-gold">
+                      Membership Invoices & Transactions
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-current/10 text-[10px] font-bold uppercase opacity-60">
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Plan Tier</th>
+                            <th className="py-2.5 px-3">Amount</th>
+                            <th className="py-2.5 px-3">Status</th>
+                            <th className="py-2.5 px-3 font-mono">Invoice Reference</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-current/5">
+                          {subscriptionInfo.currentSubscription.history.map((h, i) => (
+                            <tr key={i}>
+                              <td className="py-3 px-3 opacity-75">{new Date(h.paidAt).toLocaleDateString()}</td>
+                              <td className="py-3 px-3 font-bold uppercase text-luxury-gold">{h.plan}</td>
+                              <td className="py-3 px-3 font-mono font-bold">₹{h.amount}</td>
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-green-500/10 text-green-500">
+                                  {h.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 font-mono text-[10px] opacity-60">{h.transactionId}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
             {/* TAB 5: STORE SETTINGS / PROFILE */}
             {activeTab === 'profile' && (
               <div className={cardCls}>
                 <div className="flex items-center gap-3 text-luxury-gold mb-6 border-b border-current/10 pb-4">
                   <FiSettings size={20} />
-                  <h3 className="text-sm font-bold uppercase tracking-wider">Store Config & Verification</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider">Store Settings & Brand Profile</h3>
                 </div>
 
                 <form onSubmit={handleProfileSave} className="space-y-6">
+                  {/* Shop / Brand Profile Picture (DP) Section */}
+                  <div className={`p-5 sm:p-6 rounded-2xl border ${
+                    isDarkMode ? 'bg-white/5 border-white/10' : 'bg-luxury-gold/5 border-luxury-gold/25'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row items-center gap-5">
+                      {/* Avatar DP Preview */}
+                      <div className="relative group shrink-0">
+                        {sellerProfile.logo?.url ? (
+                          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-luxury-gold shadow-glow">
+                            <img
+                              src={sellerProfile.logo.url}
+                              alt={sellerProfile.brandName || sellerProfile.storeName || 'Brand DP'}
+                              className="w-full h-full object-cover"
+                            />
+                            {uploadingLogo && (
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                <div className="w-6 h-6 border-2 border-luxury-gold border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-black font-serif font-black text-3xl flex items-center justify-center border-2 border-luxury-gold/40 shadow-glow">
+                            {uploadingLogo ? (
+                              <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              (sellerProfile.brandName || sellerProfile.storeName || 'S').charAt(0).toUpperCase()
+                            )}
+                          </div>
+                        )}
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/jpg"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Controls & Description */}
+                      <div className="flex-1 text-center sm:text-left space-y-2">
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                          <h4 className="text-sm font-bold uppercase tracking-wider text-luxury-gold">
+                            Shop / Brand Profile Picture (DP)
+                          </h4>
+                          <span className="text-[10px] bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-semibold">
+                            Select Brand DP
+                          </span>
+                        </div>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} max-w-xl`}>
+                          This profile picture (DP) appears in the <strong>"Select Brand"</strong> modal and throughout the store so customers can easily identify your shop.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            disabled={uploadingLogo}
+                            onClick={() => logoInputRef.current?.click()}
+                            className="px-4 py-2 bg-luxury-gold text-black rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                          >
+                            {uploadingLogo ? 'Uploading...' : sellerProfile.logo?.url ? 'Change Brand DP' : 'Upload Brand DP'}
+                          </button>
+                          {sellerProfile.logo?.url && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveLogo}
+                              className="px-3.5 py-2 border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl text-xs font-semibold transition-all"
+                            >
+                              Remove DP
+                            </button>
+                          )}
+                          <span className="text-[10px] text-gray-400">JPG, PNG, WebP (Max 5MB)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Two columns: Store details and Personal contact */}
                   <div className="grid gap-6 sm:grid-cols-2">
                     
@@ -1217,15 +2103,28 @@ function SellerDashboard() {
                       <h4 className="text-xs font-bold uppercase tracking-widest text-luxury-gold mb-1">Company Setup</h4>
                       
                       <div>
-                        <label className={labelCls}>Store Name *</label>
+                        <label className={labelCls}>Store / Shop Name *</label>
                         <input 
                           type="text" 
                           required
                           value={sellerProfile.storeName}
                           onChange={(e) => setSellerProfile({ ...sellerProfile, storeName: e.target.value })}
-                          placeholder="e.g. Sabyasachi Couture Studio"
+                          placeholder="e.g. Sabyasachi Studio"
                           className={inputCls}
                         />
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Brand / Label Name *</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={sellerProfile.brandName}
+                          onChange={(e) => setSellerProfile({ ...sellerProfile, brandName: e.target.value })}
+                          placeholder="e.g. Sabyasachi, Zara, Manyavar"
+                          className={inputCls}
+                        />
+                        <span className="text-[10px] text-gray-400 block mt-1">Shown in the Select Brand modal and on your products</span>
                       </div>
 
                       <div>

@@ -1,9 +1,10 @@
 import { useMemo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiTag, FiCopy, FiCheck, FiSparkles } from 'react-icons/fi';
+import { FiArrowRight, FiTag, FiCopy, FiCheck, FiStar } from 'react-icons/fi';
 import { useMarketingCampaigns } from '@hooks/useMarketingCampaigns';
 import { toast } from 'react-toastify';
+import CountdownTimer from './CountdownTimer';
 
 export default function DynamicCampaignBanner({ placement = 'homepage', className = '' }) {
   const { topCampaign: campaign, getAssignedVariant, trackImpression, trackClick } = useMarketingCampaigns({
@@ -70,11 +71,19 @@ export default function DynamicCampaignBanner({ placement = 'homepage', classNam
       {/* Content */}
       <div className="relative z-10 p-6 sm:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-xl">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-yellow-400 text-black flex items-center gap-1">
-              <FiSparkles size={12} />
+              <FiStar size={12} className="fill-current" />
               {variant.badgeText || 'Special Promotion'}
             </span>
+
+            {/* Dynamic Live Countdown Timer */}
+            {campaign.schedule?.endDate && (
+              <CountdownTimer
+                startDate={campaign.schedule.startDate}
+                endDate={campaign.schedule.endDate}
+              />
+            )}
           </div>
 
           <h3 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-white tracking-tight">

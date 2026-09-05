@@ -1,10 +1,28 @@
 import Product from '../models/Product.js'
-import Review from '../models/Review.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 export const getProducts = async (req, res) => {
-  const { page = 1, limit = 12, category, gender, priceMin, priceMax, search, sort, tag, offers } = req.query
+  const { page = 1, limit = 12, category, gender, priceMin, priceMax, search, sort, tag, offers, brand, sellerId, shopId } = req.query
   const query = { isActive: true }
+
+  // Shop / Brand Scoping
+  const activeSellerId = sellerId || shopId
+  if (activeSellerId) {
+    query.sellerId = activeSellerId
+  }
+  if (brand) {
+    const brandList = (typeof brand === 'string' ? brand.split(',') : (Array.isArray(brand) ? brand : [brand]))
+      .map(b => b.trim())
+      .filter(Boolean)
+    if (brandList.length > 0) {
+      const brandRegexes = brandList.map(b => new RegExp(`^${b.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i'))
+      const brandNormalized = brandList.map(b => b.toLowerCase().replace(/[^a-z0-9]/g, ''))
+      query.$or = [
+        { brand: { $in: brandRegexes } },
+        { brandNormalized: { $in: brandNormalized } }
+      ]
+    }
+  }
 
   if (category) {
     let catArray = typeof category === 'string' ? category.split(',') : (Array.isArray(category) ? category : [category])

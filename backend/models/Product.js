@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import slugifyPkg from 'slugify';
 import mongoosePaginate from 'mongoose-paginate-v2';
 
 const productSchema = new mongoose.Schema({
@@ -40,7 +41,28 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Gender is required'],
     index: true
   },
-  brand: String,
+  brand: {
+    type: String,
+    trim: true,
+    index: true
+  },
+  brandNormalized: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
+  nameNormalized: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Seller',
+    index: true
+  },
   sku: {
     type: String,
     required: true,
@@ -245,19 +267,39 @@ productSchema.virtual('discountedPrice').get(function() {
 // Ensure virtuals are serialized
 productSchema.set('toJSON', { virtuals: true });
 
-// Middleware to update isFeatured based on stock
-productSchema.pre('save', function(next) {
+// Middleware: auto-generate unique slug and update derived fields before save
+productSchema.pre('save', async function(next) {
   this.isOutOfStock = this.stock <= 0;
+
+  // Auto-generate slug from name if not set or name changed
+  if (this.name) {
+    this.nameNormalized = this.name.toLowerCase().trim();
+  }
+  if (this.brand) {
+    this.brandNormalized = this.brand.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  if (this.isNew || this.isModified('name')) {
+    const base = slugifyPkg(this.name || 'product', { lower: true, strict: true, trim: true });
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const candidate = `${base}-${suffix}`;
+    // Ensure uniqueness — retry with fresh suffix if needed
+    const existing = await mongoose.model('Product').findOne({ slug: candidate }).lean();
+    this.slug = existing ? `${base}-${Date.now().toString().slice(-6)}` : candidate;
+  }
+
   next();
 });
 
 // Index for search and filtering
-productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ name: 'text', description: 'text', brand: 'text', tags: 'text' });
 productSchema.index({ category: 1, gender: 1 });
 productSchema.index({ price: 1, discount: 1 });
 productSchema.index({ rating: -1, reviewCount: -1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ isActive: 1, publishedAt: -1 });
+productSchema.index({ brandNormalized: 1, category: 1, price: 1 });
+productSchema.index({ sellerId: 1, isActive: 1 });
 
 // Plugin for pagination
 productSchema.plugin(mongoosePaginate);

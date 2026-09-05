@@ -1,9 +1,7 @@
 import 'dotenv/config'
 import mongoose from 'mongoose'
-import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import * as authController from '../controllers/authController.js'
-import * as userController from '../controllers/userController.js'
 
 function createMockRes() {
   let statusCode = 200
@@ -66,37 +64,39 @@ async function previewAuthenticationSystem() {
   console.log('└─────────────────────────────────────────────────────────────────────────\n')
 
   // ──────────────────────────────────────────────────────────────────────────
-  // PREVIEW 2: Mobile Phone OTP Authentication Flow
+  // PREVIEW 2: Mobile Phone Linking & OTP Verification Flow
   // ──────────────────────────────────────────────────────────────────────────
-  console.log('┌─── [2] MOBILE PHONE OTP INSTANT AUTHENTICATION ─────────────────────────')
+  console.log('┌─── [2] MOBILE PHONE LINKING & OTP VERIFICATION ─────────────────────────')
   process.env.OTP_MODE = 'development'
   const otpPhone = '9876543210'
-  const sendReq = { body: { phone: otpPhone } }
+  const sendReq = {
+    user: { id: regData.user._id.toString() },
+    body: { phone: otpPhone }
+  }
   const sendRes = createMockRes()
-  await authController.sendOTP(sendReq, sendRes)
+  await authController.sendLinkPhoneOTP(sendReq, sendRes)
   const sendData = sendRes.getData()
 
-  console.log(`│ Endpoint 1     : POST /api/auth/send-otp`)
+  console.log(`│ Endpoint 1     : POST /api/auth/link-phone/send-otp`)
   console.log(`│ HTTP Status    : ${sendRes.getStatusCode()} OK`)
-  console.log(`│ SMS Gateway    : ${sendData.provider || 'Fast2SMS / 2Factor.in'}`)
   console.log(`│ Message        : ${sendData.message}`)
-  console.log(`│ Expiration     : ${sendData.expiresIn} seconds (5 mins)`)
+  console.log(`│ Dev OTP        : ${sendData.devOtp || 'Generated'}`)
   console.log(`│ Storage        : SHA-256 Hash stored in DB (Plain text NEVER stored)`)
 
   const verifyReq = {
+    user: { id: regData.user._id.toString() },
     body: { phone: otpPhone, otp: sendData.devOtp },
     headers: { 'user-agent': 'Mobile-App/1.0' },
     connection: { remoteAddress: '127.0.0.1' }
   }
   const verifyRes = createMockRes()
-  await authController.verifyOTP(verifyReq, verifyRes)
+  await authController.verifyLinkPhone(verifyReq, verifyRes)
   const verifyData = verifyRes.getData()
 
-  console.log(`│ Endpoint 2     : POST /api/auth/verify-otp`)
+  console.log(`│ Endpoint 2     : POST /api/auth/link-phone/verify`)
   console.log(`│ HTTP Status    : ${verifyRes.getStatusCode()} OK`)
   console.log(`│ Verified Phone : +91 ${verifyData.user.phone}`)
   console.log(`│ isPhoneVerified: ${verifyData.user.isPhoneVerified}`)
-  console.log(`│ Access Token   : ${verifyData.token.slice(0, 32)}...`)
   console.log('└─────────────────────────────────────────────────────────────────────────\n')
 
   // ──────────────────────────────────────────────────────────────────────────

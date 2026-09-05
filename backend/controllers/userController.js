@@ -3,6 +3,8 @@ import User from '../models/User.js';
 import Wishlist from '../models/Wishlist.js';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
+import Notification from '../models/Notification.js';
+import { sendPushNotification } from '../config/firebaseAdmin.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import NodeCache from 'node-cache';
 
@@ -43,9 +45,20 @@ export const updateProfile = async (req, res) => {
   if (firstName !== undefined) user.firstName = firstName.trim() || user.firstName;
   if (lastName !== undefined) user.lastName = lastName.trim() || user.lastName;
   
-  // Notice: Phone number updates must go through /api/auth/link-phone OTP flow
-  if (phone && phone !== user.phone) {
-    throw new ApiError(400, 'Mobile number changes require OTP verification via Account & Security.');
+  // Direct phone update with 10-digit validation (OTP removed)
+  if (phone !== undefined && phone !== user.phone) {
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+    if (cleanPhone && /^[0-9]{10}$/.test(cleanPhone)) {
+      const existingUser = await User.findOne({ phone: cleanPhone, _id: { $ne: req.user.id } });
+      if (existingUser) {
+        throw new ApiError(409, 'This phone number is already associated with another account');
+      }
+      user.phone = cleanPhone;
+    } else if (!phone) {
+      user.phone = undefined;
+    } else {
+      throw new ApiError(400, 'Please enter a valid 10-digit Indian mobile number');
+    }
   }
 
   if (avatar !== undefined) {
@@ -600,3 +613,130 @@ export const getRecentlyViewed = async (req, res) => {
     products
   });
 };
+
+// Register or refresh FCM Device Token for Web Push
+export const registerFcmToken = async (req, res) => {
+  const { token } = req.body;
+  if (!token || typeof token !== 'string' || token.trim().length < 10) {
+    throw new ApiError(400, 'Valid FCM device token is required');
+  }
+
+  await User.findByIdAndUpdate(req.user.id, {
+    $addToSet: { fcmTokens: token.trim() }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Device notification token registered successfully'
+  });
+};
+
+// Retrieve User Notifications
+export const getUserNotifications = async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const [notifications, total, unreadCount] = await Promise.all([
+    Notification.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Notification.countDocuments({ userId: req.user.id }),
+    Notification.countDocuments({ userId: req.user.id, isRead: false })
+  ]);
+
+  res.status(200).json({
+    success: true,
+    notifications,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    },
+    unreadCount
+  });
+};
+
+// Mark Single Notification Read
+export const markNotificationRead = async (req, res) => {
+  const { id } = req.params;
+  const notification = await Notification.findOneAndUpdate(
+    { _id: id, userId: req.user.id },
+    { $set: { isRead: true } },
+    { new: true }
+  );
+
+  if (!notification) {
+    throw new ApiError(404, 'Notification not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Notification marked as read',
+    notification
+  });
+};
+
+// Mark All Notifications Read
+export const markAllNotificationsRead = async (req, res) => {
+  await Notification.updateMany(
+    { userId: req.user.id, isRead: false },
+    { $set: { isRead: true } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'All notifications marked as read'
+  });
+};
+
+// Send Test Notification (In-App + FCM Push)
+export const sendTestNotification = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const title = '✨ SKLP Royal Couture Drop';
+  const message = 'Your exclusive VIP access to the Festive 2026 Collection is now live. Experience bespoke luxury.';
+  const actionUrl = '/products';
+
+  // 1. Save In-App Notification in DB
+  const notification = await Notification.create({
+    userId: user._id,
+    type: 'offer',
+    title,
+    message,
+    actionUrl,
+    channels: {
+      inApp: true,
+      push: {
+        sent: Boolean(user.fcmTokens?.length > 0),
+        sentAt: new Date()
+      }
+    }
+  });
+
+  // 2. Dispatch FCM Push if device tokens registered
+  let pushResult = null;
+  if (user.fcmTokens && user.fcmTokens.length > 0) {
+    pushResult = await sendPushNotification({
+      tokens: user.fcmTokens,
+      title,
+      body: message,
+      data: {
+        actionUrl,
+        notificationId: notification._id.toString()
+      }
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Test notification sent successfully',
+    notification,
+    pushResult
+  });
+};
+

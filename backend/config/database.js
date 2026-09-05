@@ -24,8 +24,9 @@ const connectDB = async () => {
   const options = {
     serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
-    maxPoolSize: 10,
-    minPoolSize: 2,
+    connectTimeoutMS: 15000,
+    maxPoolSize: 50, // Scaled for high concurrent ecommerce requests
+    minPoolSize: 5, // Keep warm pool of connections ready
     retryWrites: true,
     w: 'majority',
     family: 4, // Prefer IPv4 for Render & Cloud DB compatibility

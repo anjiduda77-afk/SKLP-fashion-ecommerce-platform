@@ -13,6 +13,7 @@ import { rateLimiter } from './middleware/rateLimiter.js';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+import * as productController from './controllers/productController.js';
 import cartRoutes from './routes/cartRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -159,6 +160,7 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/search', searchRoutes);
+app.get('/api/categories', (req, res, next) => productController.getCategories(req, res, next));
 
 // ============== 404 Handler ==============
 app.use('*', (req, res) => {

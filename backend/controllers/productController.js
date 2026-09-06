@@ -100,6 +100,16 @@ export const getTrendingProducts = async (req, res) => {
   res.status(200).json({ success: true, products })
 }
 
+export const getCategories = async (req, res) => {
+  const categories = await Product.distinct('category', { isActive: true })
+  const defaultCategories = [
+    'sarees', 'kurtas', 'lehengas', 'dresses', 'shirts', 
+    'trousers', 'jackets', 'footwear', 'accessories'
+  ]
+  const combined = Array.from(new Set([...(categories || []), ...defaultCategories])).filter(Boolean)
+  res.status(200).json({ success: true, count: combined.length, categories: combined })
+}
+
 export const searchProducts = async (req, res) => {
   const { q, category, gender, priceMin, priceMax } = req.query
   const query = { isActive: true }

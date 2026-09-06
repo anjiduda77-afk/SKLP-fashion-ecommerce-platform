@@ -63,7 +63,7 @@ function SearchModal({ isOpen, onClose }) {
       // Stop voice if modal closes
       if (voiceState === 'listening') stopVoice()
     }
-  }, [isOpen])
+  }, [isOpen, voiceState, stopVoice])
 
   // Sync voice transcript to input
   useEffect(() => {
@@ -79,12 +79,12 @@ function SearchModal({ isOpen, onClose }) {
       return
     }
 
+    setLoading(true)
     debounceRef.current = setTimeout(async () => {
       // Cancel previous request
       if (abortRef.current) abortRef.current.abort()
       abortRef.current = new AbortController()
 
-      setLoading(true)
       try {
         const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
         const res = await axios.get(
@@ -109,6 +109,15 @@ function SearchModal({ isOpen, onClose }) {
     fetchSuggestions(query)
     return () => { clearTimeout(debounceRef.current) }
   }, [query, fetchSuggestions])
+
+  const handleSearch = useCallback((searchQuery = query) => {
+    const q = (typeof searchQuery === 'string' ? searchQuery : query).trim()
+    if (!q) return
+    addSearch(q)
+    const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
+    navigate(`/products?search=${encodeURIComponent(q)}${shopParam}`)
+    onClose()
+  }, [query, addSearch, selectedShop?._id, navigate, onClose])
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
@@ -136,7 +145,7 @@ function SearchModal({ isOpen, onClose }) {
         handleSearch()
       }
     }
-  }, [isOpen, activeIndex, onClose])
+  }, [isOpen, activeIndex, onClose, handleSearch])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
@@ -150,15 +159,6 @@ function SearchModal({ isOpen, onClose }) {
       items[activeIndex]?.scrollIntoView({ block: 'nearest' })
     }
   }, [activeIndex])
-
-  const handleSearch = (searchQuery = query) => {
-    const q = (typeof searchQuery === 'string' ? searchQuery : query).trim()
-    if (!q) return
-    addSearch(q)
-    const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
-    navigate(`/products?search=${encodeURIComponent(q)}${shopParam}`)
-    onClose()
-  }
 
   const handleSuggestionClick = (item) => {
     if (item.type === 'product') {
@@ -496,7 +496,7 @@ function SearchModal({ isOpen, onClose }) {
                       }
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 px-4">
-                        {suggestions.products.map((prod, idx) => (
+                        {suggestions.products.map((prod) => (
                           <Link
                             key={prod.id}
                             to={`/products/${prod.slug || prod.id}`}
@@ -573,12 +573,12 @@ function SearchModal({ isOpen, onClose }) {
 }
 
 // ---- Helper to determine active keyboard index ----
-function isActive(activeIndex, sectionOffset, itemIdx, suggestions) {
+function isActive(activeIndex, sectionOffset, itemIdx) {
   return activeIndex === sectionOffset + itemIdx
 }
 
 // ---- Section block wrapper ----
-function SectionBlock({ title, isDarkMode, action, children }) {
+function SectionBlock({ title, action, children }) {
   return (
     <div className="pt-3">
       <div className={`flex items-center justify-between mb-2 px-4`}>

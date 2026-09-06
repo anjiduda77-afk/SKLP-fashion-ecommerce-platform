@@ -34,7 +34,11 @@ export function useVoiceSearch({ onResult } = {}) {
     return () => {
       // Cleanup on unmount
       if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch (_) {}
+        try { 
+          recognitionRef.current.abort() 
+        } catch (_err) {
+          // Ignore recognition abort errors on cleanup
+        }
       }
     }
   }, [isSupported])
@@ -126,7 +130,11 @@ export function useVoiceSearch({ onResult } = {}) {
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch (_) {}
+      try { 
+        recognitionRef.current.stop() 
+      } catch (_err) {
+        // Ignore recognition stop errors if already stopped
+      }
     }
     setState('idle')
   }, [])

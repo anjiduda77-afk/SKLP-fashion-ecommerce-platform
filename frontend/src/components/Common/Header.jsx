@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { 
   FiSearch, FiShoppingCart, FiHeart, FiUser, 
-  FiMic, FiX, FiArrowRight,
-  FiZap, FiChevronDown, FiTag, FiBell
+  FiMic, FiArrowRight,
+  FiZap, FiChevronDown, FiBell
 } from 'react-icons/fi'
 import { RiStore2Line } from 'react-icons/ri'
-import axios from 'axios'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { useWishlist } from '@context/WishlistContext'
@@ -29,8 +28,8 @@ function Header({ isDarkMode }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
-  const { isAuthenticated, user, logout } = useAuth()
-  const { selectedShop, openShopModal, clearShop } = useShop()
+  const { isAuthenticated, user } = useAuth()
+  const { selectedShop, openShopModal } = useShop()
   const navigate = useNavigate()
 
   // Track scrolling to toggle sticky header floating shadow

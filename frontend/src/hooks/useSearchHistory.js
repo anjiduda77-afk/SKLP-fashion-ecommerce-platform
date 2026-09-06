@@ -21,7 +21,11 @@ export function useSearchHistory() {
 
   const persist = (list) => {
     setHistory(list)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch (_) {}
+    try { 
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) 
+    } catch (_err) {
+      // Ignore localStorage access or quota errors
+    }
   }
 
   const addSearch = useCallback((query) => {
@@ -30,7 +34,11 @@ export function useSearchHistory() {
     setHistory(prev => {
       // Remove duplicate, add to front, cap at MAX_HISTORY
       const updated = [q, ...prev.filter(h => h.toLowerCase() !== q.toLowerCase())].slice(0, MAX_HISTORY)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) } catch (_) {}
+      try { 
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) 
+      } catch (_err) {
+        // Ignore localStorage access or quota errors
+      }
       return updated
     })
   }, [])
@@ -38,7 +46,11 @@ export function useSearchHistory() {
   const removeSearch = useCallback((query) => {
     setHistory(prev => {
       const updated = prev.filter(h => h !== query)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) } catch (_) {}
+      try { 
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) 
+      } catch (_err) {
+        // Ignore localStorage access or quota errors
+      }
       return updated
     })
   }, [])

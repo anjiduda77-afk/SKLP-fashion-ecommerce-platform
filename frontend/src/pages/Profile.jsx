@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useCurrency } from '@context/CurrencyContext'
-import { userService, authService, notificationService } from '@services/apiServices'
+import { userService, notificationService } from '@services/apiServices'
 import { requestFcmToken } from '@config/firebase'
 import { toast } from 'react-toastify'
 import {

@@ -94,9 +94,21 @@ export const uploadService = {
  * Auth API Service
  */
 export const authService = {
-  googleAuth: (idToken) => apiClient.post('/auth/google', { idToken }, { headers: { Authorization: `Bearer ${idToken}` } }),
-  firebaseLogin: (idToken) => apiClient.post('/auth/google', { idToken }, { headers: { Authorization: `Bearer ${idToken}` } }),
-  googleLogin: (token) => apiClient.post('/auth/google', { token }, { headers: { Authorization: `Bearer ${token}` } }),
+  googleAuth: (payload) => {
+    const data = typeof payload === 'string' ? { idToken: payload } : payload
+    const token = typeof payload === 'string' ? payload : (payload?.idToken || payload?.token)
+    return apiClient.post('/auth/google', data, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+  },
+  firebaseLogin: (payload) => {
+    const data = typeof payload === 'string' ? { idToken: payload } : payload
+    const token = typeof payload === 'string' ? payload : (payload?.idToken || payload?.token)
+    return apiClient.post('/auth/google', data, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+  },
+  googleLogin: (payload) => {
+    const data = typeof payload === 'string' ? { token: payload } : payload
+    const token = typeof payload === 'string' ? payload : (payload?.token || payload?.idToken)
+    return apiClient.post('/auth/google', data, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+  },
   login: (email, password, rememberMe) =>
     apiClient.post('/auth/login', { email, password, rememberMe }),
   register: (data) => apiClient.post('/auth/register', data),

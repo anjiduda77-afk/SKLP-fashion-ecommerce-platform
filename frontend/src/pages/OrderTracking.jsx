@@ -27,18 +27,8 @@ function OrderTracking() {
           setTrackingInfo(res.data.tracking)
         }
       } catch (err) {
-        console.warn('Backend API trackOrder failed, using mock tracking:', err.message)
-        // Fallback Mock Tracking
-        setTrackingInfo({
-          orderId: id,
-          status: 'processing',
-          shippingAddress: { street: 'Flat 402, Golden Towers', city: 'Hyderabad', state: 'Telangana', postalCode: '500032' },
-          trackingDetails: { carrier: 'SKLP Couture Express', trackingNumber: 'SKLP-' + id.substring(0, 8).toUpperCase() },
-          statusHistory: [
-            { status: 'pending', updatedAt: new Date(Date.now() - 3600000).toISOString(), comment: 'Payment verified & order created.' },
-            { status: 'processing', updatedAt: new Date().toISOString(), comment: 'Items passed size verification & packaging.' }
-          ]
-        })
+        console.warn('Backend API trackOrder note:', err.message)
+        setTrackingInfo(null)
       } finally {
         setLoading(false)
       }

@@ -28,8 +28,6 @@ router.get('/sessions', verifyToken, asyncHandler(authController.getActiveSessio
 
 // Account Linking (authenticated)
 router.post('/link-email', verifyToken, asyncHandler(authController.linkEmail))
-router.post('/link-phone/send-otp', verifyToken, asyncHandler(authController.sendLinkPhoneOTP))
-router.post('/link-phone/verify', verifyToken, asyncHandler(authController.verifyLinkPhone))
 
 export default router
 

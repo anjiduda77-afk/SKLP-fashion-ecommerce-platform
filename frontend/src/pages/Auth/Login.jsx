@@ -16,7 +16,7 @@ import {
 import { toast } from 'react-toastify'
 import { 
   FiMail, FiLock, FiEye, FiEyeOff, 
-  FiLoader, FiArrowRight, FiShield, FiAlertTriangle, FiCheckCircle 
+  FiLoader, FiArrowRight, FiShield
 } from 'react-icons/fi'
 import { FcGoogle } from 'react-icons/fc'
 
@@ -69,24 +69,42 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [showDevGoogleFallback, setShowDevGoogleFallback] = useState(false)
 
-  // Redirect handler after verified login
+  // Redirect handler after verified login with role security validation
   const handleRedirectAfterLogin = useCallback((userObj) => {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
     toast.success(`Welcome back${name ? `, ${name}` : ''}! 🎉`)
 
+    const rawRole = (userObj?.role || '').toLowerCase().replace(/\s+/g, '').trim()
+    const role = rawRole === 'deliverypartner' ? 'delivery' : rawRole
+
     if (redirectUrl) {
-      navigate(redirectUrl)
-      return
+      try {
+        const decoded = decodeURIComponent(redirectUrl)
+        const isAdmin = decoded.startsWith('/admin')
+        const isSeller = decoded.startsWith('/seller')
+        const isDelivery = decoded.startsWith('/delivery')
+
+        const isAuthorized =
+          (isAdmin && role === 'admin') ||
+          (isSeller && role === 'seller') ||
+          (isDelivery && role === 'delivery') ||
+          (!isAdmin && !isSeller && !isDelivery)
+
+        if (isAuthorized) {
+          navigate(decoded)
+          return
+        }
+      } catch (e) {
+        // invalid URL format, proceed to role default
+      }
     }
 
-    const role = (userObj?.role || '').toLowerCase().trim()
     if (role === 'admin') {
       navigate('/admin/dashboard')
     } else if (role === 'seller') {
       navigate('/seller/dashboard')
-    } else if (role === 'delivery' || role === 'deliverypartner') {
+    } else if (role === 'delivery') {
       navigate('/delivery/dashboard')
     } else {
       navigate('/')
@@ -104,7 +122,14 @@ function Login() {
           setGoogleLoading(true)
           toast.info('Completing Google authentication...')
           const idToken = await userCredential.user.getIdToken()
-          const res = await authService.firebaseLogin(idToken)
+          const payload = {
+            idToken,
+            email: userCredential.user.email,
+            name: userCredential.user.displayName,
+            picture: userCredential.user.photoURL,
+            uid: userCredential.user.uid
+          }
+          const res = await authService.firebaseLogin(payload)
           if (res.data?.success && res.data?.token) {
             const { user: userObj, token: authToken, refreshToken } = res.data
             login(userObj, authToken, refreshToken)
@@ -123,16 +148,19 @@ function Login() {
   }, [login, handleRedirectAfterLogin])
 
   // ── 1. Email & Password Login Handler ──────────────────────────────────────
-  const handleEmailLogin = async (e) => {
-    e.preventDefault()
-    if (!email.trim() || !password) {
+  const handleEmailLogin = async (e, customEmail, customPassword) => {
+    if (e && e.preventDefault) e.preventDefault()
+    const targetEmail = (customEmail !== undefined ? customEmail : email).trim().toLowerCase()
+    const targetPassword = customPassword !== undefined ? customPassword : password
+
+    if (!targetEmail || !targetPassword) {
       toast.error('Please enter both email and password.')
       return
     }
 
     setLoading(true)
     try {
-      const res = await authService.login(email.trim().toLowerCase(), password, rememberMe)
+      const res = await authService.login(targetEmail, targetPassword, rememberMe)
       if (res.data?.success && res.data?.token) {
         const { user: userObj, token: authToken, refreshToken } = res.data
         login(userObj, authToken, refreshToken)
@@ -145,7 +173,7 @@ function Login() {
       let msg = err.response?.data?.message
       if (!msg) {
         if (err.message === 'Network Error' || !err.response) {
-          msg = 'Unable to connect to the backend server. Please check your internet connection or try again in a few moments.'
+          msg = 'Unable to connect to backend server. Please verify backend is running.'
         } else {
           msg = err.message || 'Invalid email or password. Please check your credentials.'
         }
@@ -161,7 +189,7 @@ function Login() {
     if (googleLoading || loading) return
 
     if (!FIREBASE_CONFIGURED || !auth || !googleProvider) {
-      toast.error('Google Sign-In is not configured. Please check Firebase configuration.')
+      toast.error('Google Sign-In is temporarily unavailable. Please use email and password.')
       return
     }
 
@@ -169,9 +197,16 @@ function Login() {
     try {
       const userCredential = await signInWithPopup(auth, googleProvider)
       const idToken = await userCredential.user.getIdToken()
+      const payload = {
+        idToken,
+        email: userCredential.user.email,
+        name: userCredential.user.displayName,
+        picture: userCredential.user.photoURL,
+        uid: userCredential.user.uid
+      }
 
-      // Authenticate with backend using verified Firebase ID token
-      const res = await authService.firebaseLogin(idToken)
+      // Authenticate with backend using verified Firebase ID token and profile payload
+      const res = await authService.firebaseLogin(payload)
 
       if (res.data?.success && res.data?.token) {
         const { user: userObj, token: authToken, refreshToken } = res.data
@@ -194,36 +229,11 @@ function Login() {
         }
       }
 
-      if (error.code === 'auth/operation-not-allowed') {
-        setShowDevGoogleFallback(true)
-      }
-
       if (error.code === 'auth/popup-closed-by-user') {
         toast.info(msg)
       } else {
         toast.error(msg)
       }
-    } finally {
-      setGoogleLoading(false)
-    }
-  }
-
-  // ── 3. Dev / Sandbox Google Login Simulator ────────────────────────────────
-  const handleDevGoogleLogin = async () => {
-    setGoogleLoading(true)
-    toast.info('Authenticating via Google Simulated Identity...')
-    try {
-      const res = await authService.firebaseLogin('test_firebase_token_google:demo.customer@gmail.com')
-      if (res.data?.success && res.data?.token) {
-        const { user: userObj, token: authToken, refreshToken } = res.data
-        login(userObj, authToken, refreshToken)
-        handleRedirectAfterLogin(userObj)
-      } else {
-        throw new Error(res.data?.message || 'Dev Google login failed')
-      }
-    } catch (err) {
-      console.error('Dev Google login error:', err)
-      toast.error(err.response?.data?.message || 'Dev Google authentication failed')
     } finally {
       setGoogleLoading(false)
     }
@@ -272,9 +282,7 @@ function Login() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={googleLoading || loading}
-            className={`w-full py-3.5 px-4 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 shadow-sm active:scale-[0.98] ${
-              showDevGoogleFallback ? 'mb-3' : 'mb-6'
-            } ${
+            className={`w-full py-3.5 px-4 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-3 transition-all duration-200 shadow-sm active:scale-[0.98] mb-6 ${
               isDarkMode
                 ? 'border-white/15 bg-white/5 hover:bg-white/10 text-white hover:border-amber-400/40'
                 : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800 hover:border-amber-500/40'
@@ -292,34 +300,6 @@ function Login() {
               </>
             )}
           </button>
-
-          {/* Dev Mode Assistance & Demo Google Sign-In Fallback */}
-          {showDevGoogleFallback && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-left text-xs space-y-2 mb-6"
-            >
-              <div className="flex items-start gap-2">
-                <FiAlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={15} />
-                <div>
-                  <p className="font-bold text-amber-500">Firebase Setup Notice</p>
-                  <p className="opacity-75 text-[11px] leading-relaxed mt-0.5">
-                    Google Sign-In needs to be enabled in Firebase Console (Authentication &gt; Sign-in method &gt; Google).
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleDevGoogleLogin}
-                disabled={googleLoading}
-                className="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold rounded-xl border border-amber-500/40 transition-all flex items-center justify-center gap-1.5 text-xs"
-              >
-                <FiCheckCircle size={13} />
-                <span>Simulate Verified Google Login (Dev Mode)</span>
-              </button>
-            </motion.div>
-          )}
 
           {/* ── DIVIDER ── */}
           <div className="relative flex items-center justify-center mb-6">

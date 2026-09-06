@@ -19,6 +19,8 @@ services:
         value: 10000
       - key: MONGODB_URI
         sync: false
+      - key: PRODUCTION_ADMIN_EMAIL
+        value: anjiduda77@gmail.com
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET

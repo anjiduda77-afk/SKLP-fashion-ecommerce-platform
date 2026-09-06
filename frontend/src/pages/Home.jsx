@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiArrowRight, FiChevronLeft, FiChevronRight, FiStar, FiHeart, 
-  FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap 
+  FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap, FiLoader 
 } from 'react-icons/fi'
 import { useTheme } from '@context/ThemeContext'
 import { useCart } from '@context/CartContext'
 import { useWishlist } from '@context/WishlistContext'
+import { productService } from '@services/apiServices'
 import { toast } from 'react-toastify'
 import DynamicCampaignBanner from '@components/Marketing/DynamicCampaignBanner'
 
@@ -69,39 +70,32 @@ const designerLabels = [
   { brand: 'SKLP Footwear', desc: 'Fine Italian leather boots & luxury stilettos' }
 ]
 
-const mockProductsData = [
-  // Men's Products
-  { id: 'm1', name: 'Premium Velvet Evening Blazer', price: 8999, originalPrice: 12999, discount: 30, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80', brand: 'Noir Edit', rating: 4.8, delivery: 'Express 2-day delivery', category: 'Men', subcategory: 'Hoodies', inStock: true, stockLeft: 3 },
-  { id: 'm2', name: 'Gold Trim High-Top Sneakers', price: 2499, originalPrice: 3999, discount: 37, image: 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?auto=format&fit=crop&w=600&q=80', brand: 'Studio SKLP', rating: 4.8, delivery: 'Free delivery tomorrow', category: 'Men', subcategory: 'Sneakers', inStock: true, stockLeft: 8 },
-  { id: 'm3', name: 'Elite Leather Chrono Watch', price: 6999, originalPrice: 9999, discount: 30, image: 'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?auto=format&fit=crop&w=600&q=80', brand: 'Gold Atelier', rating: 4.7, delivery: 'Secure courier dispatch', category: 'Men', subcategory: 'Watches', inStock: true, stockLeft: 2 },
-  
-  // Women's Products
-  { id: 'w1', name: 'Royal Banarasi Silk Saree', price: 14999, originalPrice: 24900, discount: 40, image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80', brand: 'Aurora Luxe', rating: 4.9, delivery: 'Complimentary shipping', category: 'Women', subcategory: 'Sarees', inStock: true, stockLeft: 5 },
-  { id: 'w2', name: 'Sleek Silhouette Trench Coat', price: 5999, originalPrice: 8999, discount: 33, image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80', brand: 'Noir Edit', rating: 4.7, delivery: 'Express 2-day delivery', category: 'Women', subcategory: 'Dresses', inStock: true, stockLeft: 4 },
-  { id: 'w3', name: 'Luxury Banarasi Evening Blouse', price: 2999, originalPrice: 4999, discount: 40, image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80', brand: 'Aurora Luxe', rating: 4.6, delivery: 'Fast dispatch', category: 'Women', subcategory: 'Blouses', inStock: true, stockLeft: 7 },
-
-  // Kids' Products
-  { id: 'k1', name: 'Soft Denim Dungarees Set', price: 1999, originalPrice: 2999, discount: 33, image: 'https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=600&q=80', brand: 'Studio SKLP', rating: 4.5, delivery: 'Free delivery', category: 'Kids', subcategory: 'Clothing', inStock: true, stockLeft: 6 },
-  { id: 'k2', name: 'Retro Leather High-Tops', price: 1799, originalPrice: 2499, discount: 28, image: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=600&q=80', brand: 'Gold Atelier', rating: 4.6, delivery: 'Fast dispatch', category: 'Kids', subcategory: 'Shoes', inStock: true, stockLeft: 9 },
-
-  // Footwear General
-  { id: 'f1', name: 'Italian Leather Oxford Boots', price: 9999, originalPrice: 15999, discount: 37, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=600&q=80', brand: 'Gold Atelier', rating: 4.8, delivery: 'Complimentary shipping', category: 'Footwear', subcategory: 'Boots', inStock: true, stockLeft: 3 }
-]
-
 function ProductCard({ product, isDarkMode }) {
   const [isHovered, setIsHovered] = useState(false)
   const { addToCart } = useCart()
   const { isInWishlist, toggleWishlist } = useWishlist()
   
-  const wishlisted = isInWishlist(product.id)
+  const productId = product._id || product.id
+  const wishlisted = isInWishlist(productId)
+
+  const productImage = product.images?.[0]?.url 
+    || (typeof product.images?.[0] === 'string' ? product.images[0] : null)
+    || product.image 
+    || 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80'
+
+  const inStock = product.inStock !== undefined ? product.inStock : ((product.stock ?? 1) > 0)
+  const stockLeft = product.stockLeft ?? product.stock ?? 10
+  const rating = typeof product.rating === 'number' ? product.rating : (product.ratings?.average || 4.5)
 
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    // Map image string to thumbnail property so CartContext parses it correctly
     addToCart({
       ...product,
-      thumbnail: product.image
+      _id: productId,
+      id: productId,
+      thumbnail: productImage,
+      image: productImage
     })
     toast.success(`Added ${product.name} to Cart 🛍️`)
   }
@@ -109,7 +103,12 @@ function ProductCard({ product, isDarkMode }) {
   const handleWishlistToggle = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    toggleWishlist(product)
+    toggleWishlist({
+      ...product,
+      _id: productId,
+      id: productId,
+      image: productImage
+    })
   }
 
   return (
@@ -132,7 +131,7 @@ function ProductCard({ product, isDarkMode }) {
         {/* Product Image Frame */}
         <div className="relative aspect-[3/4] overflow-hidden bg-current/5">
           <img 
-            src={product.image} 
+            src={productImage} 
             alt={product.name} 
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
             loading="lazy"
@@ -169,9 +168,9 @@ function ProductCard({ product, isDarkMode }) {
           )}
 
           {/* Stock Alert Badge */}
-          {product.stockLeft <= 3 && (
+          {stockLeft <= 3 && stockLeft > 0 && (
             <span className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 rounded-full bg-red-500 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[9px] font-bold text-white shadow-lg animate-pulse">
-              Only {product.stockLeft}
+              Only {stockLeft} left
             </span>
           )}
         </div>
@@ -180,14 +179,14 @@ function ProductCard({ product, isDarkMode }) {
         <div className="p-3 sm:p-5 flex-1 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-1.5 mb-1.5">
-              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-luxury-gold font-bold truncate">{product.brand}</p>
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-luxury-gold font-bold truncate">{product.brand || 'SKLP'}</p>
               <span className={`text-[8px] sm:text-[9px] uppercase tracking-wider font-bold rounded-full px-1.5 py-0.5 shrink-0
-                ${product.inStock ? 'bg-luxury-gold/10 text-luxury-gold' : 'bg-red-500/10 text-red-500'}`}>
-                {product.inStock ? 'In Stock' : 'Out'}
+                ${inStock ? 'bg-luxury-gold/10 text-luxury-gold' : 'bg-red-500/10 text-red-500'}`}>
+                {inStock ? 'In Stock' : 'Out'}
               </span>
             </div>
             
-            <Link to={`/products/${product.id}`} className="block group-hover:text-luxury-gold transition-colors">
+            <Link to={`/products/${productId}`} className="block group-hover:text-luxury-gold transition-colors">
               <h3 className="font-serif font-bold text-xs xs:text-sm sm:text-base leading-snug mb-1.5 line-clamp-2">
                 {product.name}
               </h3>
@@ -200,11 +199,11 @@ function ProductCard({ product, isDarkMode }) {
                   <FiStar 
                     key={idx} 
                     size={10} 
-                    className={idx < Math.round(product.rating) ? 'fill-current text-luxury-gold' : 'text-current/20'} 
+                    className={idx < Math.round(rating) ? 'fill-current text-luxury-gold' : 'text-current/20'} 
                   />
                 ))}
               </div>
-              <span className="text-[9px] sm:text-[10px] font-semibold opacity-60">({(product.rating || 4.5).toFixed(1)})</span>
+              <span className="text-[9px] sm:text-[10px] font-semibold opacity-60">({Number(rating).toFixed(1)})</span>
             </div>
           </div>
 
@@ -212,9 +211,9 @@ function ProductCard({ product, isDarkMode }) {
             {/* Price section */}
             <div className="flex flex-wrap items-baseline gap-1.5 mb-2 sm:mb-3">
               <span className="text-sm sm:text-lg font-bold text-luxury-gold">
-                ₹{product.price.toLocaleString()}
+                ₹{(product.price || 0).toLocaleString()}
               </span>
-              {product.originalPrice && (
+              {product.originalPrice && product.originalPrice > product.price && (
                 <span className="text-[10px] sm:text-xs line-through opacity-40">
                   ₹{product.originalPrice.toLocaleString()}
                 </span>
@@ -249,7 +248,8 @@ function Home() {
   // Custom states for category expander
   const [selectedCategory, setSelectedCategory] = useState('Men')
   const [selectedSubcategory, setSelectedSubcategory] = useState('All')
-  const [filteredProducts, setFilteredProducts] = useState(mockProductsData)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   
   const timerRef = useRef(null)
 
@@ -261,15 +261,40 @@ function Home() {
     return () => clearInterval(timerRef.current)
   }, [])
 
-  // Filter products based on selected Category and Subcategory
+  // Fetch real products based on selected Category and Subcategory
   useEffect(() => {
-    let result = mockProductsData.filter(p => p.category.toLowerCase().includes(selectedCategory.split(' ')[0].toLowerCase()))
-    
-    if (selectedSubcategory !== 'All') {
-      result = result.filter(p => p.subcategory.toLowerCase() === selectedSubcategory.toLowerCase())
+    let isMounted = true
+    const fetchProducts = async () => {
+      setLoading(true)
+      try {
+        const params = { limit: 12 }
+        if (selectedCategory && selectedCategory !== 'All') {
+          if (['Men', 'Women', 'Kids'].includes(selectedCategory)) {
+            params.gender = selectedCategory.toLowerCase()
+          } else {
+            params.category = selectedCategory.toLowerCase().replace(/\s+/g, '-')
+          }
+        }
+        if (selectedSubcategory && selectedSubcategory !== 'All') {
+          params.subcategory = selectedSubcategory.toLowerCase()
+        }
+
+        const res = await productService.getProducts(params)
+        if (isMounted && res.data?.success && res.data.products) {
+          const prodData = Array.isArray(res.data.products)
+            ? res.data.products
+            : (res.data.products.docs || [])
+          setProducts(prodData)
+        }
+      } catch (err) {
+        if (isMounted) setProducts([])
+      } finally {
+        if (isMounted) setLoading(false)
+      }
     }
-    
-    setFilteredProducts(result)
+
+    fetchProducts()
+    return () => { isMounted = false }
   }, [selectedCategory, selectedSubcategory])
 
   const goToSlide = (dir) => {
@@ -506,19 +531,38 @@ function Home() {
             </Link>
           </div>
 
-          {/* Product grid with filtered list */}
-          {filteredProducts.length > 0 ? (
+          {/* Product grid with real API products & luxury empty states */}
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <FiLoader size={32} className="animate-spin text-luxury-gold" />
+              <p className="text-xs uppercase tracking-widest opacity-60 font-medium">Loading luxury catalog...</p>
+            </div>
+          ) : products.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {filteredProducts.map((prod) => (
-                <ProductCard key={prod.id} product={prod} isDarkMode={isDarkMode} />
+              {products.map((prod) => (
+                <ProductCard key={prod._id || prod.id} product={prod} isDarkMode={isDarkMode} />
               ))}
             </div>
           ) : (
-            <div className={`text-center py-16 rounded-[2rem] border border-dashed p-8
-              ${isDarkMode ? 'border-white/10 text-white/50' : 'border-black/10 text-slate-500'}`}>
-              <FiZap size={40} className="mx-auto text-luxury-gold mb-3" />
-              <p className="text-sm font-bold uppercase tracking-widest mb-1 text-luxury-gold">Loading Products...</p>
-              <p className="text-xs opacity-60">We could not find items in {selectedSubcategory} right now. Please select another category above.</p>
+            <div className={`text-center py-16 px-6 rounded-[2rem] border transition-all duration-300 ${
+              isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-luxury-gold/20 text-luxury-darkBlack'
+            }`}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-luxury-gold/10 border border-luxury-gold/30 flex items-center justify-center text-luxury-gold">
+                <FiShoppingBag size={26} />
+              </div>
+              <h3 className="text-lg font-serif font-bold uppercase tracking-tight mb-2">
+                Fresh Collections Launching Soon
+              </h3>
+              <p className="text-xs opacity-65 max-w-md mx-auto leading-relaxed mb-6">
+                Our team is curating the finest luxury fashion pieces for this category. Explore our catalog or check back shortly.
+              </p>
+              <Link 
+                to="/products" 
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-luxury-gold text-black font-bold text-xs uppercase tracking-wider hover:bg-luxury-lightGold transition shadow-glow"
+              >
+                <span>Browse All Products</span>
+                <FiArrowRight size={14} />
+              </Link>
             </div>
           )}
 

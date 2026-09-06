@@ -42,22 +42,8 @@ function Orders() {
         setOrders(res.data.orders)
       }
     } catch (err) {
-      console.warn('Backend API getOrders failed, using mock orders:', err.message)
-      // Custom Mock Orders
-      setOrders([
-        {
-          _id: 'mock-ord-001',
-          createdAt: new Date().toISOString(),
-          status: 'pending',
-          paymentMethod: 'cod',
-          subtotal: 8999,
-          total: 8999,
-          items: [
-            { productId: 'f1', name: 'Premium Velvet Blazer', quantity: 1, unitPrice: 8999, finalPrice: 8999, variant: { size: 'M', color: 'Gold Black' }, images: [{ url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=200&q=80' }] }
-          ],
-          shippingAddress: { street: 'Flat 402, Golden Towers', city: 'Hyderabad', state: 'Telangana', postalCode: '500032' }
-        }
-      ])
+      console.warn('Backend API getOrders failed:', err.message)
+      setOrders([])
     } finally {
       setLoading(false)
     }

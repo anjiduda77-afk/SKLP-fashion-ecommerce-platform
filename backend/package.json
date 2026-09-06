@@ -11,7 +11,9 @@
     "test:watch": "jest --watch",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "seed": "node scripts/seedDatabase.js"
+    "seed": "node scripts/seedDatabase.js",
+    "production:reset": "node scripts/productionReset.js",
+    "admin:setup": "node scripts/setupAdminAccount.js"
   },
   "keywords": [
     "ecommerce",

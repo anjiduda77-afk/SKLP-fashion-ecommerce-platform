@@ -6,7 +6,7 @@ import { useAuth } from '@context/AuthContext'
  * Protects routes based on authentication and user roles
  * Handles all 4 account types: Customer, Admin, Seller, Delivery Partner
  */
-const ProtectedRoute = ({ allowedRoles = [], children }) => {
+const ProtectedRoute = ({ allowedRoles = [], requiredRole, children }) => {
   const { user, isAuthenticated, loading } = useAuth()
   const location = useLocation()
 
@@ -23,22 +23,28 @@ const ProtectedRoute = ({ allowedRoles = [], children }) => {
     return <Navigate to={`/login?redirect=${returnUrl}`} replace />
   }
 
-  // Check if user has required role
-  if (allowedRoles && allowedRoles.length > 0) {
-    const userRole = (user?.role || '')
-      .toLowerCase()
-      .replace(/\s+/g, '')
-      .trim()
+  // Normalize role requirements
+  const rolesList = allowedRoles.length > 0 
+    ? allowedRoles 
+    : (requiredRole ? (Array.isArray(requiredRole) ? requiredRole : [requiredRole]) : [])
 
-    const allowedRolesNorm = allowedRoles.map(r =>
-      r
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .trim()
-    )
+  if (rolesList.length > 0) {
+    const rawRole = (user?.role || '').toLowerCase().replace(/\s+/g, '').trim()
+    const userRole = rawRole === 'deliverypartner' ? 'delivery' : rawRole
+
+    const allowedRolesNorm = rolesList.map(r => {
+      const norm = r.toLowerCase().replace(/\s+/g, '').trim()
+      return norm === 'deliverypartner' ? 'delivery' : norm
+    })
 
     if (!allowedRolesNorm.includes(userRole)) {
-      return <Navigate to="/" replace />
+      const fallbackUrl = 
+        userRole === 'admin' ? '/admin/dashboard' :
+        userRole === 'seller' ? '/seller/dashboard' :
+        userRole === 'delivery' ? '/delivery/dashboard' : '/'
+
+      console.warn(`[AUTH] Access denied to ${location.pathname} for role ${user?.role}. Redirecting to ${fallbackUrl}`)
+      return <Navigate to={fallbackUrl} replace />
     }
   }
 

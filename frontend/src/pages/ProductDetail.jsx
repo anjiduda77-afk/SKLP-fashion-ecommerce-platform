@@ -79,31 +79,8 @@ function ProductDetail() {
           }
         }
       } catch (err) {
-        console.warn('Backend API getProduct failed, using luxury mock details:', err.message)
-        // Luxury Mock DB
-        const mockDb = {
-          _id: id,
-          name: id === 'f1' ? 'Premium Velvet Blazer' : id === 'f2' ? 'Royal Heritage Banarasi Silk Saree' : 'Italian Leather Oxford Shoes',
-          brand: 'SKLP Royale',
-          price: id === 'f1' ? 8999 : id === 'f2' ? 14999 : 9999,
-          originalPrice: id === 'f1' ? 12999 : id === 'f2' ? 24900 : 15999,
-          discount: id === 'f1' ? 30 : id === 'f2' ? 40 : 37,
-          description: 'A masterpiece of elegance. Structured shoulders, double-breasted closure, and a gold velvet trim. Experience haute couture at its peak.',
-          images: [
-            { url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80' },
-            { url: 'https://images.unsplash.com/photo-1598808503744-f34c53bdb9eb?auto=format&fit=crop&w=800&q=80' },
-            { url: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=80' }
-          ],
-          sizes: ['S', 'M', 'L', 'XL'],
-          colors: ['Gold Black', 'Midnight Blue', 'Emerald Green'],
-          countInStock: 25,
-          rating: 5,
-          category: 'fashion-wear',
-          gender: 'men'
-        }
-        setProduct(mockDb)
-        setSelectedSize(mockDb.sizes[0])
-        setSelectedColor(mockDb.colors[0])
+        console.warn('Product fetch error:', err.message)
+        setProduct(null)
       } finally {
         setLoading(false)
       }

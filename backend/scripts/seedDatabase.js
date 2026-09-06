@@ -8,6 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Block accidental seeding in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('\n❌ SEED BLOCKED: Cannot run seedDatabase.js in a production environment (NODE_ENV=production).\n');
+  process.exit(1);
+}
+
 // Import Models
 import User from '../models/User.js';
 import Product from '../models/Product.js';

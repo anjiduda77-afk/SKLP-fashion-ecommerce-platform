@@ -28,6 +28,7 @@ function AdminDashboard() {
   const [period, setPeriod] = useState('7d')
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchMetrics()
@@ -36,12 +37,16 @@ function AdminDashboard() {
   const fetchMetrics = async () => {
     try {
       setLoading(true)
+      setError(null)
       const res = await adminService.getDashboardMetrics()
-      if (res.data.success) {
+      if (res.data?.success && res.data?.metrics) {
         setMetrics(res.data.metrics)
+      } else {
+        setError(res.data?.message || 'Unable to retrieve dashboard metrics')
       }
-    } catch (error) {
-      console.error('Error fetching dashboard metrics:', error)
+    } catch (err) {
+      console.error('Error fetching dashboard metrics:', err)
+      setError(err?.response?.data?.message || err?.message || 'Failed to load dashboard metrics')
     } finally {
       setLoading(false)
     }
@@ -53,28 +58,74 @@ function AdminDashboard() {
   const gridColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'
   const tickColor = isDarkMode ? '#666' : '#888'
 
-  if (loading || !metrics) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <div className="w-8 h-8 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col justify-center items-center h-96 gap-4">
+        <div className="w-10 h-10 border-4 border-luxury-gold border-t-transparent rounded-full animate-spin"></div>
+        <p className={`text-sm ${textSecondary}`}>Loading admin metrics...</p>
       </div>
     )
   }
 
+  if (error && !metrics) {
+    return (
+      <div className="flex flex-col justify-center items-center h-96 gap-4 p-6 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center font-bold text-xl">!</div>
+        <h3 className={`text-lg font-bold ${textPrimary}`}>Could not load metrics</h3>
+        <p className={`text-sm max-w-md ${textSecondary}`}>{error}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={fetchMetrics}
+            className="px-5 py-2.5 rounded-xl bg-luxury-gold text-luxury-black text-xs font-bold uppercase tracking-wider shadow-glow hover:bg-luxury-darkGold transition-all"
+          >
+            Retry Connection
+          </button>
+          <button
+            onClick={() => setMetrics({
+              totalSales: 0,
+              totalOrders: 0,
+              totalUsers: 0,
+              avgOrderValue: 0,
+              lowStockCount: 0,
+              salesTimeline: [],
+              categorySales: [],
+              recentOrders: []
+            })}
+            className={`px-5 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${isDarkMode ? 'border-luxury-darkGray text-gray-300 hover:bg-luxury-darkGray' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+          >
+            View Empty Workspace
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const safeMetrics = metrics || {
+    totalSales: 0,
+    totalOrders: 0,
+    totalUsers: 0,
+    avgOrderValue: 0,
+    lowStockCount: 0,
+    salesTimeline: [],
+    categorySales: [],
+    recentOrders: []
+  }
+
   const STATS = [
-    { label: 'Total Revenue', value: `₹${metrics.totalSales.toLocaleString('en-IN')}`, change: 0, icon: FiTrendingUp, color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/20' },
-    { label: 'Total Orders', value: metrics.totalOrders.toLocaleString(), change: 0, icon: FiShoppingBag, color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
-    { label: 'Total Users', value: metrics.totalUsers.toLocaleString(), change: 0, icon: FiUsers, color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/20' },
-    { label: 'Avg Order Value', value: `₹${metrics.avgOrderValue.toFixed(0)}`, change: 0, icon: FiPackage, color: 'text-luxury-gold', bg: 'bg-luxury-gold/10 border-luxury-gold/20' },
+    { label: 'Total Revenue', value: `₹${(safeMetrics.totalSales || 0).toLocaleString('en-IN')}`, change: 0, icon: FiTrendingUp, color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/20' },
+    { label: 'Total Orders', value: (safeMetrics.totalOrders || 0).toLocaleString(), change: 0, icon: FiShoppingBag, color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
+    { label: 'Total Users', value: (safeMetrics.totalUsers || 0).toLocaleString(), change: 0, icon: FiUsers, color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/20' },
+    { label: 'Avg Order Value', value: `₹${Number(safeMetrics.avgOrderValue || 0).toFixed(0)}`, change: 0, icon: FiPackage, color: 'text-luxury-gold', bg: 'bg-luxury-gold/10 border-luxury-gold/20' },
   ]
 
   // Prepare Chart Data
+  const timeline = safeMetrics.salesTimeline || []
   const lineData = {
-    labels: metrics.salesTimeline.map(s => s.date),
+    labels: timeline.length > 0 ? timeline.map(s => s.date) : ['No recent data'],
     datasets: [
       {
         label: 'Revenue (₹)',
-        data: metrics.salesTimeline.map(s => s.revenue),
+        data: timeline.length > 0 ? timeline.map(s => s.revenue) : [0],
         borderColor: '#FFD700',
         backgroundColor: 'rgba(255,215,0,0.08)',
         pointBackgroundColor: '#FFD700',
@@ -100,11 +151,11 @@ function AdminDashboard() {
     },
   }
 
-  // Assuming doughnut based on static status for now, or we can use real category sales
+  const categories = safeMetrics.categorySales || []
   const doughnutData = {
-    labels: metrics.categorySales.map(c => c.category || 'Other'),
+    labels: categories.length > 0 ? categories.map(c => c.category || 'Other') : ['General'],
     datasets: [{
-      data: metrics.categorySales.map(c => c.sales),
+      data: categories.length > 0 ? categories.map(c => c.sales || c.quantity || 1) : [1],
       backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#eab308', '#ef4444'],
       borderWidth: 0,
     }],
@@ -168,7 +219,7 @@ function AdminDashboard() {
           <h3 className={`text-lg font-bold mb-4 ${textPrimary}`}>Sales by Category</h3>
           <div className="flex items-center justify-center py-4">
             <div className="w-48 h-48">
-              {metrics.categorySales.length > 0 ? (
+              {(safeMetrics.categorySales || []).length > 0 ? (
                 <Doughnut data={doughnutData} options={doughnutOptions} />
               ) : (
                 <div className={`flex h-full items-center justify-center ${textSecondary}`}>No data</div>
@@ -198,7 +249,7 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {metrics.recentOrders.map((order) => (
+                {(safeMetrics.recentOrders || []).map((order) => (
                   <tr key={order.id || order._id} className={`border-b transition-colors ${isDarkMode ? 'border-luxury-darkGray/50 hover:bg-luxury-darkGray/20' : 'border-gray-100 hover:bg-gray-50'}`}>
                     <td className="px-5 py-3.5 text-sm text-luxury-gold font-mono font-semibold">
                       {order.orderNumber || (order.id ? `#${String(order.id).slice(-6)}` : '#ORD')}
@@ -211,11 +262,11 @@ function AdminDashboard() {
                       </span>
                     </td>
                     <td className={`px-5 py-3.5 text-xs flex items-center gap-1 ${textSecondary}`}>
-                      <FiClock size={12} /> {new Date(order.date).toLocaleDateString()}
+                      <FiClock size={12} /> {order.date ? new Date(order.date).toLocaleDateString() : 'Recent'}
                     </td>
                   </tr>
                 ))}
-                {metrics.recentOrders.length === 0 && (
+                {(!safeMetrics.recentOrders || safeMetrics.recentOrders.length === 0) && (
                   <tr>
                     <td colSpan="5" className={`px-5 py-6 text-center text-sm ${textSecondary}`}>
                       No recent orders found.
@@ -233,7 +284,7 @@ function AdminDashboard() {
             <h3 className={`text-lg font-bold ${textPrimary}`}>Low Stock Alerts</h3>
           </div>
           <div className={`divide-y p-5 text-center ${isDarkMode ? 'divide-luxury-darkGray/50' : 'divide-gray-100'}`}>
-            <p className={`text-4xl font-bold text-red-500 mb-2`}>{metrics.lowStockCount}</p>
+            <p className={`text-4xl font-bold text-red-500 mb-2`}>{safeMetrics.lowStockCount || 0}</p>
             <p className={`text-sm ${textSecondary}`}>Products have fallen below the stock threshold and need re-ordering.</p>
             <a href="/admin/products?filter=low_stock" className="inline-block mt-4 text-sm text-luxury-gold hover:underline">
               View Inventory

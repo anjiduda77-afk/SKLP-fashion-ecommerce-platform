@@ -404,7 +404,7 @@ export const reviewSellerApplication = async (req, res) => {
       message: `Your application for "${application.shopName}" could not be approved. Reason: ${reason || notes}.`
     })
   } else if (action === 'REQUEST_INFO' || action === 'REQUEST_CHANGES') {
-    application.status = 'REVIEW_REQUIRED'
+    application.status = action === 'REQUEST_CHANGES' ? 'REQUEST_CHANGES' : 'REVIEW_REQUIRED'
     application.adminNotes = notes || reason || 'Additional documents or clarifications required.'
     application.reviewedBy = adminId
     application.reviewedAt = new Date()

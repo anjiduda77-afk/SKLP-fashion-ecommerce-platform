@@ -95,7 +95,7 @@ const sellerApplicationSchema = new mongoose.Schema({
   documents: [documentSchema],
   status: {
     type: String,
-    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'REVIEW_REQUIRED', 'VERIFICATION_REQUIRED', 'APPROVED', 'REJECTED', 'SUSPENDED'],
+    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'REVIEW_REQUIRED', 'VERIFICATION_REQUIRED', 'APPROVED', 'REQUEST_CHANGES', 'REJECTED', 'SUSPENDED'],
     default: 'PENDING_REVIEW',
     index: true
   },

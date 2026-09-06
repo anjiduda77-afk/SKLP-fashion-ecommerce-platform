@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
 import {
@@ -233,7 +233,7 @@ function AdminLayout({ children }) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-luxury-black p-3 sm:p-6">
-          {children}
+          {children || <Outlet />}
         </main>
       </div>
     </div>

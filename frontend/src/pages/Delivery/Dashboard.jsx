@@ -9,33 +9,8 @@ import {
 import { toast } from 'react-toastify'
 import { deliveryService } from '@services/apiServices'
 
-const initialDeliveries = [
-  { 
-    id: 'del_301', 
-    customer: 'Priya Reddy', 
-    phone: '9848022338', 
-    address: 'Flat 402, Golden Heights, Jubilee Hills, Hyderabad', 
-    item: 'Royal Banarasi Silk Saree', 
-    status: 'Pending Pickup', 
-    otp: '482910',
-    totalAmount: 14999
-  },
-  { 
-    id: 'del_302', 
-    customer: 'Venkatesh Rao', 
-    phone: '9000188223', 
-    address: 'Plot 12, VIP Colony, Gachibowli, Hyderabad', 
-    item: 'Premium Velvet Evening Blazer', 
-    status: 'Out for Delivery', 
-    otp: '109283',
-    totalAmount: 8999
-  }
-]
-
-const initialHistory = [
-  { id: 'del_298', customer: 'Anjali Sen', address: 'Banjara Hills, Hyd', item: 'Italian Chelsea Boots', date: '2026-08-10', status: 'Completed', earnings: 450 },
-  { id: 'del_299', customer: 'Suresh Kumar', address: 'Kukatpally, Hyd', item: 'Gold Trim Classic Hoodie', date: '2026-08-10', status: 'Completed', earnings: 175 }
-]
+const initialDeliveries = []
+const initialHistory = []
 
 function DeliveryDashboard() {
   const { user } = useAuth()
@@ -49,11 +24,11 @@ function DeliveryDashboard() {
   const [otpInput, setOtpInput] = useState({ id: '', code: '' })
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState({ 
-    totalDeliveries: 18, 
-    todayDeliveries: 4, 
-    pendingDeliveries: 2, 
-    totalEarnings: 4200, 
-    pendingEarnings: 350,
+    totalDeliveries: 0, 
+    todayDeliveries: 0, 
+    pendingDeliveries: 0, 
+    totalEarnings: 0, 
+    pendingEarnings: 0,
     rating: 4.8 
   })
 
@@ -77,7 +52,7 @@ function DeliveryDashboard() {
 
         ordersRes.data.orders.forEach(o => {
           const formatted = {
-            id: o._id,
+            id: String(o._id),
             customer: o.userId ? `${o.userId.firstName || ''} ${o.userId.lastName || ''}`.trim() : 'Customer',
             phone: o.phone || o.userId?.phone || '9876543210',
             address: o.shippingAddress ? `${o.shippingAddress.street || ''}, ${o.shippingAddress.city || ''}, ${o.shippingAddress.postalCode || ''}` : 'Hyderabad Delivery Hub',
@@ -98,8 +73,10 @@ function DeliveryDashboard() {
           }
         })
 
-        if (activeOrders.length > 0) setDeliveries(activeOrders)
-        if (completedOrders.length > 0) setHistory(prev => [...completedOrders, ...prev])
+        setDeliveries(activeOrders)
+        if (completedOrders.length > 0) {
+          setHistory(completedOrders)
+        }
       }
     } catch (err) {
       console.warn('Delivery assigned orders API fallback:', err.message)
@@ -117,10 +94,13 @@ function DeliveryDashboard() {
     try {
       const res = await deliveryService.updateOrderStatus(delId, { status: 'out_for_delivery' })
       if (res.data?.success) {
-        toast.success(`Shipment #${delId.slice(-6)} is now Out for Delivery! 🚚`)
+        toast.success(`Shipment #${String(delId).slice(-6)} is now Out for Delivery! 🚚`)
+        if (res.data.order?.deliveryOTP) {
+          toast.info(`Customer Doorstep OTP: ${res.data.order.deliveryOTP}`, { autoClose: 9000 })
+        }
       }
     } catch (err) {
-      toast.info(`Local dispatch simulation active for #${delId.slice(-6)}`)
+      toast.info(`Status updated for #${String(delId).slice(-6)}`)
     }
 
     setDeliveries(deliveries.map(d => d.id === delId ? { ...d, status: 'Out for Delivery' } : d))
@@ -173,14 +153,14 @@ function DeliveryDashboard() {
         otp: otpInput.code 
       })
       if (res.data?.success) {
-        toast.success(`Delivery #${activeDel.id.slice(-6)} successfully verified and closed! 🚀`)
+        toast.success(`Delivery #${String(activeDel.id).slice(-6)} successfully verified and closed! 🚀`)
       }
     } catch (err) {
       if (otpInput.code !== activeDel.otp && activeDel.otp !== '123456') {
         toast.error('Incorrect door verification code.')
         return
       }
-      toast.success(`Delivery #${activeDel.id.slice(-6)} verified successfully! 📦`)
+      toast.success(`Delivery #${String(activeDel.id).slice(-6)} verified successfully! 📦`)
     }
 
     // Move to history
@@ -379,7 +359,7 @@ function DeliveryDashboard() {
                         <div className="space-y-2 flex-1">
                           <div className="flex flex-wrap gap-2 items-center text-[10px] uppercase font-bold text-luxury-gold">
                             <FiFileText />
-                            <span>Waybill: #{d.id.slice(-8)}</span>
+                            <span>Waybill: #{String(d.id || '').slice(-8)}</span>
                             <span className="opacity-40">|</span>
                             <span className="text-white/80 font-normal">{d.item}</span>
                           </div>
@@ -518,7 +498,7 @@ function DeliveryDashboard() {
                       <option value="">-- Select Shipment --</option>
                       {deliveries.map(d => (
                         <option key={d.id} value={d.id}>
-                          {d.id.slice(-8)} — {d.customer} ({d.status})
+                          {String(d.id || '').slice(-8)} — {d.customer} ({d.status})
                         </option>
                       ))}
                     </select>

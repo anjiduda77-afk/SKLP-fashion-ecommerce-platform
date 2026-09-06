@@ -9,31 +9,43 @@ import { ApiError } from '../middleware/errorHandler.js'
 export const getDashboard = async (req, res) => {
   try {
     const userId = req.user.id
-    const userObjectId = new mongoose.Types.ObjectId(userId)
+    let userObjectId = null
+    try {
+      userObjectId = new mongoose.Types.ObjectId(userId)
+    } catch (e) {}
 
     // Get today's deliveries count
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
     const todayDeliveries = await Order.countDocuments({
-      assignedTo: userId,
+      $or: [
+        ...(userObjectId ? [{ assignedTo: userObjectId }] : []),
+        { assignedTo: userId }
+      ],
       status: { $in: ['out_for_delivery', 'delivered'] },
       updatedAt: { $gte: today }
     })
 
-    // Get pending deliveries
+    // Get pending deliveries (assigned to partner or available for pickup)
     const pendingDeliveries = await Order.countDocuments({
-      assignedTo: userId,
-      status: { $in: ['confirmed', 'out_for_delivery'] }
+      $or: [
+        ...(userObjectId ? [{ assignedTo: userObjectId }] : []),
+        { assignedTo: userId },
+        { assignedTo: { $exists: false } },
+        { assignedTo: null }
+      ],
+      status: { $in: ['pending', 'confirmed', 'packed', 'ready_for_pickup', 'out_for_delivery'] }
     })
 
     // Calculate earnings (simplified - adjust based on your business logic)
+    const matchConditions = userObjectId
+      ? { $or: [{ assignedTo: userObjectId }, { assignedTo: userId }], status: 'delivered' }
+      : { assignedTo: userId, status: 'delivered' }
+
     const completedOrders = await Order.aggregate([
       {
-        $match: {
-          assignedTo: userObjectId,
-          status: 'delivered'
-        }
+        $match: matchConditions
       },
       {
         $group: {
@@ -51,7 +63,7 @@ export const getDashboard = async (req, res) => {
       todayDeliveries,
       pendingDeliveries,
       totalEarnings: completedOrders[0]?.totalEarnings || 0,
-      rating: 4.5 // Placeholder - update with actual rating from database
+      rating: 4.8
     }
 
     res.status(200).json({
@@ -71,10 +83,15 @@ export const getAssignedOrders = async (req, res) => {
   try {
     const userId = req.user.id
     const { status, page = 1, limit = 20 } = req.query
+    let userObjectId = null
+    try {
+      userObjectId = new mongoose.Types.ObjectId(userId)
+    } catch (e) {}
 
     // Find orders assigned to this user OR unassigned active orders available for pickup
     const query = {
       $or: [
+        ...(userObjectId ? [{ assignedTo: userObjectId }] : []),
         { assignedTo: userId },
         { assignedTo: { $exists: false } },
         { assignedTo: null }

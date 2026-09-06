@@ -78,59 +78,63 @@ function AddressModal({ address, onSave, onClose, isDarkMode }) {
 }
 
 function PhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
-  const [step, setStep] = useState('phone')
   const [newPhone, setNewPhone] = useState('')
-  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const bg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
   const inp = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200'
-  const handleSendOTP = async (e) => {
+
+  const handleSavePhone = async (e) => {
     e.preventDefault()
     const clean = newPhone.replace(/\D/g, '')
-    if (!/^[6-9][0-9]{9}$/.test(clean)) { toast.error('Please enter a valid 10-digit Indian mobile number'); return }
+    if (!/^[6-9][0-9]{9}$/.test(clean)) {
+      toast.error('Please enter a valid 10-digit Indian mobile number')
+      return
+    }
     setLoading(true)
     try {
-      const res = await authService.sendLinkPhoneOTP(clean)
-      setStep('otp'); toast.success(res.data?.message || `OTP sent to +91 ${clean}`)
-      if (res.data?.devOtp) { toast.info(`Verification Code: ${res.data.devOtp}`, { autoClose: 10000 }); setOtp(res.data.devOtp) }
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to send OTP') }
-    finally { setLoading(false) }
+      const res = await userService.updateProfile({ phone: clean })
+      if (res.data?.success && res.data?.user) {
+        onPhoneUpdated(res.data.user)
+        toast.success('Contact mobile number updated successfully!')
+        onClose()
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update phone number')
+    } finally {
+      setLoading(false)
+    }
   }
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault()
-    if (otp.length < 6) { toast.error('Please enter 6-digit OTP'); return }
-    setLoading(true)
-    try {
-      const clean = newPhone.replace(/\D/g, '')
-      const res = await authService.verifyLinkPhone(clean, otp)
-      if (res.data?.success && res.data?.user) { onPhoneUpdated(res.data.user); toast.success('Mobile number verified & linked!'); onClose() }
-    } catch (err) { toast.error(err?.response?.data?.message || 'Invalid or expired OTP') }
-    finally { setLoading(false) }
-  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className={`w-full max-w-sm rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
         <div className="flex items-center justify-between mb-4 border-b border-current/10 pb-3">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-luxury-gold"><FiSmartphone /> Verify Mobile Number</h3>
+          <h3 className="text-lg font-bold flex items-center gap-2 text-luxury-gold"><FiSmartphone /> Contact Mobile Number</h3>
           <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
         </div>
-        {step === 'phone' ? (
-          <form onSubmit={handleSendOTP} className="space-y-4">
-            <p className="text-xs opacity-75 leading-relaxed">Enter your 10-digit mobile number to receive SMS verification.</p>
-            <div className="relative">
-              <span className="absolute left-3.5 top-3.5 text-sm font-bold opacity-60">+91</span>
-              <input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="98765 43210" maxLength={10} className={`pl-14 w-full p-3 rounded-xl border text-sm font-bold outline-none ${inp}`} autoFocus required />
-            </div>
-            <button type="submit" disabled={loading || newPhone.length < 10} className="w-full py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow">{loading ? 'Sending OTP...' : 'Send Verification OTP'}</button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOTP} className="space-y-4">
-            <p className="text-xs opacity-75">Enter the 6-digit code sent to <span className="font-bold text-luxury-gold">+91 {newPhone}</span></p>
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="0 0 0 0 0 0" maxLength={6} className={`w-full text-center text-xl font-bold tracking-widest p-3 rounded-xl border outline-none ${inp}`} autoFocus required />
-            <button type="submit" disabled={loading || otp.length < 6} className="w-full py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow">{loading ? 'Verifying...' : 'Verify & Link Mobile'}</button>
-            <button type="button" onClick={() => { setStep('phone'); setOtp('') }} className="w-full text-xs opacity-60 hover:opacity-100 text-center">Change phone number</button>
-          </form>
-        )}
+        <form onSubmit={handleSavePhone} className="space-y-4">
+          <p className="text-xs opacity-75 leading-relaxed">Enter your 10-digit contact mobile number for delivery and order updates.</p>
+          <div className="relative">
+            <span className="absolute left-3.5 top-3.5 text-sm font-bold opacity-60">+91</span>
+            <input
+              type="tel"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="98765 43210"
+              maxLength={10}
+              className={`pl-14 w-full p-3 rounded-xl border text-sm font-bold outline-none ${inp}`}
+              autoFocus
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading || newPhone.length < 10}
+            className="w-full py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow"
+          >
+            {loading ? 'Saving...' : 'Save Mobile Number'}
+          </button>
+        </form>
       </div>
     </div>
   )
@@ -429,13 +433,39 @@ function Profile() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-                <div className="px-3 py-1.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/20 text-center">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-luxury-gold">Club Tier</p>
-                  <p className="text-sm font-serif font-extrabold text-luxury-gold">Gold Elite</p>
-                </div>
-                <div className={`px-3 py-1.5 rounded-xl border text-center ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}>
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">Addresses</p>
-                  <p className="text-sm font-extrabold">{addresses.length}</p>
+                {user?.role === 'admin' && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                  >
+                    Admin Dashboard <FiArrowRight size={13} />
+                  </Link>
+                )}
+                {(user?.role === 'delivery' || user?.role === 'deliverypartner') && (
+                  <Link
+                    to="/delivery/dashboard"
+                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                  >
+                    Delivery Portal <FiTruck size={13} />
+                  </Link>
+                )}
+                {user?.role === 'seller' && (
+                  <Link
+                    to="/seller/dashboard"
+                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                  >
+                    Seller Portal <FiShoppingBag size={13} />
+                  </Link>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/20 text-center">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-luxury-gold">Club Tier</p>
+                    <p className="text-sm font-serif font-extrabold text-luxury-gold">Gold Elite</p>
+                  </div>
+                  <div className={`px-3 py-1.5 rounded-xl border text-center ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">Addresses</p>
+                    <p className="text-sm font-extrabold">{addresses.length}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -760,9 +790,9 @@ function Profile() {
                 <div className="space-y-3">
                   {[
                     { label: 'Account Status', value: 'Active & Verified', badge: 'Secure', green: true },
-                    { label: 'Login Method', value: user?.googleId ? 'Google OAuth' : user?.phone ? 'Mobile OTP' : 'Email & Password', icon: true },
+                    { label: 'Login Method', value: user?.googleId ? 'Google OAuth' : 'Email & Password', icon: true },
                     { label: 'Email', value: user?.email || '-', badge: 'Active', green: true },
-                    ...(user?.phone ? [{ label: 'Mobile', value: user.phone, badge: 'Linked', green: true }] : [])
+                    ...(user?.phone ? [{ label: 'Mobile', value: `+91 ${user.phone}`, badge: 'Contact', green: true }] : [])
                   ].map((item, i) => (
                     <div key={i} className={`flex items-center justify-between p-3.5 rounded-xl border ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
                       <div><p className="text-xs font-bold uppercase tracking-wider opacity-60">{item.label}</p><p className="text-sm font-bold mt-0.5 truncate max-w-[180px]">{item.value}</p></div>

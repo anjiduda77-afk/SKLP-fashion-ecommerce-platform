@@ -1,3 +1,19 @@
+/**
+ * SKLP PRODUCTION ADMIN BOOTSTRAP
+ * ============================================================
+ * Creates the first production Admin account from environment variables.
+ * Run ONCE after a production database reset.
+ *
+ * Required .env variables:
+ *   PRODUCTION_ADMIN_EMAIL=your@email.com
+ *   PRODUCTION_ADMIN_PASSWORD=YourSecurePassword!
+ *   PRODUCTION_ADMIN_FIRST_NAME=FirstName   (optional)
+ *   PRODUCTION_ADMIN_LAST_NAME=LastName      (optional)
+ *
+ * Usage:
+ *   node scripts/setupAdminAccount.js
+ */
+
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -8,33 +24,55 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function setupAdmin() {
-  const targetEmail = 'anjiduda77@gmail.com';
-  const targetPassword = 'Anji7206@@';
+  // ── Read credentials from environment — NEVER hardcoded ─────
+  const adminEmail = process.env.PRODUCTION_ADMIN_EMAIL;
+  const adminPassword = process.env.PRODUCTION_ADMIN_PASSWORD;
+  const adminFirstName = process.env.PRODUCTION_ADMIN_FIRST_NAME || 'Admin';
+  const adminLastName = process.env.PRODUCTION_ADMIN_LAST_NAME || 'SKLP';
+
+  if (!adminEmail || !adminPassword) {
+    console.error('\n❌ ERROR: PRODUCTION_ADMIN_EMAIL and PRODUCTION_ADMIN_PASSWORD');
+    console.error('   must be set in your backend .env file.');
+    console.error('\n   Example:');
+    console.error('   PRODUCTION_ADMIN_EMAIL=youremail@domain.com');
+    console.error('   PRODUCTION_ADMIN_PASSWORD=YourStrongPassword123!\n');
+    process.exit(1);
+  }
+
+  if (adminPassword.length < 8) {
+    console.error('\n❌ ERROR: PRODUCTION_ADMIN_PASSWORD must be at least 8 characters.\n');
+    process.exit(1);
+  }
+
+  console.log('\n══════════════════════════════════════════════════');
+  console.log('  SKLP PRODUCTION ADMIN BOOTSTRAP');
+  console.log('══════════════════════════════════════════════════');
 
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB Atlas\n');
+    console.log('✅ Connected to MongoDB Atlas\n');
 
-    let user = await User.findOne({ email: targetEmail });
-
-    if (user) {
-      console.log(`Found existing user: ${user.email} (Current Role: ${user.role})`);
-      user.role = 'admin';
-      user.status = 'active';
-      user.isActive = true;
-      user.password = targetPassword;
-      user.isEmailVerified = true;
-      user.firstName = user.firstName && user.firstName !== 'Customer' ? user.firstName : 'Anji';
-      user.lastName = user.lastName && user.lastName !== 'User' ? user.lastName : 'Duda';
-      await user.save();
-      console.log(`✅ Successfully updated ${targetEmail} to role: "admin" with updated password.`);
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin) {
+      console.log(`⚠️  An admin account already exists: ${existingAdmin.email}`);
+      console.log('   Updating credentials to match current .env settings...');
+      existingAdmin.email = adminEmail;
+      existingAdmin.password = adminPassword;
+      existingAdmin.firstName = adminFirstName;
+      existingAdmin.lastName = adminLastName;
+      existingAdmin.isEmailVerified = true;
+      existingAdmin.status = 'active';
+      existingAdmin.isActive = true;
+      await existingAdmin.save();
+      console.log(`✅ Admin account updated: ${adminEmail}`);
     } else {
-      console.log(`User ${targetEmail} not found. Creating new Admin user...`);
-      user = new User({
-        firstName: 'Anji',
-        lastName: 'Duda',
-        email: targetEmail,
-        password: targetPassword,
+      // Create fresh admin
+      const user = new User({
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        email: adminEmail,
+        password: adminPassword,
         role: 'admin',
         status: 'active',
         isActive: true,
@@ -42,23 +80,26 @@ async function setupAdmin() {
         authProvider: 'email'
       });
       await user.save();
-      console.log(`✅ Successfully created new Admin account for ${targetEmail}`);
+      console.log(`✅ Production Admin account created: ${adminEmail}`);
     }
 
-    // Verify login credentials against comparePassword
-    const checkUser = await User.findOne({ email: targetEmail }).select('+password');
-    const isMatch = await checkUser.comparePassword(targetPassword);
-    console.log(`🔐 Password comparison check: ${isMatch ? 'MATCH (Verified)' : 'FAILED'}`);
-    console.log(`👑 User ID: ${checkUser._id}`);
-    console.log(`👑 Custom User ID: ${checkUser.customUserId}`);
-    console.log(`👑 Role: ${checkUser.role}`);
-    console.log(`👑 Email: ${checkUser.email}`);
+    // Verify credentials
+    const checkUser = await User.findOne({ email: adminEmail }).select('+password');
+    const isMatch = await checkUser.comparePassword(adminPassword);
+
+    console.log(`\n🔐 Password verification: ${isMatch ? '✅ PASS' : '❌ FAILED'}`);
+    console.log(`👑 Admin ID:      ${checkUser._id}`);
+    console.log(`👑 Custom ID:     ${checkUser.customUserId}`);
+    console.log(`👑 Role:          ${checkUser.role}`);
+    console.log(`👑 Email:         ${checkUser.email}`);
+    console.log(`\n🚀 Admin is ready. Login at /login with your .env credentials.`);
+    console.log('   IMPORTANT: Do not share your admin credentials.\n');
 
   } catch (err) {
     console.error('Error setting up admin account:', err);
+    process.exit(1);
   } finally {
     await mongoose.disconnect();
-    console.log('\nDisconnected from MongoDB');
   }
 }
 

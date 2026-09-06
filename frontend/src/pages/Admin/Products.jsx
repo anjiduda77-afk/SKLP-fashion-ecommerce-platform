@@ -26,8 +26,8 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
 
   const handleFiles = async (files) => {
     const validFiles = Array.from(files).filter(f => {
-      if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(f.type)) {
-        toast.error(`Invalid file type: ${f.name}`)
+      if (f.type && !f.type.startsWith('image/')) {
+        toast.error(`Invalid file type: ${f.name}. Please select an image file.`)
         return false
       }
       if (f.size > 5 * 1024 * 1024) {
@@ -120,7 +120,7 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           onChange={(e) => handleFiles(e.target.files)}
           className="hidden"
         />
@@ -144,7 +144,7 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
               Drop images here or click to browse
             </p>
             <p className={`text-xs mt-1 ${isDarkMode ? 'text-luxury-mediumGray/60' : 'text-gray-400'}`}>
-              JPG, PNG, WebP • Max 5MB each • Up to 5 images
+              Access Gallery, Files or Camera • Max 5MB each • Up to 5 images
             </p>
           </>
         )}

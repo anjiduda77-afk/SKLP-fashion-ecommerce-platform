@@ -181,7 +181,7 @@ export const createProduct = async (req, res) => {
   const {
     name, description, shortDescription, category, subcategory, gender,
     price, originalPrice, discount, stock, lowStockThreshold,
-    images, variants, attributes, brand, tags
+    images, variants, attributes, brand, tags, sellerId
   } = req.body;
 
   // Generate unique SKU
@@ -189,6 +189,10 @@ export const createProduct = async (req, res) => {
   const genderPrefix = (gender || 'UNI').substring(0, 1).toUpperCase();
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const sku = `${categoryPrefix}-${genderPrefix}-${randomSuffix}`;
+
+  const assignedBrand = (brand || 'SKLP').trim();
+  const brandNormalized = assignedBrand.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const nameNormalized = (name || '').toLowerCase().trim();
 
   // Process images from multer file uploads
   let processedImages = [];
@@ -210,6 +214,7 @@ export const createProduct = async (req, res) => {
 
   const product = await Product.create({
     name,
+    nameNormalized,
     description,
     shortDescription,
     category,
@@ -221,7 +226,9 @@ export const createProduct = async (req, res) => {
     stock,
     lowStockThreshold: lowStockThreshold || 10,
     sku,
-    brand,
+    brand: assignedBrand,
+    brandNormalized,
+    sellerId: sellerId || undefined,
     images: processedImages,
     variants: variants || [],
     attributes: attributes || {},
@@ -268,6 +275,14 @@ export const updateProduct = async (req, res) => {
       product[key] = req.body[key];
     }
   });
+
+  // Keep normalized fields in sync
+  if (req.body.name) {
+    product.nameNormalized = req.body.name.toLowerCase().trim();
+  }
+  if (req.body.brand) {
+    product.brandNormalized = req.body.brand.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
 
   // If images array explicitly provided (for reorder/delete)
   if (req.body.images && !req.files?.length) {

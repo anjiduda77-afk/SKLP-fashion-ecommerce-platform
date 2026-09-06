@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useCurrency } from '@context/CurrencyContext'
-import { userService, notificationService } from '@services/apiServices'
+import { userService, notificationService, uploadService } from '@services/apiServices'
 import { requestFcmToken } from '@config/firebase'
 import { toast } from 'react-toastify'
 import {
@@ -13,7 +13,7 @@ import {
   FiCheckCircle, FiShield, FiSmartphone, FiGlobe, FiMoon, FiSun,
   FiBell, FiCreditCard,
   FiTag, FiTruck, FiCheck, FiShoppingBag, FiHeart, FiArrowRight, FiChevronRight,
-  FiMenu, FiHome
+  FiMenu, FiHome, FiUploadCloud, FiAward
 } from 'react-icons/fi'
 
 
@@ -140,24 +140,107 @@ function PhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
   )
 }
 
-function AvatarModal({ currentAvatar, onSelectAvatar, onClose, isDarkMode }) {
+function AvatarModal({ currentAvatar, onSelectAvatar, onRemoveAvatar, onClose, isDarkMode }) {
+  const fileInputRef = useRef(null)
   const [customUrl, setCustomUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+
   const bg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
   const inp = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200'
-  const handleCustomSubmit = (e) => { e.preventDefault(); if (!customUrl.trim()) return; onSelectAvatar(customUrl.trim()) }
+
+  const handleDeviceFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.type && !file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file from your device gallery or files.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image is too large. Maximum size is 5MB.')
+      return
+    }
+
+    setUploading(true)
+    setUploadProgress(0)
+    try {
+      const res = await uploadService.uploadAvatar(file, (progressEvent) => {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        setUploadProgress(percent)
+      })
+      const avatarUrl = res.data?.avatar?.url || (res.data?.images && res.data.images[0]?.url)
+      if (res.data?.success && avatarUrl) {
+        onSelectAvatar(avatarUrl)
+        toast.success('Profile photo uploaded from device!')
+      } else {
+        toast.error('Failed to get uploaded avatar URL')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload photo from device')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleCustomSubmit = (e) => {
+    e.preventDefault()
+    if (!customUrl.trim()) return
+    onSelectAvatar(customUrl.trim())
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className={`w-full max-w-md rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
         <div className="flex items-center justify-between mb-4 border-b border-current/10 pb-3">
-          <h3 className="text-lg font-bold text-luxury-gold flex items-center gap-2 font-serif"><FiUser /> Choose Profile Photo</h3>
+          <h3 className="text-lg font-bold text-luxury-gold flex items-center gap-2 font-serif">
+            <FiUser /> Profile Photo (DP)
+          </h3>
           <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
         </div>
-        <p className="text-xs opacity-75 mb-4">Choose a preset avatar or paste an image link:</p>
-        <div className="grid grid-cols-3 gap-3 mb-6">
+
+        {/* Device Gallery / File Picker button */}
+        <div className="mb-5 p-4 rounded-2xl border border-dashed border-luxury-gold/40 bg-luxury-gold/5 text-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleDeviceFile}
+            className="hidden"
+          />
+          {uploading ? (
+            <div className="space-y-2 py-1">
+              <div className="w-7 h-7 border-2 border-luxury-gold border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-bold text-luxury-gold">Uploading from device... {uploadProgress}%</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-2.5 px-4 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all flex items-center justify-center gap-2 shadow-glow"
+              >
+                <FiUploadCloud size={16} /> Choose from Gallery / Files
+              </button>
+              <p className="text-[10px] opacity-60">
+                Access your mobile Gallery, Photos, or device Files (Max 5MB)
+              </p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-[11px] font-bold uppercase tracking-wider opacity-70 mb-2">Or Choose a Preset Avatar:</p>
+        <div className="grid grid-cols-3 gap-2.5 mb-4">
           {PRESET_AVATARS.map((av) => {
             const isSelected = currentAvatar === av.url
             return (
-              <button key={av.id} type="button" onClick={() => onSelectAvatar(av.url)} className={`relative group rounded-2xl overflow-hidden border-2 transition-all p-1 ${isSelected ? 'border-luxury-gold shadow-glow scale-105' : 'border-transparent hover:border-luxury-gold/50'}`}>
+              <button
+                key={av.id}
+                type="button"
+                onClick={() => onSelectAvatar(av.url)}
+                className={`relative group rounded-2xl overflow-hidden border-2 transition-all p-1 ${isSelected ? 'border-luxury-gold shadow-glow scale-105' : 'border-transparent hover:border-luxury-gold/50'}`}
+              >
                 <img src={av.url} alt={av.label} className="w-full aspect-square object-cover rounded-xl" />
                 <p className="text-[9px] font-bold text-center mt-1 truncate">{av.label}</p>
                 {isSelected && <div className="absolute top-2 right-2 bg-luxury-gold text-black rounded-full p-0.5"><FiCheck size={10} /></div>}
@@ -165,13 +248,38 @@ function AvatarModal({ currentAvatar, onSelectAvatar, onClose, isDarkMode }) {
             )
           })}
         </div>
+
         <form onSubmit={handleCustomSubmit} className="space-y-3 pt-3 border-t border-current/10">
-          <label className="block text-[11px] font-bold uppercase tracking-wider opacity-70">Custom Image Link (URL)</label>
+          <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Or Paste Image URL</label>
           <div className="flex gap-2">
-            <input type="url" value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://images.unsplash.com/..." className={`flex-1 p-2.5 rounded-xl border text-xs outline-none ${inp}`} />
-            <button type="submit" disabled={!customUrl.trim()} className="px-4 py-2.5 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-luxury-darkGold disabled:opacity-50">Apply</button>
+            <input
+              type="url"
+              value={customUrl}
+              onChange={(e) => setCustomUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/..."
+              className={`flex-1 p-2.5 rounded-xl border text-xs outline-none ${inp}`}
+            />
+            <button
+              type="submit"
+              disabled={!customUrl.trim()}
+              className="px-4 py-2.5 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-luxury-darkGold disabled:opacity-50"
+            >
+              Apply
+            </button>
           </div>
         </form>
+
+        {currentAvatar && (
+          <div className="pt-3 mt-3 border-t border-current/10 flex justify-end">
+            <button
+              type="button"
+              onClick={onRemoveAvatar}
+              className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1.5 font-semibold transition-colors"
+            >
+              <FiTrash2 size={12} /> Remove Profile Photo
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -470,6 +578,47 @@ function Profile() {
               </div>
             </div>
           </div>
+
+          {/* Seller / Admin Dedicated Console Navigation */}
+          {user?.role === 'seller' && (
+            <div className={`mb-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${isDarkMode ? 'bg-amber-500/10 border-amber-500/25 text-white' : 'bg-amber-50 border-amber-200 text-slate-800'}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+                  <FiShoppingBag size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-500 dark:text-amber-400">Seller Studio Account</p>
+                  <p className="text-xs opacity-75">Upload your Shop Icon, Brand DP, and manage boutique product listings in the Seller Console.</p>
+                </div>
+              </div>
+              <Link
+                to="/seller/dashboard"
+                className="px-4 py-2 bg-luxury-gold text-black rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex-shrink-0 flex items-center gap-1.5 shadow-sm"
+              >
+                Seller Console & Shop DP <FiArrowRight size={13} />
+              </Link>
+            </div>
+          )}
+
+          {user?.role === 'admin' && (
+            <div className={`mb-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${isDarkMode ? 'bg-luxury-gold/10 border-luxury-gold/25 text-white' : 'bg-yellow-50 border-yellow-200 text-slate-800'}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-luxury-gold/20 text-luxury-gold flex items-center justify-center flex-shrink-0">
+                  <FiAward size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-luxury-gold">Admin Master Console</p>
+                  <p className="text-xs opacity-75">Full access to create and sell products, manage orders, approve seller shops, and monitor marketplace revenue.</p>
+                </div>
+              </div>
+              <Link
+                to="/admin/products"
+                className="px-4 py-2 bg-luxury-gold text-black rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex-shrink-0 flex items-center gap-1.5 shadow-sm"
+              >
+                Manage & Sell Products <FiArrowRight size={13} />
+              </Link>
+            </div>
+          )}
 
           {activeTab === 'profile' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-fade-in">
@@ -811,9 +960,27 @@ function Profile() {
       {showAddressModal && <AddressModal address={editingAddress} onSave={handleSaveAddress} onClose={() => { setShowAddressModal(false); setEditingAddress(null) }} isDarkMode={isDarkMode} />}
       {showPhoneModal && <PhoneModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
       {showAvatarModal && (
-        <AvatarModal currentAvatar={profileForm.avatar}
-          onSelectAvatar={(avatarUrl) => { setProfileForm((p) => ({ ...p, avatar: avatarUrl })); setShowAvatarModal(false); userService.updateProfile({ avatar: avatarUrl }).then((res) => { if (res.data?.user) updateUser(res.data.user); toast.success('Avatar updated!') }).catch(() => {}) }}
-          onClose={() => setShowAvatarModal(false)} isDarkMode={isDarkMode} />
+        <AvatarModal
+          currentAvatar={profileForm.avatar}
+          onSelectAvatar={(avatarUrl) => {
+            setProfileForm((p) => ({ ...p, avatar: avatarUrl }))
+            setShowAvatarModal(false)
+            userService.updateProfile({ avatar: avatarUrl }).then((res) => {
+              if (res.data?.user) updateUser(res.data.user)
+              toast.success('Profile photo updated!')
+            }).catch(() => {})
+          }}
+          onRemoveAvatar={() => {
+            setProfileForm((p) => ({ ...p, avatar: '' }))
+            setShowAvatarModal(false)
+            userService.updateProfile({ avatar: '' }).then((res) => {
+              if (res.data?.user) updateUser(res.data.user)
+              toast.info('Profile photo removed!')
+            }).catch(() => {})
+          }}
+          onClose={() => setShowAvatarModal(false)}
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   )

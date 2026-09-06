@@ -31,8 +31,8 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
 
   const handleFiles = async (files) => {
     const validFiles = Array.from(files).filter(f => {
-      if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(f.type)) {
-        toast.error(`Invalid file type: ${f.name}. Only JPG, PNG, WebP allowed.`)
+      if (f.type && !f.type.startsWith('image/')) {
+        toast.error(`Invalid file type: ${f.name}. Please select an image file.`)
         return false
       }
       if (f.size > 5 * 1024 * 1024) {
@@ -126,7 +126,7 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
           ref={fileInputRef}
           type="file" 
           multiple 
-          accept="image/jpeg,image/png,image/webp" 
+          accept="image/*" 
           onChange={(e) => handleFiles(e.target.files)}
           className="hidden"
         />
@@ -559,8 +559,8 @@ function SellerDashboard() {
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
-      toast.error('Invalid file format. Only JPG, PNG, and WebP images are allowed for Brand DP.')
+    if (file.type && !file.type.startsWith('image/')) {
+      toast.error('Invalid file format. Please select an image file from your gallery or files.')
       return
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -569,14 +569,17 @@ function SellerDashboard() {
     }
     setUploadingLogo(true)
     try {
-      const res = await uploadService.uploadImages([file])
-      if (res.data?.success && res.data.images?.length > 0) {
-        const img = res.data.images[0]
+      const res = await uploadService.uploadAvatar(file)
+      const logoData = res.data?.avatar || (res.data?.images && res.data.images[0])
+      if (res.data?.success && logoData) {
+        const newLogo = { url: logoData.url, publicId: logoData.publicId || '' }
         setSellerProfile(prev => ({
           ...prev,
-          logo: { url: img.url, publicId: img.publicId }
+          logo: newLogo
         }))
-        toast.success('Shop/Brand DP uploaded! Click "Save Store Settings" to apply.')
+        // Automatically sync to backend seller profile
+        await sellerService.updateProfile({ logo: newLogo })
+        toast.success('Shop / Brand DP uploaded and saved successfully!')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upload Brand DP')
@@ -594,11 +597,17 @@ function SellerDashboard() {
         console.warn('Failed to delete image from Cloudinary:', err)
       }
     }
+    const emptyLogo = { url: '', publicId: '' }
     setSellerProfile(prev => ({
       ...prev,
-      logo: { url: '', publicId: '' }
+      logo: emptyLogo
     }))
-    toast.info('Brand DP removed. Click "Save Store Settings" to update.')
+    try {
+      await sellerService.updateProfile({ logo: emptyLogo })
+      toast.info('Brand DP removed successfully!')
+    } catch (err) {
+      console.warn('Failed to sync removed logo:', err)
+    }
   }
 
   const handleSendChatMessage = (e) => {
@@ -2052,7 +2061,7 @@ function SellerDashboard() {
                         <input
                           ref={logoInputRef}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp,image/jpg"
+                          accept="image/*"
                           onChange={handleLogoUpload}
                           className="hidden"
                         />
@@ -2089,7 +2098,7 @@ function SellerDashboard() {
                               Remove DP
                             </button>
                           )}
-                          <span className="text-[10px] text-gray-400">JPG, PNG, WebP (Max 5MB)</span>
+                          <span className="text-[10px] text-gray-400">Access Gallery, Files or Camera (Max 5MB)</span>
                         </div>
                       </div>
                     </div>

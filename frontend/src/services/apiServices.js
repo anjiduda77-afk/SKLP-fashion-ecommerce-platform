@@ -87,7 +87,17 @@ export const uploadService = {
     files.forEach((f) => formData.append('images', f))
     return apiClient.post('/upload/images', formData, createUploadConfig(onProgress))
   },
-  deleteImage: (publicId) => apiClient.delete(`/upload/images/${publicId}`)
+  uploadAvatar: (file, onProgress) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return apiClient.post('/upload/avatar', formData, createUploadConfig(onProgress))
+  },
+  uploadShopLogo: (file, onProgress) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return apiClient.post('/upload/avatar', formData, createUploadConfig(onProgress))
+  },
+  deleteImage: (publicId) => apiClient.delete(`/upload/${encodeURIComponent(publicId)}`)
 }
 
 /**

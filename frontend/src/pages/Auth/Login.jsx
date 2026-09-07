@@ -104,10 +104,10 @@ function Login() {
       navigate('/admin/dashboard')
     } else if (role === 'seller') {
       navigate('/seller/dashboard')
-    } else if (role === 'delivery') {
+    } else if (role === 'delivery' || role === 'deliverypartner') {
       navigate('/delivery/dashboard')
     } else {
-      navigate('/')
+      navigate('/customer')
     }
   }, [navigate, redirectUrl])
 

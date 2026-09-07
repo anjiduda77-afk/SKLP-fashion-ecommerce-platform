@@ -663,7 +663,20 @@
     "rewardCoins": "उपलब्ध रिवॉर्ड कॉइन्स",
     "coinsWorth": "आपकी अगली खरीदारी पर ₹500 की छूट",
     "coinsDesc": "सभी लक्ज़री ऑर्डर पर 5% कैशबैक पाएं, चेकआउट पर स्वतः लागू होगा।",
-    "shopEarn": "खरीदारी करें और रिवॉर्ड्स कमाएं"
+    "shopEarn": "खरीदारी करें और रिवॉर्ड्स कमाएं",
+    "setAsDefault": "डिफ़ॉल्ट सेट करें",
+    "defaultAddressUpdated": "डिफ़ॉल्ट डिलीवरी पता अपडेट किया गया!",
+    "confirmDeleteAddress": "क्या आप वाकई इस डिलीवरी पते को हटाना चाहते हैं?",
+    "addressRemoved": "पता सफलतापूर्वक हटा दिया गया",
+    "addressAdded": "डिलीवरी पता सफलतापूर्वक जोड़ा गया!",
+    "addressUpdated": "पता सफलतापूर्वक अपडेट किया गया!",
+    "landmarkOptional": "लैंडमार्क (वैकल्पिक)",
+    "houseBuildingStreet": "मकान नं / भवन / सड़क *",
+    "cityRequired": "शहर *",
+    "stateRequired": "राज्य *",
+    "pincodeRequired": "पिन कोड *",
+    "cancel": "रद्द करें",
+    "saveAddress": "पता सहेजें"
   },
   "auth": {
     "login": "साइन इन",

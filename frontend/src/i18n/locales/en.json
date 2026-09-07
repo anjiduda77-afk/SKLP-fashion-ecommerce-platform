@@ -671,7 +671,20 @@
     "rewardCoins": "Reward Coins",
     "coinsWorth": "Worth ₹500 on your next order",
     "coinsDesc": "Earn reward coins on every order and redeem on your next purchase.",
-    "shopEarn": "Shop & Earn Coins"
+    "shopEarn": "Shop & Earn Coins",
+    "setAsDefault": "Set as Default",
+    "defaultAddressUpdated": "Default delivery address updated successfully!",
+    "confirmDeleteAddress": "Are you sure you want to remove this delivery address?",
+    "addressRemoved": "Address removed successfully",
+    "addressAdded": "Delivery address added successfully!",
+    "addressUpdated": "Address updated successfully!",
+    "landmarkOptional": "Landmark (Optional)",
+    "houseBuildingStreet": "House No. / Building / Street *",
+    "cityRequired": "City *",
+    "stateRequired": "State *",
+    "pincodeRequired": "PIN Code *",
+    "cancel": "Cancel",
+    "saveAddress": "Save Address"
   },
   "auth": {
     "login": "Login",

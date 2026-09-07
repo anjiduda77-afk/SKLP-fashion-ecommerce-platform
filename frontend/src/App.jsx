@@ -122,6 +122,8 @@ function App() {
                       <Route path="/orders/:id/track" element={<OrderTracking />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/account" element={<Navigate to="/profile" replace />} />
+                      <Route path="/customer" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                      <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
                       <Route path="/become-a-seller" element={<BecomeSeller />} />
                       <Route path="/shop/:slug" element={<ShopPage />} />
                       <Route path="/shops" element={<Products />} />

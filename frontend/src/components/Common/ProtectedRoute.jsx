@@ -41,7 +41,7 @@ const ProtectedRoute = ({ allowedRoles = [], requiredRole, children }) => {
       const fallbackUrl = 
         userRole === 'admin' ? '/admin/dashboard' :
         userRole === 'seller' ? '/seller/dashboard' :
-        userRole === 'delivery' ? '/delivery/dashboard' : '/'
+        userRole === 'delivery' ? '/delivery/dashboard' : '/customer'
 
       console.warn(`[AUTH] Access denied to ${location.pathname} for role ${user?.role}. Redirecting to ${fallbackUrl}`)
       return <Navigate to={fallbackUrl} replace />

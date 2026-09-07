@@ -150,7 +150,7 @@ function Register() {
     } else if (role === 'delivery' || role === 'deliverypartner') {
       navigate('/delivery/dashboard')
     } else {
-      navigate('/')
+      navigate('/customer')
     }
   }, [navigate, redirectUrl])
 

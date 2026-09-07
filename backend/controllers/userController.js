@@ -204,31 +204,66 @@ export const addAddress = async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
-  const effectivePincode = postalCode || pincode || '';
+  // Required field validations
+  const cleanStreet = typeof street === 'string' ? street.trim() : '';
+  const cleanCity = typeof city === 'string' ? city.trim() : '';
+  const cleanState = typeof state === 'string' ? state.trim() : '';
+  const rawPincode = String(postalCode || pincode || '').trim();
+
+  if (!cleanStreet || !cleanCity || !cleanState || !rawPincode) {
+    throw new ApiError(400, 'Street address, city, state, and 6-digit PIN code are required');
+  }
+
+  // PIN code format validation (strictly 6-digit Indian PIN)
+  if (!/^[1-9][0-9]{5}$/.test(rawPincode)) {
+    throw new ApiError(400, 'Please enter a valid 6-digit Indian postal PIN code (e.g. 500081)');
+  }
+
+  // Phone validation (if provided)
+  let cleanPhone = '';
+  if (phone) {
+    const digits = String(phone).replace(/\D/g, '').slice(-10);
+    if (!/^[6-9][0-9]{9}$/.test(digits)) {
+      throw new ApiError(400, 'Please enter a valid 10-digit Indian contact mobile number');
+    }
+    cleanPhone = digits;
+  } else if (user.phone) {
+    cleanPhone = user.phone;
+  }
+
+  // Duplicate address check (case-insensitive on street, city, and pincode)
+  const isDuplicate = (user.addresses || []).some(addr => 
+    addr.street?.trim().toLowerCase() === cleanStreet.toLowerCase() &&
+    addr.city?.trim().toLowerCase() === cleanCity.toLowerCase() &&
+    (addr.postalCode === rawPincode || addr.pincode === rawPincode)
+  );
+
+  if (isDuplicate) {
+    throw new ApiError(409, 'This delivery address is already saved in your address book');
+  }
+
   const effectiveType = (type || label || 'home').toLowerCase();
 
   const newAddress = {
     _id: new mongoose.Types.ObjectId(),
     type: ['home', 'office', 'other', 'work'].includes(effectiveType) ? effectiveType : 'home',
     label: label || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Home'),
-    street: street || '',
-    landmark: landmark || '',
-    city: city || '',
-    state: state || '',
-    postalCode: effectivePincode,
-    pincode: effectivePincode,
-    country: country || 'India',
-    phone: phone || user.phone || '',
+    street: cleanStreet,
+    landmark: landmark ? String(landmark).trim() : '',
+    city: cleanCity,
+    state: cleanState,
+    postalCode: rawPincode,
+    pincode: rawPincode,
+    country: country ? String(country).trim() : 'India',
+    phone: cleanPhone,
     isDefault: !!isDefault
   };
 
-  // If set to default, unset other default addresses
-  if (newAddress.isDefault) {
+  // If set to default or this is the user's first address, make it default
+  if (newAddress.isDefault || user.addresses.length === 0) {
     user.addresses.forEach(addr => {
       addr.isDefault = false;
     });
-    user.defaultAddressId = newAddress._id;
-  } else if (user.addresses.length === 0) {
     newAddress.isDefault = true;
     user.defaultAddressId = newAddress._id;
   }
@@ -238,7 +273,7 @@ export const addAddress = async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: 'Address added successfully',
+    message: 'Delivery address added successfully',
     address: newAddress,
     addresses: user.addresses
   });
@@ -258,27 +293,51 @@ export const updateAddress = async (req, res) => {
     throw new ApiError(404, 'Address not found');
   }
 
-  // Update address fields
-  const fields = ['type', 'label', 'street', 'landmark', 'city', 'state', 'postalCode', 'pincode', 'country', 'phone', 'isDefault'];
-  fields.forEach(field => {
-    if (req.body[field] !== undefined) {
-      address[field] = req.body[field];
+  // Validations if fields are being updated
+  if (req.body.street !== undefined && !String(req.body.street).trim()) {
+    throw new ApiError(400, 'Street address cannot be empty');
+  }
+  if (req.body.city !== undefined && !String(req.body.city).trim()) {
+    throw new ApiError(400, 'City cannot be empty');
+  }
+  if (req.body.state !== undefined && !String(req.body.state).trim()) {
+    throw new ApiError(400, 'State cannot be empty');
+  }
+
+  const newPincode = req.body.postalCode || req.body.pincode;
+  if (newPincode !== undefined) {
+    const cleanPin = String(newPincode).trim();
+    if (!/^[1-9][0-9]{5}$/.test(cleanPin)) {
+      throw new ApiError(400, 'Please enter a valid 6-digit Indian postal PIN code (e.g. 500081)');
     }
-  });
-
-  if (req.body.pincode && !req.body.postalCode) {
-    address.postalCode = req.body.pincode;
-  }
-  if (req.body.postalCode && !req.body.pincode) {
-    address.pincode = req.body.postalCode;
+    address.postalCode = cleanPin;
+    address.pincode = cleanPin;
   }
 
-  // Handle defaults
+  if (req.body.phone !== undefined && req.body.phone !== '') {
+    const digits = String(req.body.phone).replace(/\D/g, '').slice(-10);
+    if (!/^[6-9][0-9]{9}$/.test(digits)) {
+      throw new ApiError(400, 'Please enter a valid 10-digit Indian contact mobile number');
+    }
+    address.phone = digits;
+  }
+
+  // Update other allowed fields
+  if (req.body.street !== undefined) address.street = String(req.body.street).trim();
+  if (req.body.city !== undefined) address.city = String(req.body.city).trim();
+  if (req.body.state !== undefined) address.state = String(req.body.state).trim();
+  if (req.body.landmark !== undefined) address.landmark = String(req.body.landmark).trim();
+  if (req.body.country !== undefined) address.country = String(req.body.country).trim();
+  if (req.body.label !== undefined) address.label = String(req.body.label).trim();
+  if (req.body.type !== undefined) {
+    const t = String(req.body.type).toLowerCase();
+    address.type = ['home', 'office', 'other', 'work'].includes(t) ? t : 'home';
+  }
+
+  // Handle default toggle
   if (req.body.isDefault) {
     user.addresses.forEach(addr => {
-      if (addr._id.toString() !== addressId) {
-        addr.isDefault = false;
-      }
+      addr.isDefault = addr._id.toString() === addressId;
     });
     user.defaultAddressId = address._id;
   }
@@ -289,6 +348,35 @@ export const updateAddress = async (req, res) => {
     success: true,
     message: 'Address updated successfully',
     address,
+    addresses: user.addresses
+  });
+};
+
+// Set default address
+export const setDefaultAddress = async (req, res) => {
+  const { addressId } = req.params;
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  const address = user.addresses.id(addressId);
+  if (!address) {
+    throw new ApiError(404, 'Address not found');
+  }
+
+  user.addresses.forEach(addr => {
+    addr.isDefault = addr._id.toString() === addressId;
+  });
+  user.defaultAddressId = address._id;
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Default delivery address updated successfully',
+    defaultAddressId: address._id,
     addresses: user.addresses
   });
 };

@@ -26,50 +26,107 @@ const PRESET_AVATARS = [
   { id: 'ivory_grace',     url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80', label: 'Ivory Grace' }
 ]
 
-function AddressModal({ address, onSave, onClose, isDarkMode }) {
+function AddressModal({ address, onSave, onClose, isDarkMode, t }) {
   const [form, setForm] = useState(address || { label: 'Home', type: 'home', street: '', landmark: '', city: '', state: '', pincode: '', postalCode: '', country: 'India', phone: '', isDefault: false })
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value, ...(name === 'pincode' ? { postalCode: value } : {}), ...(name === 'postalCode' ? { pincode: value } : {}) }))
   }
   const handleLabelSelect = (label) => { const type = label === 'Home' ? 'home' : label === 'Work' ? 'office' : 'other'; setForm((prev) => ({ ...prev, label, type })) }
+  
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.street || !form.city || !form.state || (!form.pincode && !form.postalCode)) { toast.error('Please complete all required address fields'); return }
-    onSave(form)
+    const street = form.street?.trim()
+    const city = form.city?.trim()
+    const state = form.state?.trim()
+    const pin = (form.pincode || form.postalCode || '').trim()
+    const phone = (form.phone || '').trim().replace(/\D/g, '')
+
+    if (!street || !city || !state || !pin) {
+      toast.error(t ? t('errors.formErrors', 'Please complete all required address fields: Street, City, State, and PIN Code') : 'Please complete all required address fields')
+      return
+    }
+
+    if (!/^[1-9][0-9]{5}$/.test(pin)) {
+      toast.error(t ? t('profile.invalidPincode', 'Please enter a valid 6-digit Indian PIN code (e.g. 500081)') : 'Please enter a valid 6-digit Indian PIN code (e.g. 500081)')
+      return
+    }
+
+    if (form.phone && !/^[6-9][0-9]{9}$/.test(phone)) {
+      toast.error(t ? t('errors.invalidPhone', 'Please enter a valid 10-digit Indian mobile number') : 'Please enter a valid 10-digit Indian mobile number')
+      return
+    }
+
+    onSave({
+      ...form,
+      street,
+      city,
+      state,
+      pincode: pin,
+      postalCode: pin,
+      phone
+    })
   }
+
   const bg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
   const inp = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200'
+  const tr = (key, fallback) => t ? t(key, fallback) : fallback
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className={`w-full max-w-lg rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
         <div className="flex items-center justify-between mb-5 border-b border-current/10 pb-3">
-          <h3 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2"><FiMapPin size={20} /> {address ? 'Edit Delivery Address' : 'Add New Delivery Address'}</h3>
+          <h3 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2">
+            <FiMapPin size={20} /> {address ? tr('profile.editAddress', 'Edit Delivery Address') : tr('profile.newAddress', 'Add New Delivery Address')}
+          </h3>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-luxury-gold/10 hover:text-luxury-gold transition-colors"><FiX size={20} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2 opacity-70">Address Type</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-2 opacity-70">{tr('profile.addressType', 'Address Type')}</label>
             <div className="flex gap-2">
               {['Home', 'Work', 'Other'].map((l) => (
-                <button key={l} type="button" onClick={() => handleLabelSelect(l)} className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${form.label === l ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow' : isDarkMode ? 'border-white/10 text-white hover:border-luxury-gold/50' : 'border-black/10 text-black hover:border-luxury-gold/50'}`}>{l}</button>
+                <button key={l} type="button" onClick={() => handleLabelSelect(l)} className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${form.label === l ? 'bg-luxury-gold text-luxury-black border-luxury-gold shadow-glow' : isDarkMode ? 'border-white/10 text-white hover:border-luxury-gold/50' : 'border-black/10 text-black hover:border-luxury-gold/50'}`}>
+                  {l === 'Home' ? tr('profile.home', 'Home') : l === 'Work' ? tr('profile.work', 'Work') : tr('profile.other', 'Other')}
+                </button>
               ))}
             </div>
           </div>
-          <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">House No. / Building / Street *</label><input name="street" value={form.street} onChange={handleChange} placeholder="e.g. Flat 402, Royal Residency" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required /></div>
-          <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">Landmark (Optional)</label><input name="landmark" value={form.landmark || ''} onChange={handleChange} placeholder="e.g. Near City Center Mall" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">City *</label><input name="city" value={form.city} onChange={handleChange} placeholder="City" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required /></div>
-            <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">State *</label><input name="state" value={form.state} onChange={handleChange} placeholder="State" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required /></div>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.houseBuildingStreet', 'House No. / Building / Street *')}</label>
+            <input name="street" value={form.street} onChange={handleChange} placeholder="e.g. Flat 402, Royal Residency" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.landmarkOptional', 'Landmark (Optional)')}</label>
+            <input name="landmark" value={form.landmark || ''} onChange={handleChange} placeholder="e.g. Near City Center Mall" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">PIN Code *</label><input name="pincode" value={form.pincode || form.postalCode || ''} onChange={handleChange} placeholder="6-digit PIN" maxLength={6} className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required /></div>
-            <div><label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">Contact Phone</label><input name="phone" value={form.phone || ''} onChange={handleChange} placeholder="10-digit mobile" maxLength={10} className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} /></div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.cityRequired', 'City *')}</label>
+              <input name="city" value={form.city} onChange={handleChange} placeholder="City" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.stateRequired', 'State *')}</label>
+              <input name="state" value={form.state} onChange={handleChange} placeholder="State" className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required />
+            </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold pt-1"><input type="checkbox" name="isDefault" checked={form.isDefault} onChange={handleChange} className="accent-yellow-400 w-4 h-4 rounded" /><span>Set as default delivery address for rapid checkout</span></label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.pincodeRequired', 'PIN Code *')}</label>
+              <input name="pincode" value={form.pincode || form.postalCode || ''} onChange={(e) => setForm(prev => ({ ...prev, pincode: e.target.value.replace(/\D/g, '').slice(0, 6), postalCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))} placeholder="6-digit PIN" maxLength={6} className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} required />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">{tr('profile.contactPhone', 'Contact Phone')}</label>
+              <input name="phone" value={form.phone || ''} onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} placeholder="10-digit mobile" maxLength={10} className={`w-full p-3 text-sm rounded-xl border outline-none ${inp}`} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold pt-1">
+            <input type="checkbox" name="isDefault" checked={form.isDefault} onChange={handleChange} className="accent-yellow-400 w-4 h-4 rounded" />
+            <span>{tr('profile.setDefaultDelivery', 'Set as default delivery address for rapid checkout')}</span>
+          </label>
           <div className="flex gap-3 pt-3 border-t border-current/10">
-            <button type="button" onClick={onClose} className={`flex-1 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-colors ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-300 hover:bg-gray-100'}`}>Cancel</button>
-            <button type="submit" className="flex-1 py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">Save Address</button>
+            <button type="button" onClick={onClose} className={`flex-1 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-colors ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-300 hover:bg-gray-100'}`}>{tr('profile.cancel', 'Cancel')}</button>
+            <button type="submit" className="flex-1 py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">{tr('profile.saveAddress', 'Save Address')}</button>
           </div>
         </form>
       </div>
@@ -426,14 +483,55 @@ function Profile() {
   }
   const handleSaveAddress = async (addressData) => {
     try {
-      if (editingAddress?._id) { const res = await userService.updateAddress(editingAddress._id, addressData); setAddresses(res.data.addresses || ((prev) => prev.map((a) => a._id === editingAddress._id ? res.data.address : a))); toast.success('Address updated!') }
-      else { const res = await userService.addAddress(addressData); setAddresses(res.data.addresses || ((prev) => [...prev, res.data.address])); toast.success('New address added!') }
-    } catch (err) { toast.error(err?.response?.data?.message || 'Address save error') }
-    setShowAddressModal(false); setEditingAddress(null)
+      if (editingAddress?._id) {
+        const res = await userService.updateAddress(editingAddress._id, addressData)
+        if (res.data?.success && res.data?.addresses) {
+          setAddresses(res.data.addresses)
+        } else if (res.data?.address) {
+          setAddresses((prev) => prev.map((a) => a._id === editingAddress._id ? res.data.address : a))
+        }
+        toast.success(t('profile.addressUpdated', 'Address updated successfully!'))
+      } else {
+        const res = await userService.addAddress(addressData)
+        if (res.data?.success && res.data?.addresses) {
+          setAddresses(res.data.addresses)
+        } else if (res.data?.address) {
+          setAddresses((prev) => [...prev, res.data.address])
+        }
+        toast.success(t('profile.addressAdded', 'Delivery address added successfully!'))
+      }
+      setShowAddressModal(false)
+      setEditingAddress(null)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Address save error')
+    }
   }
+
+  const handleSetDefaultAddress = async (id) => {
+    try {
+      const res = await userService.setDefaultAddress(id)
+      if (res.data?.success && res.data?.addresses) {
+        setAddresses(res.data.addresses)
+        toast.success(t('profile.defaultAddressUpdated', 'Default delivery address updated successfully!'))
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to set default address')
+    }
+  }
+
   const handleDeleteAddress = async (id) => {
-    try { await userService.deleteAddress(id); setAddresses((prev) => prev.filter((a) => a._id !== id)); toast.info('Address removed') }
-    catch { toast.error('Failed to remove address') }
+    if (!window.confirm(t('profile.confirmDeleteAddress', 'Are you sure you want to remove this delivery address?'))) return
+    try {
+      const res = await userService.deleteAddress(id)
+      if (res.data?.success && res.data?.addresses) {
+        setAddresses(res.data.addresses)
+      } else {
+        setAddresses((prev) => prev.filter((a) => a._id !== id))
+      }
+      toast.info(t('profile.addressRemoved', 'Address removed successfully'))
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to remove address')
+    }
   }
   const handleAddUpi = async (e) => {
     e.preventDefault(); if (!upiForm.upiId) return; setNewUpiLoading(true)
@@ -695,9 +793,13 @@ function Profile() {
               {addresses.length === 0 ? (
                 <div className={`p-12 text-center rounded-2xl border ${cardBg}`}>
                   <FiMapPin size={48} className="text-luxury-gold mx-auto mb-3 opacity-80" />
-                  <h3 className="text-lg font-serif font-bold">No Delivery Addresses Added</h3>
-                  <p className={`text-xs mt-1 mb-5 max-w-sm mx-auto ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>Save your home, office, or gift delivery destination for swift single-click checkout.</p>
-                  <button onClick={() => { setEditingAddress(null); setShowAddressModal(true) }} className="px-6 py-3 bg-luxury-gold text-luxury-black font-bold text-xs uppercase tracking-wider rounded-xl shadow-glow">Add Your First Address</button>
+                  <h3 className="text-lg font-serif font-bold">{t('profile.noAddresses', 'No Delivery Addresses Added')}</h3>
+                  <p className={`text-xs mt-1 mb-5 max-w-sm mx-auto ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                    {t('profile.noAddressesSubtitle', 'Save your home, office, or gift delivery destination for swift single-click checkout.')}
+                  </p>
+                  <button onClick={() => { setEditingAddress(null); setShowAddressModal(true) }} className="px-6 py-3 bg-luxury-gold text-luxury-black font-bold text-xs uppercase tracking-wider rounded-xl shadow-glow">
+                    {t('profile.addFirstAddress', 'Add Your First Address')}
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,18 +807,31 @@ function Profile() {
                     <div key={addr._id || i} className={`rounded-2xl border-2 p-5 transition-all relative ${cardBg} ${addr.isDefault ? 'border-luxury-gold shadow-glow' : 'border-current/10'}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 bg-luxury-gold/15 border border-luxury-gold/30 text-luxury-gold rounded-full text-[10px] font-extrabold uppercase tracking-wider">{addr.label || 'Home'}</span>
-                          {addr.isDefault && <span className="px-2.5 py-1 bg-luxury-gold text-luxury-black rounded-full text-[10px] font-extrabold uppercase">Default</span>}
+                          <span className="px-3 py-1 bg-luxury-gold/15 border border-luxury-gold/30 text-luxury-gold rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+                            {addr.label || (addr.type === 'office' ? t('profile.work', 'Work') : addr.type === 'other' ? t('profile.other', 'Other') : t('profile.home', 'Home'))}
+                          </span>
+                          {addr.isDefault && <span className="px-2.5 py-1 bg-luxury-gold text-luxury-black rounded-full text-[10px] font-extrabold uppercase">{t('profile.default', 'Default')}</span>}
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => { setEditingAddress(addr); setShowAddressModal(true) }} className="p-2 rounded-xl hover:bg-luxury-gold/15 text-luxury-gold transition-colors" title="Edit"><FiEdit2 size={15} /></button>
-                          <button onClick={() => handleDeleteAddress(addr._id)} className="p-2 rounded-xl hover:bg-red-500/15 text-red-400 transition-colors" title="Delete"><FiTrash2 size={15} /></button>
+                          <button onClick={() => { setEditingAddress(addr); setShowAddressModal(true) }} className="p-2 rounded-xl hover:bg-luxury-gold/15 text-luxury-gold transition-colors" title={t('profile.editAddress', 'Edit')}><FiEdit2 size={15} /></button>
+                          <button onClick={() => handleDeleteAddress(addr._id)} className="p-2 rounded-xl hover:bg-red-500/15 text-red-400 transition-colors" title={t('common.delete', 'Delete')}><FiTrash2 size={15} /></button>
                         </div>
                       </div>
                       <p className="text-sm font-semibold leading-relaxed">{addr.street}</p>
-                      {addr.landmark && <p className="text-xs opacity-75 mt-0.5">Landmark: {addr.landmark}</p>}
+                      {addr.landmark && <p className="text-xs opacity-75 mt-0.5">{t('profile.landmark', 'Landmark')}: {addr.landmark}</p>}
                       <p className="text-xs opacity-75 mt-1">{addr.city}, {addr.state} - <span className="font-mono font-bold">{addr.pincode || addr.postalCode}</span></p>
                       {addr.phone && <p className="text-xs opacity-60 font-mono mt-2">+91 {addr.phone}</p>}
+                      {!addr.isDefault && (
+                        <div className="pt-3 mt-3 border-t border-current/10 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultAddress(addr._id)}
+                            className="text-xs font-bold text-luxury-gold hover:text-luxury-darkGold flex items-center gap-1.5 transition-colors"
+                          >
+                            <FiCheck size={14} /> {t('profile.setAsDefault', 'Set as Default')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -957,7 +1072,7 @@ function Profile() {
         </main>
       </div>
 
-      {showAddressModal && <AddressModal address={editingAddress} onSave={handleSaveAddress} onClose={() => { setShowAddressModal(false); setEditingAddress(null) }} isDarkMode={isDarkMode} />}
+      {showAddressModal && <AddressModal address={editingAddress} onSave={handleSaveAddress} onClose={() => { setShowAddressModal(false); setEditingAddress(null) }} isDarkMode={isDarkMode} t={t} />}
       {showPhoneModal && <PhoneModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
       {showAvatarModal && (
         <AvatarModal

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle } from 'react-icons/fi'
+import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -26,6 +26,10 @@ function Checkout() {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [discountAmount, setDiscountAmount] = useState(0)
+
+  // ── Saved Addresses (from user profile) ──────────────────────────────────
+  const [savedAddresses, setSavedAddresses] = useState([])
+  const [selectedAddressId, setSelectedAddressId] = useState(null) // null = "New Address"
 
   const [shippingAddress, setShippingAddress] = useState({
     street: '',
@@ -106,6 +110,29 @@ function Checkout() {
     })
   }, [fetchDeliveryFee])
 
+  // ── Saved address picker handler ──────────────────────────────────────────
+  const handleSelectSavedAddress = useCallback((addr) => {
+    setSelectedAddressId(addr._id)
+    const mapped = {
+      street: addr.street || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      postalCode: addr.postalCode || addr.pincode || '',
+      country: addr.country || 'India'
+    }
+    setShippingAddress(mapped)
+    if (addr.phone) setPhone(addr.phone)
+    // Reset delivery fee and recalculate
+    setDeliveryInfo((prev) => ({ ...prev, calculated: false, error: null }))
+    if (mapped.city && mapped.postalCode) fetchDeliveryFee(mapped)
+  }, [fetchDeliveryFee])
+
+  const handleSelectNewAddress = useCallback(() => {
+    setSelectedAddressId(null)
+    setShippingAddress({ street: '', city: '', state: '', postalCode: '', country: 'India' })
+    setDeliveryInfo((prev) => ({ ...prev, calculated: false, error: null, deliveryFee: 0 }))
+  }, [])
+
   // ── Load user profile & default address ──────────────────────────────────
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -118,17 +145,10 @@ function Checkout() {
         try {
           const res = await userService.getAddresses()
           if (res.data?.addresses?.length > 0) {
+            setSavedAddresses(res.data.addresses)
             const defAddr = res.data.addresses.find((a) => a.isDefault) || res.data.addresses[0]
-            const addr = {
-              street: defAddr.street || '',
-              city: defAddr.city || '',
-              state: defAddr.state || '',
-              postalCode: defAddr.postalCode || '',
-              country: defAddr.country || 'India'
-            }
-            setShippingAddress(addr)
-            // Immediately calculate fee for saved address
-            if (addr.city && addr.postalCode) fetchDeliveryFee(addr)
+            // Auto-select the default/first saved address
+            handleSelectSavedAddress(defAddr)
           }
         } catch (err) {
           console.warn('Failed to load user address:', err.message)
@@ -136,7 +156,7 @@ function Checkout() {
       }
       fetchUserAddress()
     }
-  }, [isAuthenticated, user, fetchDeliveryFee])
+  }, [isAuthenticated, user, fetchDeliveryFee, handleSelectSavedAddress])
 
   // ── Coupon application ────────────────────────────────────────────────────
   const handleApplyCoupon = async () => {
@@ -459,6 +479,84 @@ function Checkout() {
             <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">
               2. Delivery Address
             </h2>
+
+            {/* ── Saved Address Switcher ── */}
+            {savedAddresses.length > 0 && (
+              <div className="mb-6">
+                <p className={`text-xs uppercase tracking-wider mb-3 font-semibold ${
+                  isDarkMode ? 'text-white/50' : 'text-gray-400'
+                }`}>
+                  Saved Addresses
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {savedAddresses.map((addr) => {
+                    const isSelected = selectedAddressId === addr._id
+                    return (
+                      <button
+                        key={addr._id}
+                        type="button"
+                        id={`saved-addr-${addr._id}`}
+                        onClick={() => handleSelectSavedAddress(addr)}
+                        className={`relative text-left p-3 rounded-xl border-2 transition-all duration-200 min-w-[160px] max-w-[220px] flex-shrink-0 ${
+                          isSelected
+                            ? 'border-luxury-gold bg-luxury-gold/10 shadow-sm'
+                            : isDarkMode
+                              ? 'border-white/10 bg-white/5 hover:border-luxury-gold/40'
+                              : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/40'
+                        }`}
+                      >
+                        {addr.isDefault && (
+                          <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 text-[9px] font-bold text-luxury-gold">
+                            <FiStar size={9} className="fill-luxury-gold" /> Default
+                          </span>
+                        )}
+                        <p className={`text-xs font-bold mb-0.5 pr-10 ${
+                          isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {addr.label || addr.type || 'Address'}
+                        </p>
+                        <p className={`text-[10px] leading-tight line-clamp-2 ${
+                          isDarkMode ? 'text-white/60' : 'text-gray-500'
+                        }`}>
+                          {addr.street}, {addr.city}
+                        </p>
+                        <p className={`text-[10px] font-mono mt-0.5 ${
+                          isDarkMode ? 'text-white/40' : 'text-gray-400'
+                        }`}>
+                          {addr.postalCode || addr.pincode}
+                        </p>
+                        {isSelected && (
+                          <div className="absolute bottom-1.5 right-1.5">
+                            <FiCheckCircle size={12} className="text-luxury-gold" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+
+                  {/* + New Address card */}
+                  <button
+                    type="button"
+                    id="checkout-new-address-btn"
+                    onClick={handleSelectNewAddress}
+                    className={`text-left p-3 rounded-xl border-2 border-dashed transition-all duration-200 min-w-[120px] flex flex-col items-center justify-center gap-1.5 ${
+                      selectedAddressId === null
+                        ? 'border-luxury-gold bg-luxury-gold/10'
+                        : isDarkMode
+                          ? 'border-white/10 hover:border-luxury-gold/40 text-white/50'
+                          : 'border-gray-200 hover:border-luxury-gold/40 text-gray-400'
+                    }`}
+                  >
+                    <FiPlus size={16} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      New Address
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Manual address form (always visible; populated by saved selection or blank for new) ── */}
             <div className="space-y-4">
               <div>
                 <label className={labelCls}>Street Address</label>
@@ -503,7 +601,7 @@ function Checkout() {
                 </div>
               </div>
 
-              {/* Live delivery fee status — label only, no distance shown to customer */}
+              {/* Live delivery fee status */}
               <div className={`mt-3 p-3 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                 <DeliveryFeeDisplay />
                 {deliveryInfo.calculated && !deliveryInfo.loading && (

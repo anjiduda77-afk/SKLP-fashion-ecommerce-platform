@@ -14,6 +14,7 @@ router.put('/change-password', verifyToken, asyncHandler(userController.changePa
 router.get('/addresses', verifyToken, asyncHandler(userController.getAddresses))
 router.post('/addresses', verifyToken, asyncHandler(userController.addAddress))
 router.put('/addresses/:addressId', verifyToken, asyncHandler(userController.updateAddress))
+router.put('/addresses/:addressId/default', verifyToken, asyncHandler(userController.setDefaultAddress))
 router.delete('/addresses/:addressId', verifyToken, asyncHandler(userController.deleteAddress))
 router.post('/upi', verifyToken, asyncHandler(userController.addSavedUpi))
 router.delete('/upi/:upiId', verifyToken, asyncHandler(userController.deleteSavedUpi))

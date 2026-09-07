@@ -17,3 +17,6 @@ logs/
 
 # Firebase Hosting
 .firebase/
+
+.vercel
+.env*

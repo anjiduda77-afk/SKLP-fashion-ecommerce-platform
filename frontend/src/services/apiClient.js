@@ -3,7 +3,8 @@ import axios from 'axios'
 // Detect environment: use Render URL as production fallback if VITE_API_URL is not set or points to localhost in production
 const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 const PROD_API = 'https://sklp-fashion-ecommerce-platform.onrender.com/api';
-const DEV_API  = 'http://localhost:5000/api';
+// In production builds, strictly use PROD_API so no localhost string exists in the compiled client bundle
+const DEV_API  = import.meta.env.DEV ? 'http://localhost:5000/api' : PROD_API;
 
 let configuredUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/['";]/g, '');
 

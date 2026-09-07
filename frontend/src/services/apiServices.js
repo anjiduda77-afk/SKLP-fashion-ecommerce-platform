@@ -148,6 +148,7 @@ export const userService = {
   getAddresses: () => apiClient.get('/users/addresses'),
   addAddress: (data) => apiClient.post('/users/addresses', data),
   updateAddress: (addressId, data) => apiClient.put(`/users/addresses/${addressId}`, data),
+  setDefaultAddress: (addressId) => apiClient.put(`/users/addresses/${addressId}/default`),
   deleteAddress: (addressId) => apiClient.delete(`/users/addresses/${addressId}`),
   addSavedUpi: (data) => apiClient.post('/users/upi', data),
   deleteSavedUpi: (upiId) => apiClient.delete(`/users/upi/${upiId}`),

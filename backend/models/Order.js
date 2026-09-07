@@ -116,6 +116,29 @@ const orderSchema = new mongoose.Schema({
       type: String,
       enum: ['PENDING', 'AVAILABLE', 'PAID', 'HELD', 'CANCELLED'],
       default: 'PENDING'
+    },
+    // Per-seller delivery attributes
+    deliveryMethod: {
+      type: String,
+      enum: ['self_delivery', 'delivery_partner'],
+      default: 'self_delivery'
+    },
+    deliveryDistanceKm: {
+      type: Number,
+      default: null
+    },
+    deliveryFee: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    deliveryLabel: {
+      type: String,
+      default: ''
+    },
+    deliveryUnavailable: {
+      type: Boolean,
+      default: false
     }
   }],
 

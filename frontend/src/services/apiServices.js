@@ -209,7 +209,8 @@ export const paymentService = {
 export const deliveryFeeService = {
   calculate: (address) => apiClient.post('/delivery-fee/calculate', address),
   getConfig: () => apiClient.get('/delivery-fee/config'),
-  updateConfig: (data) => apiClient.put('/delivery-fee/config', data)
+  updateConfig: (data) => apiClient.put('/delivery-fee/config', data),
+  togglePartner: (enabled) => apiClient.put('/delivery-fee/config/partner-toggle', { enabled })
 }
 
 /**

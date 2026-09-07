@@ -1,5 +1,22 @@
 import DeliveryConfig from '../models/DeliveryConfig.js'
 
+// ── Coordinate Validation Helpers ─────────────────────────────────────────────
+export const validateCoordinates = (lat, lng) => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false
+  if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return false
+  if (lat < -90 || lat > 90) return false
+  if (lng < -180 || lng > 180) return false
+  // Reject (0, 0) as invalid null island coordinates
+  if (lat === 0 && lng === 0) return false
+  return true
+}
+
+export const isIndiaCoordinates = (lat, lng) => {
+  if (!validateCoordinates(lat, lng)) return false
+  // India approx bounding box: 6°N to 38°N, 68°E to 98°E
+  return lat >= 6 && lat <= 38 && lng >= 68 && lng <= 98
+}
+
 // ── Haversine Distance ─────────────────────────────────────────────────────────
 // Returns straight-line distance in kilometres between two lat/lng coordinates.
 export const haversineDistance = (lat1, lng1, lat2, lng2) => {
@@ -97,48 +114,123 @@ export const getFeeFromSlabs = (distanceKm, slabs) => {
   return { fee: last.fee, label: last.label }
 }
 
-// ── Main: Calculate Full Delivery Breakdown ────────────────────────────────────
-// This is the single entry point used by both the /delivery-fee/calculate API
-// and the createOrder controller. Always runs server-side.
-export const calculateDeliveryBreakdown = async (shippingAddress) => {
-  const config = await DeliveryConfig.getConfig()
-  const { storeLocation, deliverySlabs, platformFeePercent } = config
+// ── Main: Calculate Full Delivery Breakdown for a Specific Seller ────────────
+export const calculateDeliveryBreakdownForSeller = async (
+  shippingAddress,
+  sellerLocation = null,
+  config = null,
+  subtotal = 0
+) => {
+  if (!config) {
+    config = await DeliveryConfig.getConfig()
+  }
+
+  const {
+    storeLocation,
+    deliverySlabs,
+    platformFeePercent,
+    deliveryPartnerEnabled,
+    maxServiceDistanceKm = 50,
+    freeDeliveryThresholdAmount = 0,
+    minimumDeliveryFee = 0
+  } = config
+
+  // Determine origin (seller shopLocation or default storeLocation)
+  let originLocation = storeLocation || { lat: 17.3850, lng: 78.4867, address: 'SKLP Fashion, Hyderabad, Telangana, India' }
+  if (sellerLocation && validateCoordinates(sellerLocation.lat, sellerLocation.lng)) {
+    originLocation = {
+      lat: sellerLocation.lat,
+      lng: sellerLocation.lng,
+      address: sellerLocation.address || `${sellerLocation.city || ''}, ${sellerLocation.state || ''}`.trim() || 'Seller Location'
+    }
+  }
+
+  const deliveryMethod = deliveryPartnerEnabled ? 'delivery_partner' : 'self_delivery'
 
   // Geocode customer address
   let customerCoords
   try {
     customerCoords = await geocodeAddress(shippingAddress)
   } catch (err) {
-    // Graceful fallback: if geocoding fails, apply maximum slab fee for safety
+    // Graceful fallback: if geocoding fails, apply fallback slab fee
     console.warn('[DeliveryUtils] Geocoding fallback active:', err.message)
     const slabs = deliverySlabs || []
     const maxSlab = [...slabs].sort((a, b) => b.minKm - a.minKm)[0]
+    let fallbackFee = maxSlab ? maxSlab.fee : 50
+
+    if (freeDeliveryThresholdAmount > 0 && subtotal >= freeDeliveryThresholdAmount) {
+      fallbackFee = 0
+    } else if (minimumDeliveryFee > 0 && fallbackFee > 0 && fallbackFee < minimumDeliveryFee) {
+      fallbackFee = minimumDeliveryFee
+    }
+
     return {
       distanceKm: null,
       geocodingFailed: true,
-      deliveryFee: maxSlab ? maxSlab.fee : 50,
-      deliveryLabel: (maxSlab ? maxSlab.label : 'Standard delivery charge: ₹50') + ' (location estimate)',
+      deliveryUnavailable: false,
+      deliveryFee: fallbackFee,
+      deliveryLabel: fallbackFee === 0
+        ? 'Free delivery 🎉'
+        : (maxSlab ? maxSlab.label : 'Standard delivery charge: ₹50') + ' (location estimate)',
       platformFeePercent: platformFeePercent ?? 5,
-      storeAddress: storeLocation?.address || 'SKLP Fashion, Hyderabad, Telangana, India'
+      originAddress: originLocation.address,
+      storeAddress: originLocation.address,
+      deliveryMethod
     }
   }
 
   const distanceKm = haversineDistance(
-    storeLocation.lat,
-    storeLocation.lng,
+    originLocation.lat,
+    originLocation.lng,
     customerCoords.lat,
     customerCoords.lng
   )
 
-  const { fee: deliveryFee, label: deliveryLabel } = getFeeFromSlabs(distanceKm, deliverySlabs)
+  // Check maximum serviceable distance
+  if (maxServiceDistanceKm && distanceKm > maxServiceDistanceKm) {
+    return {
+      distanceKm,
+      geocodingFailed: false,
+      deliveryUnavailable: true,
+      deliveryFee: 0,
+      deliveryLabel: `Delivery unavailable: distance (${distanceKm} km) exceeds service limit (${maxServiceDistanceKm} km)`,
+      platformFeePercent: platformFeePercent ?? 5,
+      originAddress: originLocation.address,
+      storeAddress: originLocation.address,
+      customerCoords,
+      deliveryMethod
+    }
+  }
+
+  let { fee: deliveryFee, label: deliveryLabel } = getFeeFromSlabs(distanceKm, deliverySlabs)
+
+  // Free delivery threshold override
+  if (freeDeliveryThresholdAmount > 0 && subtotal >= freeDeliveryThresholdAmount) {
+    deliveryFee = 0
+    deliveryLabel = `Free delivery for orders above ₹${freeDeliveryThresholdAmount} 🎉`
+  } else {
+    // Minimum fee floor
+    if (deliveryFee > 0 && minimumDeliveryFee > 0 && deliveryFee < minimumDeliveryFee) {
+      deliveryFee = minimumDeliveryFee
+      deliveryLabel = `Delivery charge: ₹${minimumDeliveryFee}`
+    }
+  }
 
   return {
     distanceKm,
     geocodingFailed: false,
+    deliveryUnavailable: false,
     deliveryFee,
     deliveryLabel,
-    platformFeePercent,
-    storeAddress: storeLocation.address,
-    customerCoords
+    platformFeePercent: platformFeePercent ?? 5,
+    originAddress: originLocation.address,
+    storeAddress: originLocation.address,
+    customerCoords,
+    deliveryMethod
   }
+}
+
+// ── Backward-Compatible calculateDeliveryBreakdown ─────────────────────────────
+export const calculateDeliveryBreakdown = async (shippingAddress, subtotal = 0) => {
+  return calculateDeliveryBreakdownForSeller(shippingAddress, null, null, subtotal)
 }

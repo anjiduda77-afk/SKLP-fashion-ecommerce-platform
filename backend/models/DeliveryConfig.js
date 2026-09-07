@@ -31,6 +31,19 @@ const deliveryConfigSchema = new mongoose.Schema({
     ]
   },
 
+  // Delivery Partner toggle (controlled by Admin)
+  // false = Self Delivery only; true = Self Delivery or Delivery Partner
+  deliveryPartnerEnabled: { type: Boolean, default: false },
+
+  // Maximum serviceable distance in kilometers (beyond this = delivery unavailable)
+  maxServiceDistanceKm: { type: Number, default: 50, min: 1 },
+
+  // Cart subtotal threshold for automatic free delivery (0 = disabled)
+  freeDeliveryThresholdAmount: { type: Number, default: 0, min: 0 },
+
+  // Floor on delivery fee (minimum fee charged unless free delivery applies)
+  minimumDeliveryFee: { type: Number, default: 0, min: 0 },
+
   // Platform fee percentage applied on subtotal
   platformFeePercent: { type: Number, default: 5, min: 0, max: 100 },
 

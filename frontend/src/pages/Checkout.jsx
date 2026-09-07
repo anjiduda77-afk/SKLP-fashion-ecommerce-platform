@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
@@ -15,6 +16,7 @@ const DEBOUNCE_MS = 900   // wait 900 ms after address changes before calling AP
 const PLATFORM_FEE_DEFAULT = 5  // fallback if backend not yet called
 
 function Checkout() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { cartItems, cartTotal, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
@@ -49,6 +51,8 @@ function Checkout() {
     distanceKm: null,
     deliveryFee: 0,
     deliveryLabel: '',
+    deliveryUnavailable: false,
+    deliveryMethod: 'self_delivery',
     platformFeePercent: PLATFORM_FEE_DEFAULT,
     loading: false,
     error: null,
@@ -57,12 +61,13 @@ function Checkout() {
 
   const debounceTimer = useRef(null)
 
-  // Derived totals — always computed from server-verified breakdown
-  const platformFee = parseFloat(((cartTotal * deliveryInfo.platformFeePercent) / 100).toFixed(2))
-  const deliveryFee = deliveryInfo.deliveryFee || 0
+  // Derived totals — always computed from server-verified breakdown with NaN guards
+  const safePlatformPercent = isFinite(deliveryInfo.platformFeePercent) ? deliveryInfo.platformFeePercent : PLATFORM_FEE_DEFAULT
+  const platformFee = isFinite(cartTotal) ? parseFloat(((cartTotal * safePlatformPercent) / 100).toFixed(2)) : 0
+  const deliveryFee = (isFinite(deliveryInfo.deliveryFee) && deliveryInfo.deliveryFee >= 0) ? deliveryInfo.deliveryFee : 0
   const orderFinalTotal = Math.max(
     0,
-    parseFloat((cartTotal + platformFee + deliveryFee - discountAmount).toFixed(2))
+    parseFloat(((isFinite(cartTotal) ? cartTotal : 0) + platformFee + deliveryFee - discountAmount).toFixed(2))
   )
 
   // ── Address change triggers debounced fee recalculation ───────────────────
@@ -72,17 +77,20 @@ function Checkout() {
 
     setDeliveryInfo((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const res = await deliveryFeeService.calculate(address)
+      const res = await deliveryFeeService.calculate({ ...address, subtotal: cartTotal })
       if (res.data?.success) {
         const d = res.data
+        const isUnavailable = Boolean(d.deliveryUnavailable)
         setDeliveryInfo({
-          distanceKm: d.distanceKm,
-          deliveryFee: d.deliveryFee,
-          deliveryLabel: d.deliveryLabel,
-          platformFeePercent: d.platformFeePercent ?? PLATFORM_FEE_DEFAULT,
+          distanceKm: isFinite(d.distanceKm) ? d.distanceKm : null,
+          deliveryFee: isFinite(d.deliveryFee) && d.deliveryFee >= 0 ? d.deliveryFee : 0,
+          deliveryLabel: d.deliveryLabel || '',
+          deliveryUnavailable: isUnavailable,
+          deliveryMethod: d.deliveryMethod || 'self_delivery',
+          platformFeePercent: isFinite(d.platformFeePercent) ? d.platformFeePercent : PLATFORM_FEE_DEFAULT,
           loading: false,
-          error: null,
-          calculated: true
+          error: isUnavailable ? (d.deliveryLabel || t('checkout.deliveryUnavailable', 'Delivery unavailable for this address')) : null,
+          calculated: !isUnavailable
         })
       }
     } catch (err) {
@@ -90,11 +98,12 @@ function Checkout() {
       setDeliveryInfo((prev) => ({
         ...prev,
         loading: false,
+        deliveryUnavailable: false,
         error: msg,
         calculated: false
       }))
     }
-  }, [])
+  }, [cartTotal, t])
 
   const handleAddressChange = useCallback((field, value) => {
     setShippingAddress((prev) => {
@@ -387,15 +396,18 @@ function Checkout() {
       return (
         <div className="flex items-center gap-2 text-xs opacity-60 animate-pulse">
           <FiTruck className="shrink-0" />
-          <span>Calculating delivery fee…</span>
+          <span>{t('checkout.calculatingDelivery', 'Calculating delivery fee…')}</span>
         </div>
       )
     }
-    if (deliveryInfo.error) {
+    if (deliveryInfo.deliveryUnavailable || deliveryInfo.error) {
       return (
         <div className="flex items-start gap-2 text-xs text-red-400">
-          <FiAlertCircle className="shrink-0 mt-0.5" />
-          <span>{deliveryInfo.error}</span>
+          <FiAlertCircle className="shrink-0 mt-0.5 text-red-400" />
+          <div>
+            <p className="font-semibold">{t('checkout.deliveryUnavailable', 'Delivery unavailable for this address')}</p>
+            <p className="opacity-75 text-[11px] mt-0.5">{deliveryInfo.error || t('checkout.deliveryUnavailableDesc', 'The delivery address exceeds our maximum serviceable distance.')}</p>
+          </div>
         </div>
       )
     }
@@ -403,7 +415,7 @@ function Checkout() {
       return (
         <div className="flex items-center gap-2 text-xs opacity-50">
           <FiMapPin className="shrink-0" />
-          <span>Enter your city and PIN code to calculate delivery fee</span>
+          <span>{t('checkout.enterPinToCalculate', 'Enter your city and PIN code to calculate delivery fee')}</span>
         </div>
       )
     }
@@ -604,12 +616,23 @@ function Checkout() {
               {/* Live delivery fee status */}
               <div className={`mt-3 p-3 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                 <DeliveryFeeDisplay />
-                {deliveryInfo.calculated && !deliveryInfo.loading && (
-                  <div className="flex items-center gap-2">
-                    <FiTruck className={`shrink-0 ${deliveryInfo.deliveryFee === 0 ? 'text-green-400' : 'text-amber-400'}`} />
-                    <p className={`text-sm font-semibold ${deliveryInfo.deliveryFee === 0 ? 'text-green-400' : isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {deliveryInfo.deliveryLabel}
-                    </p>
+                {deliveryInfo.calculated && !deliveryInfo.loading && !deliveryInfo.deliveryUnavailable && (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FiTruck className={`shrink-0 ${deliveryFee === 0 ? 'text-green-400' : 'text-amber-400'}`} />
+                      <p className={`text-sm font-semibold ${deliveryFee === 0 ? 'text-green-400' : isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        {deliveryInfo.deliveryLabel || (deliveryFee === 0 ? t('checkout.freeDelivery', 'Free Delivery') : `₹${deliveryFee}`)}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                      deliveryInfo.deliveryMethod === 'delivery_partner'
+                        ? 'border-blue-400/40 text-blue-400 bg-blue-400/10'
+                        : 'border-luxury-gold/40 text-luxury-gold bg-luxury-gold/10'
+                    }`}>
+                      {deliveryInfo.deliveryMethod === 'delivery_partner'
+                        ? t('checkout.deliveryPartner', 'Delivery Partner')
+                        : t('checkout.selfDelivery', 'Self Delivery')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -768,13 +791,18 @@ function Checkout() {
             {/* Place Order CTA */}
             <button
               type="submit"
-              disabled={loading || !deliveryInfo.calculated}
+              disabled={loading || !deliveryInfo.calculated || deliveryInfo.deliveryUnavailable}
               className="w-full py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl"
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-luxury-black border-t-transparent" />
-                  Placing Order…
+                  {t('checkout.placingOrder', 'Placing Order…')}
+                </>
+              ) : deliveryInfo.deliveryUnavailable ? (
+                <>
+                  <FiAlertCircle />
+                  {t('checkout.deliveryUnavailable', 'Delivery Unavailable')}
                 </>
               ) : !deliveryInfo.calculated ? (
                 <>
@@ -783,7 +811,7 @@ function Checkout() {
                 </>
               ) : (
                 <>
-                  PLACE ORDER <FiCheckCircle />
+                  {t('checkout.placeOrder', 'PLACE ORDER')} <FiCheckCircle />
                 </>
               )}
             </button>

@@ -132,26 +132,13 @@ export const createOrder = async (req, res) => {
   // ── 1. Calculate order item totals ────────────────────────────────────────
   const { items, subtotal, couponDiscount } = await calculateOrderTotals(cart, coupon)
 
-  // ── 2. Server-side delivery fee (NEVER trust client-sent fee) ─────────────
-  const { calculateDeliveryBreakdown } = await import('../utils/deliveryUtils.js')
-  const delivery = await calculateDeliveryBreakdown(shippingAddress)
-  const deliveryFee = delivery.deliveryFee
-  const deliveryLabel = delivery.deliveryLabel
-  const deliveryDistance = delivery.distanceKm
-
-  // ── 3. Platform fee (5% of subtotal) ──────────────────────────────────────
-  const platformFee = parseFloat(((subtotal * delivery.platformFeePercent) / 100).toFixed(2))
-
-  // ── 4. Final total: subtotal + platformFee + deliveryFee − couponDiscount ─
-  const totalAmount = Math.max(0, parseFloat(
-    (subtotal + platformFee + deliveryFee - couponDiscount).toFixed(2)
-  ))
-
   const orderNumber = `SKLP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`
 
-  // ── 5. Construct Multi-Seller Suborders ────────────────────────────────────
+  // ── 2. Construct Multi-Seller Suborders & Per-Seller Delivery Calculations ──
   const { default: Seller } = await import('../models/Seller.js')
-  const { default: SellerSettlement } = await import('../models/SellerSettlement.js')
+  const { default: DeliveryConfig } = await import('../models/DeliveryConfig.js')
+  const { calculateDeliveryBreakdownForSeller } = await import('../utils/deliveryUtils.js')
+  const config = await DeliveryConfig.getConfig()
 
   // Group items by sellerId
   const sellerGroups = {}
@@ -173,6 +160,7 @@ export const createOrder = async (req, res) => {
   for (const sKey of Object.keys(sellerGroups)) {
     const group = sellerGroups[sKey]
     let resolvedSellerId = group.sellerId
+    let sellerDoc = null
 
     if (!resolvedSellerId) {
       // Find or create default official seller record
@@ -188,12 +176,31 @@ export const createOrder = async (req, res) => {
         })
       }
       resolvedSellerId = officialSeller._id
+      sellerDoc = officialSeller
+    } else {
+      sellerDoc = await Seller.findById(resolvedSellerId).lean()
     }
 
     const subSubtotal = group.items.reduce((sum, it) => sum + it.finalPrice, 0)
-    const commissionRate = 5 // 5% marketplace commission
+    const commissionRate = sellerDoc?.commissionRate ?? 5
     const platformCommission = parseFloat(((subSubtotal * commissionRate) / 100).toFixed(2))
     const sellerPayout = parseFloat((subSubtotal - platformCommission).toFixed(2))
+
+    // Per-seller delivery breakdown
+    const sellerDelivery = await calculateDeliveryBreakdownForSeller(
+      shippingAddress,
+      sellerDoc?.shopLocation,
+      config,
+      subSubtotal
+    )
+
+    if (sellerDelivery.deliveryUnavailable) {
+      throw new ApiError(
+        422,
+        sellerDelivery.deliveryLabel ||
+          `Delivery unavailable to ${shippingAddress.city || shippingAddress.postalCode}: exceeds maximum delivery distance.`
+      )
+    }
 
     sellerSuborders.push({
       suborderId: `SUB_${orderNumber}_${subIndex++}`,
@@ -215,12 +222,31 @@ export const createOrder = async (req, res) => {
       sellerPayout,
       status: 'pending',
       trackingDetails: {
-        carrier: 'SKLP Express',
+        carrier: config.deliveryPartnerEnabled ? 'Partner Express' : 'SKLP Express',
         trackingNumber: `SKLP-SUB-${orderNumber.slice(-6)}-${subIndex}`
       },
-      settlementStatus: 'PENDING'
+      settlementStatus: 'PENDING',
+      deliveryMethod: sellerDelivery.deliveryMethod || 'self_delivery',
+      deliveryDistanceKm: sellerDelivery.distanceKm,
+      deliveryFee: sellerDelivery.deliveryFee,
+      deliveryLabel: sellerDelivery.deliveryLabel,
+      deliveryUnavailable: sellerDelivery.deliveryUnavailable || false
     })
   }
+
+  // ── 3. Server-side delivery fee summation across suborders ──────────────────
+  const deliveryFee = sellerSuborders.reduce((sum, s) => sum + (s.deliveryFee || 0), 0)
+  const validDistances = sellerSuborders.map(s => s.deliveryDistanceKm).filter(d => typeof d === 'number' && !isNaN(d))
+  const deliveryDistance = validDistances.length > 0 ? Math.max(...validDistances) : null
+  const deliveryLabel = deliveryFee === 0 ? 'Free delivery 🎉' : (sellerSuborders[0]?.deliveryLabel || `Delivery charge: ₹${deliveryFee}`)
+
+  // ── 4. Platform fee on subtotal ─────────────────────────────────────────────
+  const platformFee = parseFloat(((subtotal * (config.platformFeePercent ?? 5)) / 100).toFixed(2))
+
+  // ── 5. Final total: subtotal + platformFee + deliveryFee − couponDiscount ─
+  const totalAmount = Math.max(0, parseFloat(
+    (subtotal + platformFee + deliveryFee - couponDiscount).toFixed(2)
+  ))
 
   // ── 6. Razorpay Server-side Order Initialization ──────────────────────────
   let razorpayOrderId = null

@@ -449,9 +449,15 @@
     "deliveryFee": "డెలివరీ ఛార్జీ",
     "couponDiscount": "కూపన్ రాయితీ",
     "finalAmount": "తుది చెల్లింపు మొత్తం",
-    "agreeTerms": "ఈ ఆర్డర్ చేయడం ద్వారా మీరు SKLP సేవా నిబంధనలు మరియు విధానాలకు అంగీకరిస్తున్నారు.",
     "addressRequired": "దయచేసి సరైన డెలివరీ చిరునామాను ఎంచుకోండి",
-    "paymentMethodRequired": "దయచేసి ఒక చెల్లింపు విధానాన్ని ఎంచుకోండి"
+    "paymentMethodRequired": "దయచేసి ఒక చెల్లింపు విధానాన్ని ఎంచుకోండి",
+    "freeDelivery": "ఉచిత డెలివరీ",
+    "deliveryUnavailable": "ఈ చిరునామాకు డెలివరీ అందుబాటులో లేదు",
+    "deliveryUnavailableDesc": "ఈ చిరునామా మా గరిష్ట డెలివరీ పరిధిని మించి ఉంది.",
+    "selfDelivery": "స్వీయ డెలివరీ",
+    "deliveryPartner": "డెలివరీ భాగస్వామి",
+    "calculatingDelivery": "డెలివరీ ఛార్జీ లెక్కిస్తోంది...",
+    "enterPinToCalculate": "డెలివరీ ఛార్జీ తెలుసుకోవడానికి నగరం మరియు పిన్ కోడ్ నమోదు చేయండి"
   },
   "orders": {
     "title": "నా ఆర్డర్లు",

@@ -449,9 +449,15 @@
     "deliveryFee": "डिलीवरी शुल्क",
     "couponDiscount": "कूपन छूट",
     "finalAmount": "अंतिम देय राशि",
-    "agreeTerms": "यह ऑर्डर देकर आप SKLP सेवा शर्तों और गोपनीयता नीति से सहमत होते हैं।",
     "addressRequired": "कृपया वैध डिलीवरी पता चुनें",
-    "paymentMethodRequired": "कृपया भुगतान विकल्प चुनें"
+    "paymentMethodRequired": "कृपया भुगतान विकल्प चुनें",
+    "freeDelivery": "मुफ़्त डिलीवरी",
+    "deliveryUnavailable": "इस पते पर डिलीवरी उपलब्ध नहीं है",
+    "deliveryUnavailableDesc": "यह डिलीवरी पता हमारी अधिकतम सेवा दूरी से बाहर है।",
+    "selfDelivery": "स्वयं डिलीवरी",
+    "deliveryPartner": "डिलीवरी पार्टनर",
+    "calculatingDelivery": "डिलीवरी शुल्क की गणना हो रही है...",
+    "enterPinToCalculate": "डिलीवरी शुल्क जानने के लिए शहर और पिन कोड दर्ज करें"
   },
   "orders": {
     "title": "मेरे ऑर्डर",

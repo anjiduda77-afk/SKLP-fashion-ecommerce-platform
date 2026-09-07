@@ -153,6 +153,14 @@ const sellerSchema = new mongoose.Schema({
     acceptsReturns: { type: Boolean, default: true },
     returnPeriodDays: { type: Number, default: 7 },
     policyNotes: { type: String, default: '7-day easy return policy for unworn items with tags intact' }
+  },
+  shopLocation: {
+    lat: { type: Number },
+    lng: { type: Number },
+    address: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    pincode: { type: String, default: '' }
   }
 }, { timestamps: true })
 

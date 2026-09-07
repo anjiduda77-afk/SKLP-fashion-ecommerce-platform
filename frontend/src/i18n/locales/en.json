@@ -457,9 +457,15 @@
     "deliveryFee": "Delivery Charge",
     "couponDiscount": "Discount",
     "finalAmount": "Total Payable Amount",
-    "agreeTerms": "By placing order, you agree to our Terms of Service.",
     "addressRequired": "Please choose or enter a delivery address",
-    "paymentMethodRequired": "Please choose a payment method"
+    "paymentMethodRequired": "Please choose a payment method",
+    "freeDelivery": "Free Delivery",
+    "deliveryUnavailable": "Delivery unavailable for this address",
+    "deliveryUnavailableDesc": "The delivery address exceeds our maximum serviceable distance.",
+    "selfDelivery": "Self Delivery",
+    "deliveryPartner": "Delivery Partner",
+    "calculatingDelivery": "Calculating delivery fee...",
+    "enterPinToCalculate": "Enter your city and PIN code to calculate delivery fee"
   },
   "orders": {
     "title": "My Orders",

@@ -55,13 +55,17 @@ const deliveryConfigSchema = new mongoose.Schema({
 
 // ── Singleton Helper ──────────────────────────────────────────────────────────
 deliveryConfigSchema.statics.getConfig = async function () {
-  let config = await this.findOne().lean()
+  let config = await this.findOne()
   if (!config) {
     // Auto-create defaults on first use
-    const doc = await this.create({})
-    config = doc.toObject()
+    config = await this.create({})
   }
-  return config
+  const obj = config.toObject ? config.toObject() : config
+  if (obj.deliveryPartnerEnabled === undefined) obj.deliveryPartnerEnabled = false
+  if (obj.maxServiceDistanceKm === undefined) obj.maxServiceDistanceKm = 50
+  if (obj.freeDeliveryThresholdAmount === undefined) obj.freeDeliveryThresholdAmount = 0
+  if (obj.minimumDeliveryFee === undefined) obj.minimumDeliveryFee = 0
+  return obj
 }
 
 export default mongoose.model('DeliveryConfig', deliveryConfigSchema)

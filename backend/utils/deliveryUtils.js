@@ -82,8 +82,8 @@ export const geocodeAddress = async (address) => {
     }
   }
 
-  // Final fallback: postalCode only (PIN code lookup)
-  if (!coords && postalCode) {
+  // Final fallback: postalCode only (valid 6-digit Indian PIN code lookup)
+  if (!coords && postalCode && /^[1-9][0-9]{5}$/.test(postalCode)) {
     try {
       coords = await fetchCoords(`${postalCode} India`)
     } catch (e) {

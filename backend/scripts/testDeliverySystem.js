@@ -283,7 +283,7 @@ async function main() {
       }
       // Unresolvable random non-existent location
       const fallbackResult = await calculateDeliveryBreakdownForSeller(
-        { street: 'NonExistentStreetXYZ999', city: 'NonExistentCityXYZ999', postalCode: '000000', country: 'NowhereLand' },
+        { city: 'XyZqWrUnknownPlace987654321', postalCode: '000000' },
         null,
         mockConfig
       )
@@ -505,7 +505,7 @@ async function main() {
 
       // Add item to cart
       await axios.post(
-        `${BASE_URL}/cart`,
+        `${BASE_URL}/cart/items`,
         { productId: createdProductId.toString(), quantity: 1 },
         { headers: { Authorization: `Bearer ${customerToken}` } }
       )
@@ -555,7 +555,7 @@ async function main() {
       try {
         // Add item to cart
         await axios.post(
-          `${BASE_URL}/cart`,
+          `${BASE_URL}/cart/items`,
           { productId: createdProductId.toString(), quantity: 1 },
           { headers: { Authorization: `Bearer ${customerToken}` } }
         )

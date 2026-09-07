@@ -140,7 +140,14 @@ export const calculateDeliveryBreakdownForSeller = async (
   } = config
 
   // Determine origin (seller shopLocation or default storeLocation)
-  let originLocation = storeLocation || { lat: 17.3850, lng: 78.4867, address: 'SKLP Fashion, Hyderabad, Telangana, India' }
+  let originLocation = { lat: 17.3850, lng: 78.4867, address: 'SKLP Fashion, Hyderabad, Telangana, India' }
+  if (storeLocation && validateCoordinates(storeLocation.lat, storeLocation.lng)) {
+    originLocation = {
+      lat: storeLocation.lat,
+      lng: storeLocation.lng,
+      address: storeLocation.address || originLocation.address
+    }
+  }
   if (sellerLocation && validateCoordinates(sellerLocation.lat, sellerLocation.lng)) {
     originLocation = {
       lat: sellerLocation.lat,

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
+import apiClient from '../services/apiClient'
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const ShopContext = createContext()
 
 export const ShopProvider = ({ children }) => {
@@ -21,7 +20,7 @@ export const ShopProvider = ({ children }) => {
     setIsLoadingShops(true)
     try {
       const params = searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''
-      const res = await axios.get(`${API_BASE}/shops${params}`)
+      const res = await apiClient.get(`/shops${params}`)
       if (res.data?.success && Array.isArray(res.data.shops)) {
         setShopsList(res.data.shops)
       }

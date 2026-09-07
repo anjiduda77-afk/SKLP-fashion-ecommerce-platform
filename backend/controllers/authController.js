@@ -160,7 +160,6 @@ export const register = async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString('hex')
     user.emailVerificationToken = verificationToken
     user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    await user.save()
 
     const { token, refreshToken } = await issueAuthTokens(user, req)
     console.log('[MONGODB] Save successful: YES')
@@ -329,30 +328,17 @@ export const googleLogin = async (req, res) => {
 
   // 3. Strict Production Security: In production, unverified tokens are strictly blocked
   if (!email) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ApiError(401, 'Google sign-in was unsuccessful. Please try again.')
-    }
-    // Only in local development / unit testing when no Google credentials configured
-    if (googleAuthToken.includes('@')) {
-      email = googleAuthToken
-      firstName = 'Google'
-      lastName = 'Customer'
-      googleId = 'google_dev_' + Math.random().toString(36).substring(2, 9)
-    } else {
-      throw new ApiError(401, 'Google sign-in was unsuccessful. Please try again.')
-    }
+    throw new ApiError(401, 'Google sign-in was unsuccessful. Please try again.')
   }
 
-  const searchEmail = email.toLowerCase()
-  const productionAdminEmail = process.env.PRODUCTION_ADMIN_EMAIL?.trim().toLowerCase()
-  const isAdminEmail = Boolean(searchEmail && productionAdminEmail && searchEmail === productionAdminEmail)
+  const searchEmail = email.toLowerCase().trim()
 
   // UNIFIED IDENTITY RESOLUTION:
   // 1. Check by googleId first
   // 2. Then check by email
-  // 3. If found, link Google auth. If not, create new account.
+  // 3. If found, preserve existing database role and link Google auth. If not, create new account as customer.
   let user = await User.findOne({ googleId })
-  if (!user) {
+  if (!user && searchEmail) {
     user = await User.findOne({ email: searchEmail })
   }
 
@@ -369,24 +355,19 @@ export const googleLogin = async (req, res) => {
     if (avatarUrl && (!user.avatar || !user.avatar.url)) {
       user.avatar = { url: avatarUrl, publicId: null }
     }
-    // If explicitly authorized production Admin identity, ensure admin role
-    if (isAdminEmail) {
-      user.role = 'admin'
-    }
     // Update name only if it was a placeholder
     if ((!user.firstName || user.firstName === 'Customer') && firstName) user.firstName = firstName
     if ((!user.lastName || user.lastName === 'User') && lastName) user.lastName = lastName
     await user.save()
   } else {
-    // Create new account: ADMIN for authorized admin email, strictly CUSTOMER for all others
-    const assignedRole = isAdminEmail ? 'admin' : 'customer'
+    // New public registration strictly defaults to 'customer'
     user = await User.create({
-      firstName,
-      lastName,
+      firstName: firstName || 'Customer',
+      lastName: lastName || 'User',
       email: searchEmail,
       phone: undefined,
       authProvider: 'google',
-      role: assignedRole,
+      role: 'customer',
       isEmailVerified: true,
       isPhoneVerified: false,
       googleId,
@@ -414,37 +395,18 @@ export const firebaseLogin = async (req, res) => {
   const authHeader = req.headers.authorization
   const idToken = req.body.idToken || req.body.token || req.body.credential || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null)
 
-  let decodedToken
-  if (idToken) {
-    try {
-      decodedToken = await verifyFirebaseIdToken(idToken)
-      console.log('[AUTH] Firebase token verified successfully')
-    } catch (err) {
-      console.warn('[AUTH] Firebase Token Verification fallback note:', err.message)
-      if (req.body.email && (req.body.uid || req.body.googleId || req.body.name)) {
-        decodedToken = {
-          uid: req.body.uid || req.body.googleId || `goog_client_${Date.now()}`,
-          email: req.body.email,
-          name: req.body.name || 'Google User',
-          picture: req.body.picture || null,
-          email_verified: true
-        }
-      } else {
-        throw new ApiError(401, 'Invalid or expired Firebase authentication token')
-      }
-    }
-  } else if (req.body.email && (req.body.googleId || req.body.name || req.body.uid)) {
-    // Fallback simulation mode
-    decodedToken = {
-      uid: req.body.googleId || req.body.uid || `goog_sim_${Date.now()}`,
-      email: req.body.email,
-      name: req.body.name || 'Google User',
-      picture: req.body.picture || null,
-      email_verified: true
-    }
-  } else {
+  if (!idToken) {
     console.warn('[AUTH] Missing Firebase ID Token in request')
     throw new ApiError(400, 'Firebase ID Token is required')
+  }
+
+  let decodedToken
+  try {
+    decodedToken = await verifyFirebaseIdToken(idToken)
+    console.log('[AUTH] Firebase token verified successfully')
+  } catch (err) {
+    console.warn('[AUTH] Firebase Token Verification failed:', err.message)
+    throw new ApiError(401, 'Invalid or expired Firebase authentication token')
   }
 
   const { uid, email, name, picture, phone_number } = decodedToken
@@ -526,13 +488,8 @@ export const firebaseLogin = async (req, res) => {
     if ((!user.lastName || user.lastName === 'User') && lastName !== 'User') {
       user.lastName = lastName
     }
-    const productionAdminEmail = process.env.PRODUCTION_ADMIN_EMAIL?.trim().toLowerCase()
-    const isAdminEmail = Boolean(searchEmail && productionAdminEmail && searchEmail === productionAdminEmail)
 
-    if (isAdminEmail) {
-      user.role = 'admin'
-    }
-
+    // Preserve existing application user role from the database record (ADMIN stays ADMIN, CUSTOMER stays CUSTOMER)
     user.authProvider = user.authProvider || determinedProvider
     try {
       await user.save()
@@ -545,10 +502,11 @@ export const firebaseLogin = async (req, res) => {
       }
     }
   } else {
-    // Automatically create new account: ADMIN for authorized admin email, strictly CUSTOMER for all others
-    const productionAdminEmail = process.env.PRODUCTION_ADMIN_EMAIL?.trim().toLowerCase()
-    const isAdminEmail = Boolean(searchEmail && productionAdminEmail && searchEmail === productionAdminEmail)
-    const assignedRole = isAdminEmail ? 'admin' : 'customer'
+    // For newly registered users: default role is strictly CUSTOMER.
+    // Only server-configured admin bootstrap UID can assign ADMIN role.
+    const serverAdminUid = process.env.ADMIN_FIREBASE_UID?.trim()
+    const isServerConfiguredAdmin = Boolean(serverAdminUid && uid && uid === serverAdminUid)
+    const assignedRole = isServerConfiguredAdmin ? 'admin' : 'customer'
 
     console.log('[MONGODB] New user creation started, role:', assignedRole)
     console.log('[MONGODB] User.create called')

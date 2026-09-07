@@ -2,8 +2,8 @@ import admin from 'firebase-admin'
 import axios from 'axios'
 import jwt from 'jsonwebtoken'
 
-const projectId = process.env.FIREBASE_PROJECT_ID || 'sklp-fashion-store-9fa5d'
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
+const projectId = (process.env.FIREBASE_PROJECT_ID || 'sklp-fashion-store-9fa5d').trim().replace(/['";]/g, '')
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim().replace(/['";]/g, '')
 const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY
 const privateKey = rawPrivateKey
   ? rawPrivateKey.replace(/^["']|["']$/g, '').replace(/\\n/g, '\n').replace(/\r/g, '').trim()
@@ -34,8 +34,9 @@ if (!admin.apps.length) {
   }
 }
 
-// In-memory cache for Google's public x509 certificates used to verify Firebase ID Tokens
+// In-memory cache for Google's public x509 certificates used to verify Firebase ID Tokens & Google OAuth tokens
 let cachedFirebaseCerts = null
+let cachedGoogleOAuthCerts = null
 let certsExpiry = 0
 
 async function getFirebasePublicCertificates() {
@@ -56,6 +57,25 @@ async function getFirebasePublicCertificates() {
     console.warn('[FIREBASE CERTS] Error fetching public certs:', err.message)
   }
   return cachedFirebaseCerts || {}
+}
+
+async function getGoogleOAuthCertificates() {
+  const now = Date.now()
+  if (cachedGoogleOAuthCerts && now < certsExpiry) {
+    return cachedGoogleOAuthCerts
+  }
+  try {
+    const res = await axios.get('https://www.googleapis.com/oauth2/v1/certs', {
+      timeout: 8000
+    })
+    if (res.data && typeof res.data === 'object') {
+      cachedGoogleOAuthCerts = res.data
+      return cachedGoogleOAuthCerts
+    }
+  } catch (err) {
+    console.warn('[GOOGLE OAUTH CERTS] Error fetching certs:', err.message)
+  }
+  return cachedGoogleOAuthCerts || {}
 }
 
 /**
@@ -110,19 +130,32 @@ export const verifyFirebaseIdToken = async (idToken) => {
     }
   }
 
-  // 1. Direct Cryptographic Verification with Google Public Certificates
+  // 1. Direct Cryptographic Verification with Google Public Certificates (Firebase & Google OAuth)
   try {
     const unverified = jwt.decode(idToken, { complete: true })
     if (unverified?.header?.kid) {
       const kid = unverified.header.kid
-      const certs = await getFirebasePublicCertificates()
-      const cert = certs[kid]
+      const fbCerts = await getFirebasePublicCertificates()
+      let cert = fbCerts[kid]
+      let isGoogleOAuth = false
+
+      if (!cert) {
+        const googleCerts = await getGoogleOAuthCertificates()
+        cert = googleCerts[kid]
+        isGoogleOAuth = true
+      }
+
       if (cert) {
-        const decoded = jwt.verify(idToken, cert, {
+        const verifyOptions = {
           algorithms: ['RS256'],
-          issuer: `https://securetoken.google.com/${projectId}`,
-          audience: projectId
-        })
+          clockTolerance: 120 // 2 minutes tolerance for server clock skew
+        }
+        if (!isGoogleOAuth) {
+          verifyOptions.issuer = `https://securetoken.google.com/${projectId}`
+          verifyOptions.audience = projectId
+        }
+
+        const decoded = jwt.verify(idToken, cert, verifyOptions)
         if (decoded && (decoded.user_id || decoded.sub || decoded.uid)) {
           return {
             uid: decoded.user_id || decoded.sub || decoded.uid,
@@ -137,7 +170,7 @@ export const verifyFirebaseIdToken = async (idToken) => {
       }
     }
   } catch (certVerifyErr) {
-    console.warn('[FIREBASE PUBLIC CERT] Verification note:', certVerifyErr.message)
+    console.warn('[FIREBASE/GOOGLE PUBLIC CERT] Verification note:', certVerifyErr.message)
   }
 
   // 2. Try Firebase Admin SDK verification (if initialized with service account)

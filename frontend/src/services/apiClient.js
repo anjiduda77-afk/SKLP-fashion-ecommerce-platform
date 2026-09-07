@@ -1,11 +1,23 @@
 import axios from 'axios'
 
-// Detect environment: use Render URL as production fallback if VITE_API_URL is not set
+// Detect environment: use Render URL as production fallback if VITE_API_URL is not set or points to localhost in production
 const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 const PROD_API = 'https://sklp-fashion-ecommerce-platform.onrender.com/api';
 const DEV_API  = 'http://localhost:5000/api';
 
-let rawUrl = (import.meta.env.VITE_API_URL || (isProd ? PROD_API : DEV_API)).trim().replace(/['";]/g, '');
+let configuredUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/['";]/g, '');
+
+// In production, NEVER allow localhost or 127.0.0.1. Fall back to Render API URL.
+let rawUrl;
+if (isProd) {
+  if (!configuredUrl || configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1')) {
+    rawUrl = PROD_API;
+  } else {
+    rawUrl = configuredUrl;
+  }
+} else {
+  rawUrl = configuredUrl || DEV_API;
+}
 
 // Robust URL formatting: ensure it ends with /api and has no trailing slashes
 let API_URL = rawUrl.replace(/\/+$/, '');
@@ -37,10 +49,10 @@ const processQueue = (error, token = null) => {
   failedQueue = []
 }
 
-// Request interceptor - add token to requests
+// Request interceptor - add token to requests without overwriting explicitly provided tokens (e.g. Firebase ID tokens)
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config

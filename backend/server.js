@@ -71,13 +71,19 @@ const isOriginAllowed = (origin) => {
     return true;
   }
 
+  // Allow Firebase Hosting domains (*.web.app, *.firebaseapp.com)
+  if (normOrigin.endsWith('.web.app') || /\.web\.app$/.test(normOrigin) ||
+      normOrigin.endsWith('.firebaseapp.com') || /\.firebaseapp\.com$/.test(normOrigin)) {
+    return true;
+  }
+
   // Allow Render URLs (*.onrender.com)
   if (normOrigin.endsWith('.onrender.com') || /\.onrender\.com$/.test(normOrigin)) {
     return true;
   }
 
-  // Allow localhost on any port during local development
-  if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normOrigin)) {
+  // Allow localhost on any port
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normOrigin)) {
     return true;
   }
 

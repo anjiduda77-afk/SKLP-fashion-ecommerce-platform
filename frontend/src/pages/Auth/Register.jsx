@@ -165,7 +165,14 @@ function Register() {
           setGoogleLoading(true)
           toast.info('Completing Google authentication...')
           const idToken = await userCredential.user.getIdToken()
-          const res = await authService.firebaseLogin(idToken)
+          const payload = {
+            idToken,
+            email: userCredential.user.email,
+            name: userCredential.user.displayName,
+            picture: userCredential.user.photoURL,
+            uid: userCredential.user.uid
+          }
+          const res = await authService.firebaseLogin(payload)
           if (res.data?.success && res.data?.token) {
             const { user: userObj, token: authToken, refreshToken } = res.data
             login(userObj, authToken, refreshToken)

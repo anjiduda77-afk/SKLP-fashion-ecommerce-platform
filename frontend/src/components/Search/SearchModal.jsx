@@ -7,13 +7,11 @@ import {
   FiTrendingUp, FiTag, FiZap, FiChevronRight, FiAlertCircle
 } from 'react-icons/fi'
 import { RiStore2Line } from 'react-icons/ri'
-import axios from 'axios'
+import apiClient from '../../services/apiClient'
 import { useTheme } from '@context/ThemeContext'
 import { useShop } from '@context/ShopContext'
 import { useVoiceSearch } from '@hooks/useVoiceSearch'
 import { useSearchHistory } from '@hooks/useSearchHistory'
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 const TRENDING_FALLBACK = [
   'Gold Banarasi Silk Saree',
@@ -87,8 +85,8 @@ function SearchModal({ isOpen, onClose }) {
 
       try {
         const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
-        const res = await axios.get(
-          `${API_BASE}/search/suggestions?q=${encodeURIComponent(q.trim())}${shopParam}`,
+        const res = await apiClient.get(
+          `/search/suggestions?q=${encodeURIComponent(q.trim())}${shopParam}`,
           { signal: abortRef.current.signal }
         )
         if (res.data?.success) {

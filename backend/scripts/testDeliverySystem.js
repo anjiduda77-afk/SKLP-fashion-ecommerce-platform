@@ -283,7 +283,7 @@ async function main() {
       }
       // Unresolvable random non-existent location
       const fallbackResult = await calculateDeliveryBreakdownForSeller(
-        { city: 'XyZqWrUnknownPlace987654321', postalCode: '000000' },
+        { street: 'NonExistentStreetXYZ999', city: 'NonExistentCityXYZ999', postalCode: '000000', country: 'NowhereLand' },
         null,
         mockConfig
       )
@@ -315,13 +315,14 @@ async function main() {
 
     // Register a test customer for customer-level tests
     console.log('  → Creating test customer for role checks...')
+    const uniquePhone = '9' + Math.floor(100000000 + Math.random() * 900000000)
     try {
       const custRes = await axios.post(`${BASE_URL}/auth/register`, {
         firstName: 'Delivery',
         lastName: 'Tester',
         email: TEST_CUSTOMER_EMAIL,
         password: TEST_CUSTOMER_PASS,
-        phone: '9876543210'
+        phone: uniquePhone
       })
       customerToken = custRes.data.token
       customerUser = custRes.data.user

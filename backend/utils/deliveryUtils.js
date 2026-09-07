@@ -58,7 +58,11 @@ export const geocodeAddress = async (address) => {
     if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`)
     const data = await res.json()
     if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      const match = data[0]
+      if (match.addresstype === 'country' || match.type === 'country') {
+        return null
+      }
+      return { lat: parseFloat(match.lat), lng: parseFloat(match.lon) }
     }
     return null
   }

@@ -8,7 +8,7 @@ services:
     plan: free
     region: oregon
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm ci --omit=optional
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
@@ -19,6 +19,8 @@ services:
         value: 10000
       - key: MONGODB_URI
         sync: false
+        # Set this in Render Dashboard > Environment
+        # MongoDB Atlas: whitelist 0.0.0.0/0 in Network Access
       - key: PRODUCTION_ADMIN_EMAIL
         value: anjiduda77@gmail.com
       - key: JWT_SECRET
@@ -31,10 +33,17 @@ services:
         value: 30d
       - key: FRONTEND_URL
         sync: false
+        # Set to your Vercel URL e.g. https://sklp-fashion-ecommerce-platform.vercel.app
+      - key: ADMIN_FRONTEND_URL
+        sync: false
+        # Set to same Vercel URL if no separate admin panel
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+        # Set this to validate Razorpay webhook signatures
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -46,10 +55,25 @@ services:
       - key: TWOFACTOR_API_KEY
         sync: false
       - key: FIREBASE_PROJECT_ID
-        sync: false
+        value: sklp-fashion-store-9fa5d
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY
+        sync: false
+        # Paste full private key with \n newlines, wrap in double quotes in Render dashboard
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false
       - key: ENABLE_AI_FEATURES
         value: "true"

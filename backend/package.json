@@ -54,6 +54,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "razorpay": "^2.9.2",
+    "sklp-fashion-ecommerce": "file:..",
     "slugify": "^1.6.6",
     "socket.io": "^4.7.2",
     "stripe": "^14.7.0",

@@ -19,7 +19,7 @@ import { verifyPanWithProvider } from '../services/kyc/panKycService.js';
 import { verifyBankAccountWithProvider } from '../services/kyc/bankKycService.js';
 import { evaluateIdentityConsistency } from '../services/kyc/nameMatchingService.js';
 import { createAuditEntry, AUDIT_EVENTS } from '../services/kyc/kycAuditService.js';
-import ApiError from '../utils/ApiError.js';
+import { ApiError } from '../middleware/errorHandler.js';
 
 /**
  * Helper to retrieve or create the authenticated user's SellerKYC record

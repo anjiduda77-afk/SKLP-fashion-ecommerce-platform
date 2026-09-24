@@ -233,6 +233,31 @@ export const submitSellerApplication = async (req, res) => {
     timestamp: new Date()
   })
 
+  // Synchronize or link SellerKYC record
+  try {
+    const SellerKYC = (await import('../models/SellerKYC.js')).default;
+    let kyc = await SellerKYC.findOne({ userId });
+    if (!kyc) {
+      kyc = new SellerKYC({
+        userId,
+        applicationId: application._id,
+        applicantName: application.applicantName,
+        overallStatus: 'NOT_STARTED'
+      });
+    } else {
+      kyc.applicationId = application._id;
+      kyc.applicantName = application.applicantName;
+    }
+    if (documents && Array.isArray(documents)) {
+      kyc.documents = documents;
+    }
+    await kyc.save();
+    application.kyc = kyc._id;
+    application.kycStatus = kyc.overallStatus;
+  } catch (_kycErr) {
+    // Non-fatal if KYC sync encounters minor error
+  }
+
   await application.save()
 
   res.status(200).json({
@@ -328,6 +353,19 @@ export const reviewSellerApplication = async (req, res) => {
   const oldStatus = application.status
 
   if (action === 'APPROVE') {
+    // Check KYC status: if identity mismatch, prevent wrongful approval
+    try {
+      const SellerKYC = (await import('../models/SellerKYC.js')).default;
+      const kyc = await SellerKYC.findOne({
+        $or: [{ applicationId: application._id }, { userId: application.userId }]
+      });
+      if (kyc && kyc.nameMatching?.status === 'MISMATCH') {
+        throw new ApiError(400, 'Cannot approve seller: Severe identity mismatch detected across government documents. Applicant must clarify legal identity.');
+      }
+    } catch (kycCheckErr) {
+      if (kycCheckErr instanceof ApiError) throw kycCheckErr;
+    }
+
     application.status = 'APPROVED'
     application.adminNotes = notes || 'Application approved by administrator.'
     application.reviewedBy = adminId
@@ -388,6 +426,17 @@ export const reviewSellerApplication = async (req, res) => {
       seller.riskStatus = 'ACTIVE'
     }
     await seller.save()
+
+    // Link KYC record to newly activated Seller profile
+    try {
+      const SellerKYC = (await import('../models/SellerKYC.js')).default;
+      await SellerKYC.findOneAndUpdate(
+        { $or: [{ applicationId: application._id }, { userId: application.userId }] },
+        { sellerId: seller._id }
+      );
+    } catch (_kycLinkErr) {
+      // non-fatal
+    }
 
     // 3. Initialize 30-Day Free Trial Subscription
     let subscription = await Subscription.findOne({ sellerId: seller._id })

@@ -64,11 +64,19 @@ export const adminRateLimiter = rateLimit({
   message: 'Rate limit exceeded for admin operations'
 });
 
-// Create rate limiter
-export const createResourceLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5, // 5 creates per minute
-  message: 'You are creating resources too quickly, please try again later'
+// KYC verification rate limiter (strictly protects Aadhaar, PAN, Bank, and OTP operations)
+export const kycRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 20, // 20 verification attempts per 10 minutes
+  message: {
+    success: false,
+    message: 'Too many KYC verification attempts. Please wait a few minutes before trying again.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.user?.id || req.body?.panNumber || req.body?.aadhaarNumber || req.ip;
+  }
 });
 
 export default rateLimiter;

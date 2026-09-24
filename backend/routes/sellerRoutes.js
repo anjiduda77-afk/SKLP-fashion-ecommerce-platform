@@ -9,16 +9,26 @@ import * as sellerOfferController from '../controllers/sellerOfferController.js'
 import * as settlementController from '../controllers/settlementController.js'
 import * as subscriptionController from '../controllers/subscriptionController.js'
 import * as receiptController from '../controllers/receiptController.js'
+import * as sellerKycController from '../controllers/sellerKycController.js'
+import { kycRateLimiter } from '../middleware/rateLimiter.js'
 
 const router = express.Router()
 
 // All routes require login
 router.use(verifyToken)
 
-// ── 1. Seller Onboarding / Application (Any Authenticated Customer) ─────────
+// ── 1. Seller Onboarding / Application & KYC (Any Authenticated Applicant) ──
 router.get('/check-shop-name', asyncHandler(sellerApplicationController.checkShopNameAvailability))
 router.post('/apply', asyncHandler(sellerApplicationController.submitSellerApplication))
 router.get('/application/status', asyncHandler(sellerApplicationController.getMyApplicationStatus))
+
+// Genuine Multi-Point KYC Verification
+router.get('/kyc/status', asyncHandler(sellerKycController.getMyKycStatus))
+router.post('/kyc/phone/verify', kycRateLimiter, asyncHandler(sellerKycController.verifyPhoneKyc))
+router.post('/kyc/aadhaar/start', kycRateLimiter, asyncHandler(sellerKycController.startAadhaarKyc))
+router.post('/kyc/aadhaar/verify', kycRateLimiter, asyncHandler(sellerKycController.completeAadhaarKyc))
+router.post('/kyc/pan/verify', kycRateLimiter, asyncHandler(sellerKycController.verifyPanKyc))
+router.post('/kyc/bank/verify', kycRateLimiter, asyncHandler(sellerKycController.verifyBankKyc))
 
 // ── 2. Seller-Only Protected Routes ──────────────────────────────────────────
 router.use(verifyRole(['seller', 'admin']))

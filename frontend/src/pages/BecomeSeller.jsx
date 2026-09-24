@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerApplicationService, uploadService } from '@services/apiServices'
+import SellerKycProgress from '../components/KYC/SellerKycProgress'
 
 function BecomeSeller() {
   const navigate = useNavigate()
@@ -498,8 +499,15 @@ function BecomeSeller() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
               <div className="border-b pb-3 border-white/10">
                 <h3 className={`text-lg font-bold ${textPrimary}`}>2. Identity & KYC Verification</h3>
-                <p className={`text-xs ${textSecondary}`}>Upload your documents for safe marketplace onboarding.</p>
+                <p className={`text-xs ${textSecondary}`}>Verified identity through real government and banking identity infrastructure.</p>
               </div>
+
+              {/* Multi-Point KYC Real Verification Suite */}
+              <SellerKycProgress
+                isDarkMode={isDarkMode}
+                formData={formData}
+                setFormData={setFormData}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

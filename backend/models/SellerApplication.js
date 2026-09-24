@@ -205,6 +205,16 @@ const sellerApplicationSchema = new mongoose.Schema({
     ref: 'User'
   },
   reviewedAt: Date,
+  kyc: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SellerKYC'
+  },
+  kycStatus: {
+    type: String,
+    enum: ['NOT_STARTED', 'IN_PROGRESS', 'PARTIALLY_VERIFIED', 'VERIFIED', 'NEEDS_REVIEW', 'FAILED', 'REJECTED'],
+    default: 'NOT_STARTED',
+    index: true
+  },
   auditLogs: [auditLogSchema]
 }, { timestamps: true })
 

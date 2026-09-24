@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import adminService from '../../services/adminService'
+import kycService from '../../services/kycService'
 
 const STATUS_CONFIG = {
   PENDING_REVIEW:        { label: 'Pending Review',   color: 'yellow', icon: FiClock },
@@ -119,6 +120,9 @@ function ActionModal({ app, actionType, onClose, onConfirm, isDarkMode }) {
 
 function ApplicationCard({ app, isDarkMode, onAction }) {
   const [expanded, setExpanded] = useState(false)
+  const [kycData, setKycData] = useState(null)
+  const [kycLoading, setKycLoading] = useState(false)
+
   const sCfg = STATUS_CONFIG[app.status] || STATUS_CONFIG.PENDING_REVIEW
   const rCfg = RISK_CONFIG[app.riskLevel] || RISK_CONFIG.LOW_RISK
   const SIcon = sCfg.icon
@@ -126,6 +130,18 @@ function ApplicationCard({ app, isDarkMode, onAction }) {
   const ts = isDarkMode ? 'text-luxury-mediumGray' : 'text-gray-500'
   const cb = isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'
   const ib = isDarkMode ? 'bg-luxury-black/40 border-luxury-darkGray' : 'bg-gray-50 border-gray-200'
+
+  useEffect(() => {
+    if (expanded && !kycData) {
+      setKycLoading(true)
+      kycService.getAdminApplicationKyc(app._id)
+        .then(res => {
+          if (res.data?.success) setKycData(res.data.kyc)
+        })
+        .catch(err => console.warn('Could not load KYC dossier:', err.message))
+        .finally(() => setKycLoading(false))
+    }
+  }, [expanded, app._id, kycData])
 
   const flags = (app.riskFlags || []).filter(f => !['DUPLICATE_RISK','REVIEW_REQUIRED'].includes(f))
 
@@ -180,6 +196,59 @@ function ApplicationCard({ app, isDarkMode, onAction }) {
 
       {expanded && (
         <div className={`border-t px-5 py-4 space-y-3 ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-100'}`}>
+          {/* Real Government & Banking KYC Dossier */}
+          <div className={`p-3.5 rounded-xl border space-y-2.5 ${isDarkMode ? 'bg-luxury-black/30 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-luxury-gold flex items-center gap-1.5">
+                <FiShield size={12}/> Genuine KYC Verification Dossier
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${kycData?.overallStatus === 'VERIFIED' ? CC.green : kycData?.overallStatus === 'NEEDS_REVIEW' ? CC.orange : CC.yellow}`}>
+                {kycData?.overallStatus || 'PENDING'}
+              </span>
+            </div>
+
+            {kycLoading ? (
+              <p className={`text-xs ${ts} animate-pulse`}>Loading provider verification states…</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className={`p-2 rounded-lg border ${ib}`}>
+                  <p className={`text-[10px] ${ts}`}>Phone (Firebase)</p>
+                  <p className="font-bold text-xs mt-0.5 flex items-center gap-1">
+                    {kycData?.phone?.status === 'VERIFIED' ? <span className="text-green-500">✓ VERIFIED</span> : <span className="text-yellow-500">○ PENDING</span>}
+                  </p>
+                  {kycData?.phone?.phoneMasked && <p className={`text-[10px] font-mono mt-0.5 ${ts}`}>{kycData.phone.phoneMasked}</p>}
+                </div>
+                <div className={`p-2 rounded-lg border ${ib}`}>
+                  <p className={`text-[10px] ${ts}`}>Aadhaar (Sub-AUA)</p>
+                  <p className="font-bold text-xs mt-0.5 flex items-center gap-1">
+                    {kycData?.aadhaar?.status === 'VERIFIED' ? <span className="text-green-500">✓ VERIFIED</span> : <span className="text-yellow-500">○ {kycData?.aadhaar?.status || 'PENDING'}</span>}
+                  </p>
+                  {kycData?.aadhaar?.aadhaarMasked && <p className={`text-[10px] font-mono mt-0.5 ${ts}`}>{kycData.aadhaar.aadhaarMasked}</p>}
+                </div>
+                <div className={`p-2 rounded-lg border ${ib}`}>
+                  <p className={`text-[10px] ${ts}`}>PAN (ITD Records)</p>
+                  <p className="font-bold text-xs mt-0.5 flex items-center gap-1">
+                    {kycData?.pan?.status === 'VERIFIED' ? <span className="text-green-500">✓ VERIFIED</span> : <span className="text-yellow-500">○ {kycData?.pan?.status || 'PENDING'}</span>}
+                  </p>
+                  {kycData?.pan?.panMasked && <p className={`text-[10px] font-mono mt-0.5 ${ts}`}>{kycData.pan.panMasked}</p>}
+                </div>
+                <div className={`p-2 rounded-lg border ${ib}`}>
+                  <p className={`text-[10px] ${ts}`}>Bank (NPCI)</p>
+                  <p className="font-bold text-xs mt-0.5 flex items-center gap-1">
+                    {kycData?.bank?.status === 'VERIFIED' ? <span className="text-green-500">✓ VERIFIED</span> : <span className="text-yellow-500">○ {kycData?.bank?.status || 'PENDING'}</span>}
+                  </p>
+                  {kycData?.bank?.accountMasked && <p className={`text-[10px] font-mono mt-0.5 ${ts}`}>{kycData.bank.accountMasked}</p>}
+                </div>
+              </div>
+            )}
+
+            {kycData?.nameMatching && kycData.nameMatching.status !== 'UNAVAILABLE' && (
+              <div className={`p-2 rounded-lg border text-[11px] ${kycData.nameMatching.status === 'MATCHED' ? 'bg-green-500/10 text-green-500 border-green-500/20' : kycData.nameMatching.status === 'MISMATCH' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                <span className="font-bold">Identity Cross-Match: {kycData.nameMatching.status} ({kycData.nameMatching.averageScore}%) — </span>
+                <span>{kycData.nameMatching.notes}</span>
+              </div>
+            )}
+          </div>
           {(app.documents||[]).length > 0 && (
             <div>
               <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${ts}`}>Documents</p>

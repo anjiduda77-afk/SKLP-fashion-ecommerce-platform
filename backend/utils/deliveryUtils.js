@@ -102,18 +102,40 @@ export const geocodeAddress = async (address) => {
 }
 
 // ── Fee from Slab ─────────────────────────────────────────────────────────────
-// Returns the matching slab for a given distance in km.
+// ── Exact Platform Delivery Slab Calculation ────────────────────────────────
+// Fixed platform slabs:
+// 0 to 6 km    → ₹10 (exact boundary: <= 6.0 km)
+// >6 to 12 km  → ₹20 (exact boundary: 6.1 to 12.0 km)
+// >12 to 40 km → ₹30 (exact boundary: 12.1 to 40.0 km)
+// >40 km       → ₹50 (exact boundary: > 40.0 km)
+export const calculatePlatformSlabFee = (distanceKm) => {
+  if (typeof distanceKm !== 'number' || isNaN(distanceKm) || distanceKm <= 0) {
+    return { fee: 10, label: 'Delivery charge: ₹10 (0 - 6 km)' }
+  }
+  if (distanceKm <= 6.0) {
+    return { fee: 10, label: 'Delivery charge: ₹10 (0 - 6 km)' }
+  }
+  if (distanceKm <= 12.0) {
+    return { fee: 20, label: 'Delivery charge: ₹20 (6 - 12 km)' }
+  }
+  if (distanceKm <= 40.0) {
+    return { fee: 30, label: 'Delivery charge: ₹30 (12 - 40 km)' }
+  }
+  return { fee: 50, label: 'Delivery charge: ₹50 (>40 km)' }
+}
+
+// ── Fee from Slab ─────────────────────────────────────────────────────────────
+// Returns the matching slab for a given distance in km (falls back to platform rule).
 export const getFeeFromSlabs = (distanceKm, slabs) => {
   if (!slabs || slabs.length === 0) {
-    return { fee: 40, label: 'Standard delivery charge' }
+    return calculatePlatformSlabFee(distanceKm)
   }
   const sorted = [...slabs].sort((a, b) => a.minKm - b.minKm)
   for (const slab of sorted) {
-    if (distanceKm >= slab.minKm && distanceKm < slab.maxKm) {
+    if (distanceKm >= slab.minKm && distanceKm <= slab.maxKm) {
       return { fee: slab.fee, label: slab.label }
     }
   }
-  // Beyond all slabs — use the last slab's fee
   const last = sorted[sorted.length - 1]
   return { fee: last.fee, label: last.label }
 }
@@ -123,7 +145,8 @@ export const calculateDeliveryBreakdownForSeller = async (
   shippingAddress,
   sellerLocation = null,
   config = null,
-  subtotal = 0
+  subtotal = 0,
+  deliveryMode = 'PAID_DELIVERY'
 ) => {
   if (!config) {
     config = await DeliveryConfig.getConfig()
@@ -134,13 +157,16 @@ export const calculateDeliveryBreakdownForSeller = async (
     deliverySlabs,
     platformFeePercent,
     deliveryPartnerEnabled,
-    maxServiceDistanceKm = 50,
+    maxServiceDistanceKm = 4000,
     freeDeliveryThresholdAmount = 0,
     minimumDeliveryFee = 0
   } = config
 
-  // Determine origin (seller shopLocation or default storeLocation)
-  let originLocation = { lat: 17.3850, lng: 78.4867, address: 'SKLP Fashion, Hyderabad, Telangana, India' }
+  // Check Seller Delivery Mode first (FREE DELIVERY vs PAID DELIVERY)
+  const isSellerFreeDelivery = deliveryMode === 'FREE_DELIVERY'
+
+  // Determine origin (seller pickup/shop location or default storeLocation)
+  let originLocation = { lat: 17.3850, lng: 78.4867, address: 'Style Street Fashion, Hyderabad, Telangana, India' }
   if (storeLocation && validateCoordinates(storeLocation.lat, storeLocation.lng)) {
     originLocation = {
       lat: storeLocation.lat,
@@ -158,16 +184,28 @@ export const calculateDeliveryBreakdownForSeller = async (
 
   const deliveryMethod = deliveryPartnerEnabled ? 'delivery_partner' : 'self_delivery'
 
+  if (isSellerFreeDelivery) {
+    return {
+      distanceKm: 0,
+      geocodingFailed: false,
+      deliveryUnavailable: false,
+      deliveryFee: 0,
+      deliveryLabel: 'Free delivery by seller 🎉',
+      platformFeePercent: platformFeePercent ?? 5,
+      originAddress: originLocation.address,
+      storeAddress: originLocation.address,
+      deliveryMethod,
+      isFreeDelivery: true
+    }
+  }
+
   // Geocode customer address
   let customerCoords
   try {
     customerCoords = await geocodeAddress(shippingAddress)
   } catch (err) {
-    // Graceful fallback: if geocoding fails, apply fallback slab fee
     console.warn('[DeliveryUtils] Geocoding fallback active:', err.message)
-    const slabs = deliverySlabs || []
-    const maxSlab = [...slabs].sort((a, b) => b.minKm - a.minKm)[0]
-    let fallbackFee = maxSlab ? maxSlab.fee : 50
+    let fallbackFee = 50
 
     if (freeDeliveryThresholdAmount > 0 && subtotal >= freeDeliveryThresholdAmount) {
       fallbackFee = 0
@@ -182,11 +220,12 @@ export const calculateDeliveryBreakdownForSeller = async (
       deliveryFee: fallbackFee,
       deliveryLabel: fallbackFee === 0
         ? 'Free delivery 🎉'
-        : (maxSlab ? maxSlab.label : 'Standard delivery charge: ₹50') + ' (location estimate)',
+        : 'Standard delivery charge: ₹50 (location estimate)',
       platformFeePercent: platformFeePercent ?? 5,
       originAddress: originLocation.address,
       storeAddress: originLocation.address,
-      deliveryMethod
+      deliveryMethod,
+      isFreeDelivery: false
     }
   }
 
@@ -197,8 +236,14 @@ export const calculateDeliveryBreakdownForSeller = async (
     customerCoords.lng
   )
 
-  // Check maximum serviceable distance
-  if (maxServiceDistanceKm && distanceKm > maxServiceDistanceKm) {
+  // Check maximum serviceable distance:
+  // For distances >= 50 km (or beyond 40 km), delivery is available nationwide across India at ₹50 ("50 km more chargies 50rs").
+  // Legacy 50km limits are seamlessly served at the ₹50 slab.
+  // Only explicitly configured strict local limits (< 50 km) or distances beyond India (> 4000 km) are marked unavailable.
+  const isStrictLocalLimit = typeof maxServiceDistanceKm === 'number' && maxServiceDistanceKm > 0 && maxServiceDistanceKm < 50
+  const exceedsSubcontinentLimit = distanceKm > (typeof maxServiceDistanceKm === 'number' && maxServiceDistanceKm >= 50 ? Math.max(maxServiceDistanceKm, 4000) : 4000)
+
+  if ((isStrictLocalLimit && distanceKm > maxServiceDistanceKm) || exceedsSubcontinentLimit) {
     return {
       distanceKm,
       geocodingFailed: false,
@@ -209,22 +254,22 @@ export const calculateDeliveryBreakdownForSeller = async (
       originAddress: originLocation.address,
       storeAddress: originLocation.address,
       customerCoords,
-      deliveryMethod
+      deliveryMethod,
+      isFreeDelivery: false
     }
   }
 
-  let { fee: deliveryFee, label: deliveryLabel } = getFeeFromSlabs(distanceKm, deliverySlabs)
+  // Calculate fee from platform slab boundaries:
+  // 0-6 km: ₹10, 6.1-12 km: ₹20, 12.1-40 km: ₹30, >40 km: ₹50
+  let { fee: deliveryFee, label: deliveryLabel } = calculatePlatformSlabFee(distanceKm)
 
   // Free delivery threshold override
   if (freeDeliveryThresholdAmount > 0 && subtotal >= freeDeliveryThresholdAmount) {
     deliveryFee = 0
     deliveryLabel = `Free delivery for orders above ₹${freeDeliveryThresholdAmount} 🎉`
-  } else {
-    // Minimum fee floor
-    if (deliveryFee > 0 && minimumDeliveryFee > 0 && deliveryFee < minimumDeliveryFee) {
-      deliveryFee = minimumDeliveryFee
-      deliveryLabel = `Delivery charge: ₹${minimumDeliveryFee}`
-    }
+  } else if (minimumDeliveryFee > 0 && deliveryFee > 0 && deliveryFee < minimumDeliveryFee) {
+    deliveryFee = minimumDeliveryFee
+    deliveryLabel = `Delivery charge: ₹${minimumDeliveryFee}`
   }
 
   return {
@@ -237,11 +282,76 @@ export const calculateDeliveryBreakdownForSeller = async (
     originAddress: originLocation.address,
     storeAddress: originLocation.address,
     customerCoords,
-    deliveryMethod
+    deliveryMethod,
+    isFreeDelivery: false
+  }
+}
+
+// ── Multi-Seller Delivery Calculation Helper ─────────────────────────────────
+// Each seller's delivery fee is calculated independently based on their deliveryMode & location.
+export const calculateMultiSellerDeliveryBreakdown = async (
+  shippingAddress,
+  sellerEntries = [],
+  config = null
+) => {
+  if (!config) {
+    config = await DeliveryConfig.getConfig()
+  }
+
+  let totalDeliveryFee = 0
+  const sellerBreakdowns = []
+  let anyUnavailable = false
+  let unavailableMessage = ''
+  const validDistances = []
+
+  for (const entry of sellerEntries) {
+    const { seller, subtotal = 0 } = entry
+    const deliveryMode = seller?.deliveryMode || 'PAID_DELIVERY'
+    const sellerLocation = seller?.pickupAddress?.lat && seller?.pickupAddress?.lng
+      ? seller.pickupAddress
+      : seller?.shopLocation
+
+    const breakdown = await calculateDeliveryBreakdownForSeller(
+      shippingAddress,
+      sellerLocation,
+      config,
+      subtotal,
+      deliveryMode
+    )
+
+    if (breakdown.deliveryUnavailable) {
+      anyUnavailable = true
+      unavailableMessage = breakdown.deliveryLabel
+    }
+
+    if (typeof breakdown.distanceKm === 'number' && !isNaN(breakdown.distanceKm)) {
+      validDistances.push(breakdown.distanceKm)
+    }
+
+    totalDeliveryFee += (breakdown.deliveryFee || 0)
+    sellerBreakdowns.push({
+      sellerId: seller?._id,
+      shopName: seller?.shopName || 'Merchant',
+      brandName: seller?.brandName || seller?.shopName || 'Brand',
+      deliveryMode,
+      ...breakdown
+    })
+  }
+
+  return {
+    deliveryFee: totalDeliveryFee,
+    deliveryUnavailable: anyUnavailable,
+    deliveryLabel: anyUnavailable
+      ? unavailableMessage
+      : `Total delivery charge: ₹${totalDeliveryFee}`,
+    sellerBreakdowns,
+    distanceKm: validDistances.length > 0 ? Math.max(...validDistances) : null,
+    platformFeePercent: config.platformFeePercent ?? 5
   }
 }
 
 // ── Backward-Compatible calculateDeliveryBreakdown ─────────────────────────────
 export const calculateDeliveryBreakdown = async (shippingAddress, subtotal = 0) => {
-  return calculateDeliveryBreakdownForSeller(shippingAddress, null, null, subtotal)
+  return calculateDeliveryBreakdownForSeller(shippingAddress, null, null, subtotal, 'PAID_DELIVERY')
 }
+

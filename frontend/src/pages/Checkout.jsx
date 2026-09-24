@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar } from 'react-icons/fi'
+import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar, FiZap, FiShield, FiKey, FiX } from 'react-icons/fi'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -18,10 +19,30 @@ const PLATFORM_FEE_DEFAULT = 5  // fallback if backend not yet called
 function Checkout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { cartItems, cartTotal, clearCart } = useCart()
+  const location = useLocation()
+  const { cartItems, cartTotal, removeFromCart, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
   const { isDarkMode } = useTheme()
   const { formatPrice } = useCurrency()
+
+  // ── Buy Now Isolation Mode ──────────────────────────────────────────────────
+  const isBuyNowMode = Boolean(location.state?.isBuyNow && location.state?.buyNowItem)
+  const buyNowItem = isBuyNowMode ? location.state.buyNowItem : null
+
+  // Items and subtotal under checkout (either single Buy Now product or full cart)
+  const checkoutItems = useMemo(() => {
+    if (isBuyNowMode && buyNowItem) {
+      return [buyNowItem]
+    }
+    return cartItems
+  }, [isBuyNowMode, buyNowItem, cartItems])
+
+  const checkoutSubtotal = useMemo(() => {
+    if (isBuyNowMode && buyNowItem) {
+      return (buyNowItem.price || 0) * (buyNowItem.quantity || 1)
+    }
+    return cartTotal
+  }, [isBuyNowMode, buyNowItem, cartTotal])
 
   const [loading, setLoading] = useState(false)
   const [couponCode, setCouponCode] = useState('')
@@ -46,6 +67,11 @@ function Checkout() {
   const [email, setEmail] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cod')
 
+  // ── Razorpay Test Simulation Modal State ─────────────────────────────────
+  const [sandboxModal, setSandboxModal] = useState(null)
+  const [customRzpKey, setCustomRzpKey] = useState('')
+  const [showKeyInput, setShowKeyInput] = useState(false)
+
   // ── Delivery Fee State (always fetched from server) ────────────────────────
   const [deliveryInfo, setDeliveryInfo] = useState({
     distanceKm: null,
@@ -63,11 +89,11 @@ function Checkout() {
 
   // Derived totals — always computed from server-verified breakdown with NaN guards
   const safePlatformPercent = isFinite(deliveryInfo.platformFeePercent) ? deliveryInfo.platformFeePercent : PLATFORM_FEE_DEFAULT
-  const platformFee = isFinite(cartTotal) ? parseFloat(((cartTotal * safePlatformPercent) / 100).toFixed(2)) : 0
+  const platformFee = isFinite(checkoutSubtotal) ? parseFloat(((checkoutSubtotal * safePlatformPercent) / 100).toFixed(2)) : 0
   const deliveryFee = (isFinite(deliveryInfo.deliveryFee) && deliveryInfo.deliveryFee >= 0) ? deliveryInfo.deliveryFee : 0
   const orderFinalTotal = Math.max(
     0,
-    parseFloat(((isFinite(cartTotal) ? cartTotal : 0) + platformFee + deliveryFee - discountAmount).toFixed(2))
+    parseFloat(((isFinite(checkoutSubtotal) ? checkoutSubtotal : 0) + platformFee + deliveryFee - discountAmount).toFixed(2))
   )
 
   // ── Address change triggers debounced fee recalculation ───────────────────
@@ -77,7 +103,17 @@ function Checkout() {
 
     setDeliveryInfo((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const res = await deliveryFeeService.calculate({ ...address, subtotal: cartTotal })
+      const payload = {
+        ...address,
+        subtotal: checkoutSubtotal,
+        items: checkoutItems.map(it => ({
+          productId: it.productId || it.id,
+          sellerId: it.sellerId,
+          price: it.price,
+          quantity: it.quantity
+        }))
+      }
+      const res = await deliveryFeeService.calculate(payload)
       if (res.data?.success) {
         const d = res.data
         const isUnavailable = Boolean(d.deliveryUnavailable)
@@ -103,7 +139,7 @@ function Checkout() {
         calculated: false
       }))
     }
-  }, [cartTotal, t])
+  }, [checkoutSubtotal, checkoutItems, t])
 
   const handleAddressChange = useCallback((field, value) => {
     setShippingAddress((prev) => {
@@ -201,8 +237,8 @@ function Checkout() {
       toast.error('Please select a payment method')
       return
     }
-    if (cartItems.length === 0) {
-      toast.error('Your cart is empty')
+    if (checkoutItems.length === 0) {
+      toast.error('Your checkout is empty')
       return
     }
     if (!deliveryInfo.calculated) {
@@ -223,17 +259,13 @@ function Checkout() {
 
     setLoading(true)
     try {
-      // The backend cart is already synced via CartContext on every addToCart/update action.
-      // We do NOT clear and re-add here to avoid data loss if the loop fails mid-way.
-      // Instead we place the order directly — the backend reads the user's cart server-side.
       let orderResult
 
       if (paymentMethod === 'cod') {
         orderResult = await createCODOrder()
         if (orderResult?.success) {
           toast.success('Order placed successfully! 🎉')
-          clearCart()
-          navigate('/orders', { state: { newOrder: orderResult.order } })
+          handleOrderSuccess(orderResult.order)
         }
       } else if (paymentMethod === 'razorpay') {
         await initRazorpayPayment()
@@ -241,15 +273,13 @@ function Checkout() {
         orderResult = await initUPIPayment()
         if (orderResult?.success) {
           toast.success('Order placed successfully! 🎉')
-          clearCart()
-          navigate('/orders', { state: { newOrder: orderResult.order } })
+          handleOrderSuccess(orderResult.order)
         }
       } else if (paymentMethod === 'card') {
         orderResult = await initCardPayment()
         if (orderResult?.success) {
           toast.success('Order placed successfully! 🎉')
-          clearCart()
-          navigate('/orders', { state: { newOrder: orderResult.order } })
+          handleOrderSuccess(orderResult.order)
         }
       }
     } catch (err) {
@@ -262,18 +292,78 @@ function Checkout() {
     }
   }
 
+  // ── Success handler: clean only purchased items ───────────────────────────
+  const handleOrderSuccess = (newOrder) => {
+    if (isBuyNowMode) {
+      if (buyNowItem?.cartItemId) {
+        removeFromCart(buyNowItem.cartItemId, buyNowItem.variant)
+      }
+    } else {
+      clearCart()
+    }
+    navigate('/orders', { state: { newOrder } })
+  }
+
   // ── Payment handlers ──────────────────────────────────────────────────────
   const buildOrderPayload = (method) => ({
     shippingAddress,
     paymentMethod: method,
     phone,
     couponCode: appliedCoupon?.code,
-    items: cartItems
+    isBuyNow: isBuyNowMode,
+    buyNowItem: isBuyNowMode ? buyNowItem : undefined,
+    items: checkoutItems
   })
 
   const createCODOrder = async () => {
     const res = await orderService.createOrder(buildOrderPayload('cod'))
     return res.data
+  }
+
+  const handleSimulateSandboxPayment = async (order, rzpOrderId) => {
+    setLoading(true)
+    try {
+      toast.info('Verifying sandbox payment…')
+      const mockPayId = `pay_mock_${Date.now()}`
+      const verifyRes = await orderService.verifyRazorpayPayment({
+        orderId: order._id,
+        razorpayOrderId: rzpOrderId,
+        razorpayPaymentId: mockPayId,
+        razorpaySignature: 'mock_signature_sandbox'
+      })
+      if (verifyRes.data?.success) {
+        toast.success('Payment simulated successfully! Order confirmed. 🎉')
+        setSandboxModal(null)
+        handleOrderSuccess(verifyRes.data.order || order)
+      } else {
+        toast.error(verifyRes.data?.message || 'Sandbox verification failed.')
+      }
+    } catch (err) {
+      console.error('Sandbox payment simulation error:', err)
+      toast.error(err.response?.data?.message || 'Simulation verification failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSimulateSandboxFailure = () => {
+    toast.error('Payment cancelled / declined.')
+    setSandboxModal(null)
+    setLoading(false)
+  }
+
+  const handleLaunchWithCustomKey = async (key) => {
+    if (!key || (!key.startsWith('rzp_test_') && !key.startsWith('rzp_live_'))) {
+      toast.error('Please enter a valid key starting with rzp_test_ or rzp_live_')
+      return
+    }
+    try {
+      const modalData = sandboxModal
+      setSandboxModal(null)
+      await modalData.onLaunchReal(key.trim())
+    } catch (err) {
+      toast.error(err.message || 'Failed to initialize Razorpay with this key.')
+    }
   }
 
   const initRazorpayPayment = async () => {
@@ -283,111 +373,122 @@ function Checkout() {
 
     const order = res.data.order
     const rzpOrderId = res.data.razorpayOrderId || order.razorpayOrderId
-    const rzpKeyId = res.data.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder'
+    const rawKeyId = res.data.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY_ID || ''
+    const isRealRzpKey = Boolean(
+      rawKeyId &&
+      !rawKeyId.includes('placeholder') &&
+      !rawKeyId.includes('your_key') &&
+      (rawKeyId.startsWith('rzp_test_') || rawKeyId.startsWith('rzp_live_'))
+    )
 
-    // 2. Ensure Razorpay client script is loaded
-    const isLoaded = await loadRazorpayScript()
-    if (!isLoaded || !window.Razorpay) {
-      console.warn('Razorpay SDK unavailable. Entering simulated test checkout mode.')
-      toast.info('Simulating sandbox payment verification…')
-      setTimeout(async () => {
-        try {
-          const verifyRes = await orderService.verifyRazorpayPayment({
-            orderId: order._id,
-            razorpayOrderId: rzpOrderId,
-            razorpayPaymentId: `pay_mock_${Date.now()}`,
-            razorpaySignature: 'mock_signature_sandbox'
-          })
-          if (verifyRes.data?.success) {
-            toast.success('Payment simulated successfully! Order confirmed. 🎉')
-            clearCart()
-            navigate('/orders', { state: { newOrder: verifyRes.data.order || order } })
-          }
-        } catch (simErr) {
-          toast.error('Simulation verification failed.')
-        } finally {
-          setLoading(false)
-        }
-      }, 1200)
-      return
-    }
-
-    // 3. Configure Razorpay standard checkout modal
-    const options = {
-      key: rzpKeyId,
-      amount: Math.round((order.totalAmount || orderFinalTotal) * 100),
-      currency: res.data.currency || 'INR',
-      name: 'SKLP Fashion',
-      description: `Order #${order.orderNumber || order._id}`,
-      image: '/vite.svg',
-      order_id: rzpOrderId && !rzpOrderId.includes('mock') && !rzpOrderId.includes('sandbox') ? rzpOrderId : undefined,
-      handler: async (response) => {
-        setLoading(true)
-        try {
-          toast.info('Verifying secure payment…')
-          const verifyRes = await orderService.verifyRazorpayPayment({
-            orderId: order._id,
-            razorpayOrderId: response.razorpay_order_id || rzpOrderId,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature
-          })
-          if (verifyRes.data?.success) {
-            toast.success('Payment verified successfully! Order is confirmed. 🎉')
-            clearCart()
-            navigate('/orders', { state: { newOrder: verifyRes.data.order || order } })
-          } else {
-            toast.error(verifyRes.data?.message || 'Payment verification failed.')
-          }
-        } catch (err) {
-          console.error('Razorpay verification error:', err)
-          toast.error(err.response?.data?.message || 'Payment verification failed. Please contact support.')
-        } finally {
-          setLoading(false)
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          setLoading(false)
-          toast.warn('Payment window closed without completing transaction.')
-        }
-      },
-      prefill: {
-        name: `${firstName} ${lastName}`.trim() || user?.name || '',
-        email: email || user?.email || '',
-        contact: phone || user?.phone || ''
-      },
-      notes: {
-        orderId: order._id,
-        orderNumber: order.orderNumber
-      },
-      theme: {
-        color: '#D4AF37'
+    const launchRazorpayModal = async (keyToUse) => {
+      const isLoaded = await loadRazorpayScript()
+      if (!isLoaded || !window.Razorpay) {
+        throw new Error('Razorpay SDK failed to load. Please check network connection.')
       }
-    }
 
-    try {
+      const options = {
+        key: keyToUse,
+        amount: Math.round((order.totalAmount || orderFinalTotal) * 100),
+        currency: res.data.currency || 'INR',
+        name: 'Style Street Fashion',
+        description: `Order #${order.orderNumber || order._id}`,
+        image: '/vite.svg',
+        order_id: rzpOrderId && !rzpOrderId.includes('mock') && !rzpOrderId.includes('sandbox') ? rzpOrderId : undefined,
+        handler: async (response) => {
+          setLoading(true)
+          try {
+            toast.info('Verifying secure payment…')
+            const verifyRes = await orderService.verifyRazorpayPayment({
+              orderId: order._id,
+              razorpayOrderId: response.razorpay_order_id || rzpOrderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            })
+            if (verifyRes.data?.success) {
+              toast.success('Payment verified successfully! Order is confirmed. 🎉')
+              setSandboxModal(null)
+              handleOrderSuccess(verifyRes.data.order || order)
+            } else {
+              toast.error(verifyRes.data?.message || 'Payment verification failed.')
+            }
+          } catch (err) {
+            console.error('Razorpay verification error:', err)
+            toast.error(err.response?.data?.message || 'Payment verification failed. Please contact support.')
+          } finally {
+            setLoading(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setLoading(false)
+            toast.warn('Payment window closed without completing transaction.')
+          }
+        },
+        prefill: {
+          name: `${firstName} ${lastName}`.trim() || user?.name || '',
+          email: email || user?.email || '',
+          contact: phone || user?.phone || ''
+        },
+        notes: {
+          orderId: order._id,
+          orderNumber: order.orderNumber
+        },
+        theme: {
+          color: '#D4AF37'
+        }
+      }
+
       const razorpayInstance = new window.Razorpay(options)
       razorpayInstance.on('payment.failed', function (response) {
         console.error('Razorpay payment failed:', response.error)
-        toast.error(`Payment failed: ${response.error.description || 'Transaction declined'}`)
+        toast.error(`Payment failed: ${response.error?.description || 'Transaction declined'}`)
         setLoading(false)
+        setSandboxModal({
+          order,
+          rzpOrderId,
+          amount: order.totalAmount || orderFinalTotal,
+          onLaunchReal: launchRazorpayModal,
+          errorMessage: response.error?.description || 'Gateway transaction declined'
+        })
       })
       razorpayInstance.open()
-    } catch (openErr) {
-      console.error('Failed to open Razorpay modal:', openErr)
-      setLoading(false)
-      toast.error('Could not launch payment gateway. Please try again.')
+    }
+
+    if (isRealRzpKey) {
+      try {
+        await launchRazorpayModal(rawKeyId)
+      } catch (err) {
+        console.warn('Real Razorpay initialization failed:', err.message)
+        setSandboxModal({
+          order,
+          rzpOrderId,
+          amount: order.totalAmount || orderFinalTotal,
+          onLaunchReal: launchRazorpayModal,
+          errorMessage: err.message
+        })
+      }
+    } else {
+      // In development / demo mode without live keys: show sleek interactive sandbox gateway
+      setSandboxModal({
+        order,
+        rzpOrderId,
+        amount: order.totalAmount || orderFinalTotal,
+        onLaunchReal: launchRazorpayModal
+      })
     }
   }
 
   const initUPIPayment = async () => {
-    toast.info('Initializing UPI payment gateway…')
-    return await createCODOrder()
+    toast.info('Processing instant UPI payment…')
+    const res = await orderService.createOrder(buildOrderPayload('upi'))
+    return res.data
   }
 
   const initCardPayment = async () => {
-    toast.info('Initializing Secure Card gateway…')
-    return await createCODOrder()
+    toast.info('Processing secure card payment…')
+    const res = await orderService.createOrder(buildOrderPayload('card'))
+    return res.data
   }
 
   // ── Delivery fee display helpers ──────────────────────────────────────────
@@ -427,7 +528,7 @@ function Checkout() {
     return (
       <div className="container-custom py-24 text-center min-h-[60vh] flex flex-col justify-center items-center">
         <h1 className="text-3xl font-serif font-bold mb-6">Secure Checkout</h1>
-        <p className="opacity-60 mb-8 max-w-sm">Please log in or register your SKLP account to access secure payment gateways.</p>
+        <p className="opacity-60 mb-8 max-w-sm">Please log in or register your Style Street account to access secure payment gateways.</p>
         <Link
           to="/login?redirect=/checkout"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
@@ -683,18 +784,25 @@ function Checkout() {
           <div className={`p-5 sm:p-8 rounded-2xl border sticky top-24 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
             <h2 className="text-xl font-serif font-bold mb-6 tracking-wide uppercase">Order Summary</h2>
 
-            {/* Cart items */}
+            {isBuyNowMode && (
+              <div className="mb-4 p-2.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold"><FiZap /> Buy Now (Single Product)</span>
+                <Link to="/cart" className="underline hover:text-white text-[11px]">View Full Cart</Link>
+              </div>
+            )}
+
+            {/* Checkout items */}
             <div className="space-y-3 mb-6 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
-              {cartItems.map((item, idx) => (
+              {checkoutItems.map((item, idx) => (
                 <div key={idx} className="flex gap-3 items-center">
-                  <img src={item.image} alt={item.name} className="w-12 h-14 object-cover rounded-lg shrink-0" />
+                  <img src={item.image || '/assets/style-street-logo.png'} alt={item.name} className="w-12 h-14 object-cover rounded-lg shrink-0 bg-black/20" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-xs line-clamp-1">{item.name}</p>
                     <p className={`text-[10px] ${isDarkMode ? 'opacity-50' : 'text-gray-500'}`}>
-                      Qty: {item.quantity} {item.variant?.size ? `• Size: ${item.variant.size}` : ''}
+                      Qty: {item.quantity} {item.variant?.size ? `• Size: ${item.variant.size}` : ''} {item.variant?.length ? `• ${item.variant.length}` : ''}
                     </p>
                   </div>
-                  <span className="font-bold text-xs text-luxury-gold shrink-0">
+                  <span className="font-bold text-xs text-luxury-gold shrink-0 font-mono">
                     ₹{(item.price * item.quantity).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -710,7 +818,7 @@ function Checkout() {
                 <input
                   type="text" value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="e.g. SKLP20"
+                  placeholder="e.g. SS20"
                   className={`flex-1 bg-transparent border rounded-lg px-3 py-2 text-xs uppercase font-mono outline-none focus:border-luxury-gold ${isDarkMode ? 'border-white/10 text-white' : 'border-gray-200 text-gray-900'}`}
                 />
                 <button
@@ -734,7 +842,7 @@ function Checkout() {
               {[  
                 {
                   label: 'Subtotal',
-                  value: formatPrice(cartTotal),
+                  value: formatPrice(checkoutSubtotal),
                   labelClass: isDarkMode ? 'opacity-60' : 'text-gray-500',
                   valueClass: 'font-semibold',
                   show: true
@@ -825,6 +933,139 @@ function Checkout() {
           </div>
         </div>
       </form>
+
+      {/* ── Razorpay Sandbox / Simulation Modal ── */}
+      <AnimatePresence>
+        {sandboxModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl relative ${
+                isDarkMode ? 'bg-[#18181b] border-luxury-gold/30 text-white' : 'bg-white border-amber-300 text-gray-900'
+              }`}
+            >
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={handleSimulateSandboxFailure}
+                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <FiX size={18} />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-luxury-gold/20 border border-luxury-gold/40 flex items-center justify-center text-luxury-gold">
+                  <FiShield size={20} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-luxury-gold">
+                    Razorpay Gateway
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-luxury-gold/20 text-luxury-gold border border-luxury-gold/40">
+                      Sandbox Mode
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {sandboxModal.errorMessage && (
+                <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                  <FiAlertCircle className="shrink-0 mt-0.5" />
+                  <span>{sandboxModal.errorMessage}</span>
+                </div>
+              )}
+
+              <p className="text-xs opacity-70 mb-4">
+                No active live gateway credentials detected in environment. You can simulate instant payment confirmation or provide a real Razorpay test key.
+              </p>
+
+              <div className={`p-4 rounded-xl mb-5 space-y-2 text-xs ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
+                <div className="flex justify-between">
+                  <span className="opacity-60">Order Reference:</span>
+                  <span className="font-mono font-bold text-luxury-gold">
+                    {sandboxModal.order?.orderNumber || sandboxModal.order?._id}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-60">Customer:</span>
+                  <span>{firstName} {lastName}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-white/10 font-bold">
+                  <span>Payable Amount:</span>
+                  <span className="text-luxury-gold font-mono text-base">
+                    ₹{Number(sandboxModal.amount || orderFinalTotal).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  id="sandbox-success-btn"
+                  onClick={() => handleSimulateSandboxPayment(sandboxModal.order, sandboxModal.rzpOrderId)}
+                  disabled={loading}
+                  className="w-full py-3.5 bg-luxury-gold text-luxury-black font-bold tracking-wider text-xs uppercase hover:bg-yellow-400 transition-all rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-luxury-gold/20"
+                >
+                  <FiCheckCircle size={16} />
+                  Simulate Successful Payment
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSimulateSandboxFailure}
+                  disabled={loading}
+                  className={`w-full py-2.5 border rounded-xl font-bold text-xs uppercase tracking-wider transition-colors ${
+                    isDarkMode ? 'border-white/20 hover:bg-white/5 text-white/70' : 'border-gray-300 hover:bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  Cancel / Decline Payment
+                </button>
+              </div>
+
+              {/* Collapsible real key option */}
+              <div className="mt-5 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyInput(!showKeyInput)}
+                  className="text-[11px] text-luxury-gold hover:underline flex items-center gap-1 mx-auto"
+                >
+                  <FiKey size={12} />
+                  {showKeyInput ? 'Hide Key Configuration' : 'Have a real Razorpay Test Key? Click here'}
+                </button>
+
+                {showKeyInput && (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. rzp_test_xxxxxxxxxxxx"
+                      value={customRzpKey}
+                      onChange={(e) => setCustomRzpKey(e.target.value)}
+                      className={`w-full bg-transparent border rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-luxury-gold ${
+                        isDarkMode ? 'border-white/20 text-white' : 'border-gray-300 text-gray-900'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleLaunchWithCustomKey(customRzpKey)}
+                      className="w-full py-2 bg-white/10 hover:bg-white/20 text-luxury-gold font-bold text-xs rounded-lg transition-colors"
+                    >
+                      Launch Real Razorpay Gateway
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

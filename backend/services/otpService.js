@@ -112,7 +112,7 @@ const sendViaTwilio = async (phone, otp) => {
 
   try {
     const message = await client.messages.create({
-      body: `Your SKLP verification OTP is ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`,
+      body: `Your Style Street verification OTP is ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`,
       from: fromNumber.trim(),
       to: formattedPhone
     });

@@ -61,8 +61,18 @@ const sellerApplicationSchema = new mongoose.Schema({
   brandNameNormalized: {
     type: String,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
+  },
+  storeDescription: {
+    type: String,
+    default: '',
+    maxlength: 1000
+  },
+  category: String,
+  subcategory: String,
+  brandLogo: {
+    url: { type: String, default: null },
+    publicId: { type: String, default: null }
   },
   businessType: {
     type: String,
@@ -75,6 +85,18 @@ const sellerApplicationSchema = new mongoose.Schema({
     state: String,
     postalCode: String,
     country: { type: String, default: 'India' }
+  },
+  pickupAddress: {
+    street: String,
+    city: String,
+    state: String,
+    postalCode: String,
+    country: { type: String, default: 'India' }
+  },
+  deliveryMode: {
+    type: String,
+    enum: ['FREE_DELIVERY', 'PAID_DELIVERY'],
+    default: 'PAID_DELIVERY'
   },
   panNumber: {
     type: String,
@@ -91,6 +113,59 @@ const sellerApplicationSchema = new mongoose.Schema({
     accountNumber: String,
     ifscCode: String,
     bankName: String
+  },
+  // Structured Multi-Point Verification
+  verification: {
+    pan: {
+      number: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW'], default: 'PENDING' },
+      nameOnPan: String,
+      verifiedAt: Date
+    },
+    gst: {
+      isRegistered: { type: Boolean, default: false },
+      gstin: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'NOT_APPLICABLE'], default: 'NOT_APPLICABLE' },
+      tradeName: String,
+      verifiedAt: Date
+    },
+    udyam: {
+      number: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'NOT_APPLICABLE'], default: 'NOT_APPLICABLE' },
+      verifiedAt: Date
+    },
+    company: {
+      cin: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'NOT_APPLICABLE'], default: 'NOT_APPLICABLE' },
+      verifiedAt: Date
+    },
+    trademark: {
+      applicationNumber: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW', 'NOT_APPLICABLE'], default: 'NOT_APPLICABLE' },
+      verifiedAt: Date
+    },
+    bank: {
+      accountName: String,
+      accountNumber: String,
+      ifscCode: String,
+      bankName: String,
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MISMATCH'], default: 'PENDING' },
+      verifiedAt: Date
+    },
+    shopImages: [{
+      url: String,
+      publicId: String,
+      imageType: { type: String, enum: ['shop_front', 'shop_interior', 'signboard', 'product_display', 'warehouse', 'other'], default: 'shop_front' },
+      status: { type: String, enum: ['PENDING', 'REVIEWED', 'REJECTED'], default: 'PENDING' },
+      uploadedAt: { type: Date, default: Date.now }
+    }],
+    ownerVerification: {
+      videoUrl: String,
+      publicId: String,
+      status: { type: String, enum: ['PENDING', 'PASSED', 'FAILED', 'MANUAL_REVIEW'], default: 'PENDING' },
+      verifiedAt: Date,
+      notes: String
+    }
   },
   documents: [documentSchema],
   status: {
@@ -145,5 +220,6 @@ sellerApplicationSchema.pre('save', function(next) {
 
 sellerApplicationSchema.index({ status: 1, riskLevel: 1 });
 sellerApplicationSchema.index({ email: 1, phone: 1 });
+sellerApplicationSchema.index({ brandNameNormalized: 1 }, { sparse: true });
 
 export default mongoose.model('SellerApplication', sellerApplicationSchema)

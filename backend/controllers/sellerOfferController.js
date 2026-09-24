@@ -62,7 +62,7 @@ export const getProductOffers = async (req, res) => {
       productId: product._id,
       sellerId: creatorSeller || {
         _id: product.createdBy,
-        shopName: 'SKLP Official Store',
+        shopName: 'Style Street Official Store',
         shopSlug: 'sklp-official',
         rating: 4.8,
         reviewCount: 120,

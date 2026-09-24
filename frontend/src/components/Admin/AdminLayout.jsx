@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '@context/AuthContext'
+import BrandName from '@components/Common/BrandName'
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiTag, FiRefreshCw, FiBriefcase,
-  FiLogOut, FiMenu, FiX, FiChevronRight, FiBell, FiTrendingUp
+  FiLogOut, FiMenu, FiX, FiChevronRight, FiBell, FiTrendingUp, FiImage
 } from 'react-icons/fi'
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { path: '/admin/marketing', label: 'Marketing', icon: FiTrendingUp },
   { path: '/admin/returns', label: 'Returns', icon: FiRefreshCw },
   { path: '/admin/sellers', label: 'Sellers', icon: FiBriefcase },
+  { path: '/admin/branding', label: 'Branding', icon: FiImage },
 ]
 
 // Shared sidebar nav content
@@ -24,7 +26,7 @@ function SidebarContent({ location, user, handleLogout, onClose }) {
     <div className="flex flex-col h-full">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-4 h-16 border-b border-luxury-darkGray flex-shrink-0">
-        <span className="text-2xl font-serif font-bold text-luxury-gold">SKLP Admin</span>
+        <BrandName size="lg" />
         {onClose && (
           <button
             onClick={onClose}
@@ -136,7 +138,7 @@ function AdminLayout({ children }) {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-luxury-darkGray">
           {!sidebarCollapsed && (
-            <span className="text-2xl font-serif font-bold text-luxury-gold">SKLP Admin</span>
+            <span className="text-2xl font-serif font-bold text-luxury-gold">STYLE STREET</span>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}

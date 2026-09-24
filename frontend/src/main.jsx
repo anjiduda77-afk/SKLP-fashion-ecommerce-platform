@@ -4,6 +4,7 @@ import App from './App.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ThemeProvider } from '@context/ThemeContext'
 import { CurrencyProvider } from './context/CurrencyContext.jsx'
+import { BrandingProvider } from './context/BrandingContext.jsx'
 import './styles/globals.css'
 import './i18n/config.js'
 
@@ -55,7 +56,7 @@ class ErrorBoundary extends React.Component {
             color: '#f59e0b',
             marginBottom: '0.5rem',
             letterSpacing: '0.1em'
-          }}>SKLP FASHION</h1>
+          }}>STYLE STREET</h1>
           <p style={{
             fontSize: '1rem',
             opacity: 0.7,
@@ -105,9 +106,11 @@ class ErrorBoundary extends React.Component {
 // ─── App Mount ───────────────────────────────────────────────────────────────
 const appProviders = (
   <ThemeProvider>
-    <CurrencyProvider>
-      <App />
-    </CurrencyProvider>
+    <BrandingProvider>
+      <CurrencyProvider>
+        <App />
+      </CurrencyProvider>
+    </BrandingProvider>
   </ThemeProvider>
 )
 

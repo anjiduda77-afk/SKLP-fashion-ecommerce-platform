@@ -1,6 +1,6 @@
 {
   "common": {
-    "welcome": "SKLP में आपका स्वागत है",
+    "welcome": "STYLE STREET में आपका स्वागत है",
     "home": "होम",
     "products": "उत्पाद",
     "categories": "श्रेणियाँ",
@@ -108,7 +108,7 @@
     "chatWithUs": "हमसे चैट करें",
     "callUs": "हेल्पलाइन पर कॉल करें",
     "emailUs": "ईमेल सहायता",
-    "copyright": "© 2026 SKLP फैशन। सर्वाधिकार सुरक्षित।"
+    "copyright": "© 2026 STYLE STREET. सर्वाधिकार सुरक्षित।"
   },
   "header": {
     "search": "उत्पाद खोजें...",
@@ -124,7 +124,7 @@
     "selectLanguage": "भाषा चुनें",
     "accessClub": "साइन इन",
     "clubProfile": "प्रोफ़ाइल",
-    "predictiveAi": "SKLP स्मार्ट सर्च",
+    "predictiveAi": "STYLE STREET स्मार्ट सर्च",
     "inputPlaceholder": "सिल्क साड़ियाँ, जूते, शर्ट खोजें...",
     "didYouMean": "क्या आपका मतलब था:",
     "predictiveMatches": "परिणाम",
@@ -141,7 +141,7 @@
     "myWishlist": "मेरी विशलिस्ट",
     "savedAddresses": "सहेजे गए पते",
     "currency": "मुद्रा",
-    "searchTitle": "SKLP फैशन सर्च",
+    "searchTitle": "STYLE STREET सर्च",
     "trendingSearches": "ट्रेंडिंग सर्च"
   },
   "sidebar": {
@@ -188,16 +188,16 @@
     "earningsToday": "आज की कमाई",
     "otpVerification": "ओटीपी सत्यापन",
     "welcomeGuest": "अतिथि का स्वागत है",
-    "sklpFashionStore": "SKLP फैशन स्टोर",
+    "sklpFashionStore": "Style Street फैशन स्टोर",
     "goToDashboard": "डैशबोर्ड पर जाएं",
     "signOut": "साइन आउट",
     "enterAtelier": "साइन इन",
-    "loyaltyClub": "SKLP रिवार्ड्स क्लब",
+    "loyaltyClub": "Style Street रिवार्ड्स क्लब",
     "loyaltyClubText": "मुफ़्त तेज़ डिलीवरी, कस्टम फिटिंग और नए त्यौहारी परिधानों तक त्वरित पहुँच का आनंद लें।",
     "eliteTier": "गोल्ड मेंबर"
   },
   "footer": {
-    "description": "सभी के लिए प्रीमियम फैशन और जूते। SKLP के साथ लक्ज़री स्टाइल और आराम का अनुभव करें।",
+    "description": "सभी के लिए प्रीमियम फैशन और जूते। STYLE STREET के साथ लक्ज़री स्टाइल और आराम का अनुभव करें।",
     "quickLinks": "त्वरित लिंक",
     "home": "होम",
     "products": "उत्पाद",
@@ -212,7 +212,7 @@
     "newsletterText": "विशेष ऑफ़र और नए कलेक्शन के अपडेट पाने के लिए सब्सक्राइब करें।",
     "emailPlaceholder": "अपना ईमेल दर्ज करें",
     "join": "सब्सक्राइब",
-    "allRightsReserved": "© 2026 SKLP फैशन। सर्वाधिकार सुरक्षित।",
+    "allRightsReserved": "© 2026 STYLE STREET. सर्वाधिकार सुरक्षित।",
     "privacyPolicy": "गोपनीयता नीति",
     "termsOfService": "सेवा की शर्तें",
     "cookiePolicy": "कुकी नीति",
@@ -224,8 +224,8 @@
     "helplineInfo": "हेल्पलाइन एवं जानकारी",
     "customerCare": "कस्टमर केयर",
     "callHelpline": "+91 9948682179 (सोम-शनि, सुबह 9 - रात 8)",
-    "emailSupport": "support@sklp.com",
-    "storeAddress": "SKLP लक्ज़री टावर, जुबली हिल्स, हैदराबाद, भारत"
+    "emailSupport": "support@stylestreet.in",
+    "storeAddress": "Style Street लक्ज़री टावर, जुबली हिल्स, हैदराबाद, भारत"
   },
   "home": {
     "hero": "सुंदर फैशन की खोज करें",
@@ -376,7 +376,7 @@
   "cart": {
     "title": "शॉपिंग कार्ट",
     "empty": "आपकी कार्ट खाली है",
-    "emptyDesc": "हमारे कलेक्शन को एक्सप्लोर करें और SKLP के प्रीमियम फैशन का अनुभव करें।",
+    "emptyDesc": "हमारे कलेक्शन को एक्सप्लोर करें और STYLE STREET के प्रीमियम फैशन का अनुभव करें।",
     "startShopping": "खरीदारी शुरू करें",
     "continueShopping": "खरीदारी जारी रखें",
     "subtotal": "उप-कुल",
@@ -392,7 +392,7 @@
     "clearCart": "कार्ट खाली करें",
     "clearConfirm": "क्या आप वाकई अपनी कार्ट खाली करना चाहते हैं?",
     "promoCoupon": "प्रोमो कूपन",
-    "couponPlaceholder": "कूपन कोड दर्ज करें (उदा. SKLP20)",
+    "couponPlaceholder": "कूपन कोड दर्ज करें (उदा. SS20)",
     "viewCoupons": "उपलब्ध कूपन देखें",
     "apply": "लागू करें",
     "applied": "लागू हुआ",
@@ -542,7 +542,7 @@
       "processing": "निर्माण/पैकिंग",
       "processingDesc": "कपड़े तैयार हो रहे हैं और पैक किए जा रहे हैं।",
       "shipped": "रास्ते में है",
-      "shippedDesc": "SKLP एक्सप्रेस को पार्सल सौंप दिया गया।",
+      "shippedDesc": "Style Street एक्सप्रेस को पार्सल सौंप दिया गया।",
       "delivered": "डिलीवर हो गया",
       "deliveredDesc": "गंतव्य स्थान पर हस्ताक्षर हुए।"
     }
@@ -601,7 +601,7 @@
     "quickActions": "त्वरित क्रियाएं एवं महत्वपूर्ण लिंक",
     "myOrders": "मेरे ऑर्डर",
     "myWishlist": "मेरी विशलिस्ट",
-    "becomeSeller": "SKLP सेलर बनें",
+    "becomeSeller": "STYLE STREET सेलर बनें",
     "addressType": "पते का प्रकार",
     "home": "घर",
     "work": "कार्यालय",
@@ -665,7 +665,7 @@
     "upiSaved": "यूपीआई आईडी सहेजी गई!",
     "upiDeleted": "यूपीआई आईडी हटाई गई",
     "noUpi": "अभी तक कोई यूपीआई आईडी सहेजी नहीं गई है।",
-    "atelierWallet": "SKLP वॉलेट",
+    "atelierWallet": "Style Street वॉलेट",
     "rewardCoins": "उपलब्ध रिवॉर्ड कॉइन्स",
     "coinsWorth": "आपकी अगली खरीदारी पर ₹500 की छूट",
     "coinsDesc": "सभी लक्ज़री ऑर्डर पर 5% कैशबैक पाएं, चेकआउट पर स्वतः लागू होगा।",
@@ -687,8 +687,8 @@
   "auth": {
     "login": "साइन इन",
     "register": "खाता बनाएं",
-    "signIn": "SKLP में साइन इन करें",
-    "signUp": "SKLP से जुड़ें",
+    "signIn": "STYLE STREET में साइन इन करें",
+    "signUp": "STYLE STREET से जुड़ें",
     "createAccount": "खाता बनाएं",
     "email": "ईमेल पता",
     "password": "पासवर्ड",
@@ -711,9 +711,9 @@
     "continueWithGoogle": "Google के साथ जारी रखें",
     "orContinueWith": "या ईमेल के साथ जारी रखें",
     "rememberMe": "मुझे साइन इन रखें",
-    "agreeToTerms": "मैं SKLP सेवा की शर्तों और गोपनीयता नीति से सहमत हूँ",
+    "agreeToTerms": "मैं STYLE STREET सेवा की शर्तों और गोपनीयता नीति से सहमत हूँ",
     "loginSuccess": "सफलतापूर्वक साइन इन किया गया!",
-    "signupSuccess": "खाता सफलतापूर्वक बनाया गया! SKLP में आपका स्वागत है।",
+    "signupSuccess": "खाता सफलतापूर्वक बनाया गया! STYLE STREET में आपका स्वागत है।",
     "logoutSuccess": "सफलतापूर्वक साइन आउट किया गया",
     "invalidCredentials": "अमान्य ईमेल या पासवर्ड। कृपया विवरण जांचें।",
     "emailRequired": "कृपया अपना ईमेल पता दर्ज करें",

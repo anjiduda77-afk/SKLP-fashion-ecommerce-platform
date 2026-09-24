@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useCurrency } from '@context/CurrencyContext'
-import { userService, notificationService, uploadService } from '@services/apiServices'
-import { requestFcmToken } from '@config/firebase'
+import BrandName from '@components/Common/BrandName'
+import PolicyModal from '@components/Common/PolicyModal'
+import { userService, notificationService, uploadService, authService } from '@services/apiServices'
+import { auth, requestFcmToken } from '@config/firebase'
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 import { toast } from 'react-toastify'
 import {
   FiUser, FiMail, FiPhone, FiLock, FiMapPin,
@@ -13,7 +16,8 @@ import {
   FiCheckCircle, FiShield, FiSmartphone, FiGlobe, FiMoon, FiSun,
   FiBell, FiCreditCard,
   FiTag, FiTruck, FiCheck, FiShoppingBag, FiHeart, FiArrowRight, FiChevronRight,
-  FiMenu, FiHome, FiUploadCloud, FiAward
+  FiMenu, FiHome, FiUploadCloud, FiAward, FiClock,
+  FiHelpCircle, FiRefreshCw, FiExternalLink
 } from 'react-icons/fi'
 
 
@@ -134,29 +138,99 @@ function AddressModal({ address, onSave, onClose, isDarkMode, t }) {
   )
 }
 
-function PhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
-  const [newPhone, setNewPhone] = useState('')
+function FirebasePhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
+  const [phoneDigits, setPhoneDigits] = useState('')
+  const [step, setStep] = useState(1) // 1 = Enter Phone, 2 = Enter OTP
+  const [otpCode, setOtpCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirmResult, setConfirmResult] = useState(null)
+  const recaptchaVerifierRef = useRef(null)
+
   const bg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
   const inp = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200'
 
-  const handleSavePhone = async (e) => {
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear() } catch (_e) { /* ignore cleanup error */ }
+      }
+    }
+  }, [])
+
+  const handleSendOtp = async (e) => {
     e.preventDefault()
-    const clean = newPhone.replace(/\D/g, '')
+    const clean = phoneDigits.replace(/\D/g, '').slice(-10)
     if (!/^[6-9][0-9]{9}$/.test(clean)) {
       toast.error('Please enter a valid 10-digit Indian mobile number')
       return
     }
+
+    setLoading(true)
+    const e164 = `+91${clean}`
+
+    try {
+      if (!auth) {
+        throw new Error('Firebase authentication is initializing. Please try again.')
+      }
+
+      // Initialize Invisible reCAPTCHA verifier
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-phone-container', {
+          size: 'invisible',
+          callback: () => {}
+        })
+      }
+
+      const confirmation = await signInWithPhoneNumber(auth, e164, recaptchaVerifierRef.current)
+      setConfirmResult(confirmation)
+      setStep(2)
+      toast.success(`Verification code sent via SMS to ${e164}`)
+    } catch (err) {
+      console.error('[PhoneLink] Send OTP failed:', err)
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear() } catch (_e) { /* ignore cleanup error */ }
+        recaptchaVerifierRef.current = null
+      }
+      toast.error(err.message || 'Failed to send SMS code. Please check your phone number.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    const cleanOtp = otpCode.trim()
+    if (!cleanOtp || cleanOtp.length < 6) {
+      toast.error('Please enter the 6-digit verification code')
+      return
+    }
+
+    if (!confirmResult) {
+      toast.error('Verification session expired. Please request a new code.')
+      setStep(1)
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await userService.updateProfile({ phone: clean })
+      // 1. Verify OTP with Firebase
+      const credential = await confirmResult.confirm(cleanOtp)
+      const firebaseUser = credential.user
+
+      // 2. Obtain fresh cryptographically signed Firebase ID token
+      const idToken = await firebaseUser.getIdToken(true)
+
+      // 3. Send token to backend to sync verified phone (ONE PHONE = ONE ACCOUNT)
+      const res = await authService.linkPhoneFirebase(idToken)
       if (res.data?.success && res.data?.user) {
         onPhoneUpdated(res.data.user)
-        toast.success('Contact mobile number updated successfully!')
+        toast.success('🎉 Phone number successfully verified and linked to your account!')
         onClose()
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update phone number')
+      console.error('[PhoneLink] Verification failed:', err)
+      const msg = err.response?.data?.message || err.message || 'Invalid or expired verification code'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -166,30 +240,135 @@ function PhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className={`w-full max-w-sm rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
         <div className="flex items-center justify-between mb-4 border-b border-current/10 pb-3">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-luxury-gold"><FiSmartphone /> Contact Mobile Number</h3>
+          <h3 className="text-lg font-bold flex items-center gap-2 text-luxury-gold">
+            <FiSmartphone /> {step === 1 ? 'Link Mobile Number' : 'Enter SMS Code'}
+          </h3>
           <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
         </div>
-        <form onSubmit={handleSavePhone} className="space-y-4">
-          <p className="text-xs opacity-75 leading-relaxed">Enter your 10-digit contact mobile number for delivery and order updates.</p>
-          <div className="relative">
-            <span className="absolute left-3.5 top-3.5 text-sm font-bold opacity-60">+91</span>
+
+        <div id="recaptcha-phone-container"></div>
+
+        {step === 1 ? (
+          <form onSubmit={handleSendOtp} className="space-y-4">
+            <p className="text-xs opacity-75 leading-relaxed">
+              Link a verified mobile number to your account for SMS delivery updates and order security.
+            </p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-3.5 text-sm font-bold opacity-60">+91</span>
+              <input
+                type="tel"
+                value={phoneDigits}
+                onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="98765 43210"
+                maxLength={10}
+                className={`pl-14 w-full p-3 rounded-xl border text-sm font-bold outline-none ${inp}`}
+                autoFocus
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || phoneDigits.length < 10}
+              className="w-full py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow flex items-center justify-center gap-2"
+            >
+              {loading ? 'Sending SMS Code...' : 'Send Verification Code'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <p className="text-xs opacity-75 leading-relaxed">
+              Enter the 6-digit OTP sent to <strong className="text-luxury-gold">+91 {phoneDigits}</strong>.
+            </p>
             <input
-              type="tel"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="98765 43210"
-              maxLength={10}
-              className={`pl-14 w-full p-3 rounded-xl border text-sm font-bold outline-none ${inp}`}
+              type="text"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              maxLength={6}
+              className={`w-full p-3 text-center tracking-[0.3em] font-mono text-lg font-bold rounded-xl border outline-none ${inp}`}
               autoFocus
               required
             />
-          </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className={`w-1/3 py-2.5 rounded-xl border text-xs font-bold transition-all ${isDarkMode ? 'border-white/10 text-white' : 'border-gray-300 text-gray-700'}`}
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading || otpCode.length < 6}
+                className="w-2/3 py-2.5 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow"
+              >
+                {loading ? 'Verifying...' : 'Verify & Link'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BackupEmailModal({ onClose, onBackupUpdated, isDarkMode }) {
+  const [emailInput, setEmailInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const bg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
+  const inp = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200'
+
+  const handleSaveBackup = async (e) => {
+    e.preventDefault()
+    const clean = emailInput.toLowerCase().trim()
+    if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/.test(clean)) {
+      toast.error('Please enter a valid backup email address')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await authService.sendBackupEmailVerification(clean)
+      if (res.data?.success) {
+        if (res.data.user) onBackupUpdated(res.data.user)
+        toast.success(`Verification email dispatched to ${clean}. Please check your inbox!`)
+        onClose()
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send backup email verification link')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+      <div className={`w-full max-w-sm rounded-3xl border p-6 animate-fade-in shadow-2xl ${bg}`}>
+        <div className="flex items-center justify-between mb-4 border-b border-current/10 pb-3">
+          <h3 className="text-lg font-bold flex items-center gap-2 text-luxury-gold">
+            <FiMail /> Add Backup Email
+          </h3>
+          <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
+        </div>
+        <form onSubmit={handleSaveBackup} className="space-y-4">
+          <p className="text-xs opacity-75 leading-relaxed">
+            Add a secondary verified email address for account recovery and backup order receipts.
+          </p>
+          <input
+            type="email"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder="backup@example.com"
+            className={`w-full p-3 rounded-xl border text-sm font-semibold outline-none ${inp}`}
+            autoFocus
+            required
+          />
           <button
             type="submit"
-            disabled={loading || newPhone.length < 10}
+            disabled={loading || !emailInput.trim()}
             className="w-full py-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all disabled:opacity-50 shadow-glow"
           >
-            {loading ? 'Saving...' : 'Save Mobile Number'}
+            {loading ? 'Sending Link...' : 'Send Verification Link'}
           </button>
         </form>
       </div>
@@ -347,6 +526,7 @@ function Profile() {
   const { user, updateUser, isAuthenticated, loading: authLoading } = useAuth()
   const { isDarkMode, toggleTheme, language, changeLanguage } = useTheme()
   const { currency, setCurrency, RATES } = useCurrency()
+  const [searchParams] = useSearchParams()
 
   const TABS = [
     { id: 'profile',       label: t('profile.personalDetails', 'Personal Details'),     icon: FiUser,       desc: t('profile.personalInfo', 'Name, contact, avatar') },
@@ -355,11 +535,14 @@ function Profile() {
     { id: 'payments',      label: t('profile.paymentMethods', 'Payment Methods & UPI'), icon: FiCreditCard, desc: t('profile.savedUpi', 'UPI & wallet') },
     { id: 'display',       label: t('profile.displayRegion', 'Display & Region'),      icon: FiGlobe,      desc: t('profile.visualTheme', 'Theme, language, currency') },
     { id: 'notifications', label: t('profile.notifications', 'Notifications'),         icon: FiBell,       desc: t('profile.notificationAlerts', 'Alerts & updates') },
+    { id: 'help-policies', label: t('footer.helplineInfo', 'Help, Helpline & Policies'), icon: FiHelpCircle, desc: 'Helpline, Assistant & Store Policies' },
   ]
 
-
-  const [activeTab, setActiveTab] = useState('profile')
+  const tabFromUrl = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'profile')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [policyModalOpen, setPolicyModalOpen] = useState(false)
+  const [policyTab, setPolicyTab] = useState('shipping')
   const [profileLoading, setProfileLoading] = useState(false)
   const [prefsLoading, setPrefsLoading] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
@@ -368,6 +551,7 @@ function Profile() {
   const [addresses, setAddresses] = useState([])
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [showPhoneModal, setShowPhoneModal] = useState(false)
+  const [showBackupEmailModal, setShowBackupEmailModal] = useState(false)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState(null)
   const [upiForm, setUpiForm] = useState({ upiId: '', label: 'Google Pay' })
@@ -445,13 +629,101 @@ function Profile() {
 
   if (!authLoading && !isAuthenticated) {
     return (
-      <div className="container-custom py-20 min-h-[70vh] flex items-center justify-center">
-        <div className={`card max-w-md p-8 text-center space-y-5 rounded-3xl border ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white text-black'}`}>
+      <div className="container-custom py-12 min-h-[75vh] flex flex-col items-center justify-center gap-8">
+        <div className={`card max-w-md w-full p-8 text-center space-y-5 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'}`}>
           <div className="w-16 h-16 rounded-full bg-luxury-gold/10 text-luxury-gold flex items-center justify-center mx-auto"><FiLock size={32} /></div>
           <h2 className="text-2xl font-serif font-bold">Account Settings</h2>
           <p className="text-xs opacity-75 leading-relaxed">Please login to manage your profile, delivery addresses, notifications, and account settings.</p>
-          <Link to="/login?redirect=/profile" className="block w-full py-3.5 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">Login to SKLP</Link>
+          <Link to="/login?redirect=/profile" className="block w-full py-3.5 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-widest rounded-xl hover:bg-luxury-darkGold shadow-glow transition-all">Login to Style Street</Link>
         </div>
+
+        {/* Quick Help, Helpline & Store Policies inside Settings */}
+        <div className={`max-w-2xl w-full p-6 md:p-8 rounded-3xl border shadow-xl space-y-6 ${isDarkMode ? 'bg-luxury-charcoal/80 border-white/10 text-white' : 'bg-white/95 border-luxury-gold/30 text-black'}`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-current/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
+                <FiHelpCircle size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-serif font-bold text-luxury-gold">Help, Helpline & Store Policies</h3>
+                <p className="text-[11px] opacity-65">Access our instant AI assistant, customer helpline and official store guidelines</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
+                className="py-2 px-4 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-full text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                💬 Help Assistant
+              </button>
+            </div>
+          </div>
+
+          {/* Helpline Quick Contact */}
+          <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-lg flex-shrink-0">
+                📞
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider">Customer Helpline</p>
+                <div className="flex flex-wrap items-center gap-3 text-xs font-mono mt-0.5">
+                  <a href="tel:+919948682179" className="text-luxury-gold font-bold hover:underline">+91 9948682179</a>
+                  <span className="opacity-40">•</span>
+                  <a href="mailto:support@stylestreet.in" className="text-luxury-gold font-bold hover:underline">support@stylestreet.in</a>
+                </div>
+              </div>
+            </div>
+            <a
+              href="tel:+919948682179"
+              className="py-2 px-4 bg-luxury-gold text-black text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold transition-all flex-shrink-0"
+            >
+              Call Support
+            </a>
+          </div>
+
+          {/* Policies Grid */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-luxury-gold mb-3">Store Policies</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                { id: 'shipping', label: 'Shipping Policy', icon: <FiTruck size={14} className="text-luxury-gold" /> },
+                { id: 'returns', label: 'Returns & Refunds', icon: <FiRefreshCw size={14} className="text-luxury-gold" /> },
+                { id: 'payments', label: 'Payment Security', icon: <FiShield size={14} className="text-luxury-gold" /> },
+                { id: 'vip', label: 'Club Membership', icon: <FiAward size={14} className="text-luxury-gold" /> },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { setPolicyTab(p.id); setPolicyModalOpen(true) }}
+                  className={`p-3 rounded-xl border text-center flex flex-col items-center gap-1.5 transition-all text-xs font-semibold
+                    ${isDarkMode ? 'border-white/10 bg-white/5 hover:border-luxury-gold/50 hover:bg-white/10' : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/50 hover:bg-white'}`}
+                >
+                  {p.icon}
+                  <span className="text-[11px] leading-tight">{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Copyright inside Settings */}
+          <div className="pt-4 border-t border-current/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs opacity-75">
+            <div className="flex items-center gap-2">
+              <BrandName size="sm" />
+              <span>|</span>
+              <p>© {new Date().getFullYear()} SKLP Fashion. All rights reserved.</p>
+            </div>
+            <p className="text-[10px] font-mono opacity-60">Verified Luxury Standard</p>
+          </div>
+        </div>
+
+        <PolicyModal
+          isOpen={policyModalOpen}
+          onClose={() => setPolicyModalOpen(false)}
+          initialTab={policyTab}
+          isDarkMode={isDarkMode}
+        />
       </div>
     )
   }
@@ -544,6 +816,32 @@ function Profile() {
     catch { toast.error('Failed to remove UPI ID') }
   }
 
+  const handleRemovePhone = async () => {
+    if (!window.confirm('Are you sure you want to unlink this phone number from your account?')) return
+    try {
+      const res = await authService.unlinkPhone()
+      if (res.data?.success && res.data?.user) {
+        updateUser(res.data.user)
+        toast.info('Phone number unlinked successfully')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to unlink phone number')
+    }
+  }
+
+  const handleRemoveBackupEmail = async () => {
+    if (!window.confirm('Are you sure you want to remove your backup email address?')) return
+    try {
+      const res = await authService.removeBackupEmail()
+      if (res.data?.success && res.data?.user) {
+        updateUser(res.data.user)
+        toast.info('Backup email removed successfully')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove backup email')
+    }
+  }
+
   const displayUserId = user?.customUserId || (user?._id ? `USER_${user._id.slice(-6).toUpperCase()}` : 'USER_ACCOUNT')
   const cardBg = isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-black/10 text-black'
   const inputBg = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'
@@ -554,10 +852,7 @@ function Profile() {
       <div className={`px-5 pt-6 pb-5 border-b ${isDarkMode ? 'border-white/8' : 'border-gray-100'}`}>
         <Link to="/" className="flex items-center gap-2.5" onClick={() => setSidebarOpen(false)}>
           <div className="w-8 h-8 rounded-lg bg-luxury-gold flex items-center justify-center shadow-glow flex-shrink-0"><span className="text-luxury-black font-extrabold text-sm font-serif">S</span></div>
-          <div>
-            <p className="text-luxury-gold font-extrabold text-sm tracking-widest uppercase font-serif leading-none">SKLP</p>
-            <p className={`text-[9px] uppercase tracking-widest font-bold leading-none mt-0.5 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>Fashion</p>
-          </div>
+          <BrandName size="sm" />
         </Link>
       </div>
       <div className="px-5 pt-5 pb-2">
@@ -736,19 +1031,117 @@ function Profile() {
                 </form>
                 <div className="border-t border-current/10 pt-5 space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-luxury-gold flex items-center gap-2"><FiShield size={14} /> Contact Information</h3>
-                  <div className={`flex items-center justify-between p-4 rounded-2xl border ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  
+                  {/* Primary Email */}
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border gap-3 ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 rounded-xl bg-luxury-gold/10 text-luxury-gold"><FiMail size={18} /></div>
-                      <div><p className="text-[10px] font-bold uppercase opacity-60">Primary Email</p><p className="text-sm font-semibold">{user?.email || 'No email registered'}</p></div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase opacity-60">Primary Email</p>
+                        <p className="text-sm font-semibold">{user?.email || 'No email registered'}</p>
+                      </div>
                     </div>
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20"><FiCheckCircle size={12} /> Active</span>
+                    <span className="self-start sm:self-auto flex items-center gap-1 text-[11px] font-bold text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+                      <FiCheckCircle size={12} /> {user?.isEmailVerified ? 'Verified' : 'Active'}
+                    </span>
                   </div>
-                  <div className={`flex items-center justify-between p-4 rounded-2xl border ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+
+                  {/* Mobile Number */}
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border gap-3 ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 rounded-xl bg-luxury-gold/10 text-luxury-gold"><FiPhone size={18} /></div>
-                      <div><p className="text-[10px] font-bold uppercase opacity-60">Mobile Number</p><p className="text-sm font-bold font-mono">{user?.phone ? `+91 ${user.phone}` : 'No phone added'}</p></div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-bold uppercase opacity-60">Mobile Number</p>
+                          {user?.phone && user?.phoneVerified && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                              <FiCheckCircle size={10} /> Verified
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold font-mono">{user?.phone ? `+91 ${user.phone}` : 'No phone linked'}</p>
+                      </div>
                     </div>
-                    <button type="button" onClick={() => setShowPhoneModal(true)} className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black transition-all">{user?.phone ? 'Change' : 'Add Mobile'}</button>
+                    <div className="self-start sm:self-auto flex items-center gap-2">
+                      {user?.phone ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setShowPhoneModal(true)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black transition-all"
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRemovePhone}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white transition-all"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowPhoneModal(true)}
+                          className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-luxury-gold text-black hover:bg-luxury-darkGold transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <FiPlus size={12} /> Add Mobile
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Backup Email */}
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border gap-3 ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-luxury-gold/10 text-luxury-gold"><FiMail size={18} /></div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-bold uppercase opacity-60">Backup Email</p>
+                          {user?.backupEmail && (
+                            user?.backupEmailVerified ? (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                                <FiCheckCircle size={10} /> Verified
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                <FiClock size={10} /> Pending
+                              </span>
+                            )
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold">{user?.backupEmail || 'No backup email registered'}</p>
+                      </div>
+                    </div>
+                    <div className="self-start sm:self-auto flex items-center gap-2">
+                      {user?.backupEmail ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setShowBackupEmailModal(true)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black transition-all"
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRemoveBackupEmail}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white transition-all"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowBackupEmailModal(true)}
+                          className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black transition-all flex items-center gap-1.5"
+                        >
+                          <FiPlus size={12} /> Add Backup Email
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -777,7 +1170,7 @@ function Profile() {
                 </div>
                 <div className="pt-3 border-t border-current/10">
                   <Link to="/become-a-seller" className="w-full py-3 bg-luxury-gold/10 hover:bg-luxury-gold text-luxury-gold hover:text-black border border-luxury-gold/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
-                    <span>Become an SKLP Seller</span><FiArrowRight size={14} />
+                    <span>Become a Style Street Seller</span><FiArrowRight size={14} />
                   </Link>
                 </div>
               </div>
@@ -1015,7 +1408,7 @@ function Profile() {
               </div>
               <div className={`p-6 rounded-2xl border ${cardBg} space-y-4 flex flex-col justify-between`}>
                 <div>
-                  <h3 className="text-lg font-serif font-bold text-luxury-gold flex items-center gap-2"><FiTag /> SKLP Wallet</h3>
+                  <h3 className="text-lg font-serif font-bold text-luxury-gold flex items-center gap-2"><FiTag /> Style Street Wallet</h3>
                   <div className="mt-4 p-5 rounded-2xl bg-luxury-gold/10 border border-luxury-gold/30 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-luxury-gold">Available Reward Coins</p>
                     <p className="text-3xl font-serif font-extrabold mt-1 text-luxury-gold">500 Coins</p>
@@ -1069,11 +1462,240 @@ function Profile() {
             </div>
           )}
 
+          {activeTab === 'help-policies' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Header card */}
+              <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-luxury-gold/20 flex items-center justify-center text-luxury-gold shadow-glow">
+                    <FiHelpCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-serif font-bold tracking-wide text-luxury-gold">
+                      Help, Helpline & Store Policies
+                    </h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                      Access 24/7 AI Assistance, live customer helpline, and official store policies
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-green-500/15 text-green-500 border border-green-500/30">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    Help Center Active
+                  </span>
+                </div>
+              </div>
+
+              {/* 2 Primary Action Cards: Help Assistant & Customer Helpline */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* 1. 💬 Help Assistant */}
+                <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col justify-between space-y-4 hover:border-luxury-gold/50 transition-all`}>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-luxury-gold/15 text-luxury-gold flex items-center justify-center text-xl">
+                        💬
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">
+                        24/7 AI Assistant
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-luxury-gold">Help Assistant</h4>
+                      <p className={`text-xs leading-relaxed mt-1 ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
+                        Need instant answers about size fits, tracking your shipments, return status, or product recommendations? Our smart AI assistant is ready right now.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
+                    className="w-full py-3 px-4 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>💬 Open Help Assistant</span>
+                    <FiArrowRight size={14} />
+                  </button>
+                </div>
+
+                {/* 2. 📞 Customer Helpline */}
+                <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col justify-between space-y-4 hover:border-luxury-gold/50 transition-all`}>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-luxury-gold/15 text-luxury-gold flex items-center justify-center text-xl">
+                        📞
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/15 text-green-500 border border-green-500/30">
+                        Live Helpline
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-luxury-gold">Customer Helpline</h4>
+                      <p className={`text-xs leading-relaxed mt-1 ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
+                        Speak directly with our dedicated customer support & style resolution specialists for personalized assistance with orders or questions.
+                      </p>
+                      <div className="mt-3 space-y-1.5 text-xs font-mono">
+                        <div className="flex items-center gap-2">
+                          <span className="opacity-60">Phone:</span>
+                          <a href="tel:+919948682179" className="font-bold text-luxury-gold hover:underline">+91 9948682179</a>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="opacity-60">Email:</span>
+                          <a href="mailto:support@stylestreet.in" className="font-bold text-luxury-gold hover:underline">support@stylestreet.in</a>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] opacity-60">
+                          <span>Hours: Mon – Sun (9:00 AM – 10:00 PM IST)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <a
+                      href="tel:+919948682179"
+                      className="flex-1 py-3 px-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold transition-all text-center flex items-center justify-center gap-1.5"
+                    >
+                      <span>📞 Call Helpline</span>
+                    </a>
+                    <a
+                      href="mailto:support@stylestreet.in"
+                      className={`flex-1 py-3 px-3 rounded-xl border text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5 transition-all
+                        ${isDarkMode ? 'border-white/20 hover:bg-white/10 text-white' : 'border-black/20 hover:bg-black/5 text-black'}`}
+                    >
+                      <span>✉️ Email</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Official Store Policies (Grid of 4) */}
+              <div className={`p-6 rounded-2xl border ${cardBg} space-y-4`}>
+                <div className="flex items-center justify-between border-b pb-3 border-current/10">
+                  <div className="flex items-center gap-2">
+                    <FiShield className="text-luxury-gold" size={18} />
+                    <h4 className="text-sm font-bold uppercase tracking-wider font-serif">Official Store Policies</h4>
+                  </div>
+                  <span className="text-[11px] opacity-60">Click any policy to review full details</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Shipping Policy */}
+                  <button
+                    type="button"
+                    onClick={() => { setPolicyTab('shipping'); setPolicyModalOpen(true); }}
+                    className={`p-4 rounded-xl border text-left flex flex-col justify-between gap-3 group transition-all
+                      ${isDarkMode ? 'border-white/10 hover:border-luxury-gold/50 bg-white/5 hover:bg-white/10' : 'border-gray-200 hover:border-luxury-gold/50 bg-gray-50 hover:bg-white'}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-8 h-8 rounded-lg bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
+                        <FiTruck size={16} />
+                      </div>
+                      <FiExternalLink size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-luxury-gold transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide group-hover:text-luxury-gold transition-colors">Shipping Policy</p>
+                      <p className={`text-[10px] mt-1 line-clamp-2 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        Delivery timelines, logistics partners, and dispatched order tracking
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Returns & Refunds */}
+                  <button
+                    type="button"
+                    onClick={() => { setPolicyTab('returns'); setPolicyModalOpen(true); }}
+                    className={`p-4 rounded-xl border text-left flex flex-col justify-between gap-3 group transition-all
+                      ${isDarkMode ? 'border-white/10 hover:border-luxury-gold/50 bg-white/5 hover:bg-white/10' : 'border-gray-200 hover:border-luxury-gold/50 bg-gray-50 hover:bg-white'}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-8 h-8 rounded-lg bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
+                        <FiRefreshCw size={16} />
+                      </div>
+                      <FiExternalLink size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-luxury-gold transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide group-hover:text-luxury-gold transition-colors">Returns & Refunds</p>
+                      <p className={`text-[10px] mt-1 line-clamp-2 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        7-day doorstep pickup, quality inspections, and fast refund options
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Payment Security */}
+                  <button
+                    type="button"
+                    onClick={() => { setPolicyTab('payments'); setPolicyModalOpen(true); }}
+                    className={`p-4 rounded-xl border text-left flex flex-col justify-between gap-3 group transition-all
+                      ${isDarkMode ? 'border-white/10 hover:border-luxury-gold/50 bg-white/5 hover:bg-white/10' : 'border-gray-200 hover:border-luxury-gold/50 bg-gray-50 hover:bg-white'}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-8 h-8 rounded-lg bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
+                        <FiShield size={16} />
+                      </div>
+                      <FiExternalLink size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-luxury-gold transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide group-hover:text-luxury-gold transition-colors">Payment Security</p>
+                      <p className={`text-[10px] mt-1 line-clamp-2 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        256-bit bank-grade encryption, PCI-DSS compliance & secure COD
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Club Membership */}
+                  <button
+                    type="button"
+                    onClick={() => { setPolicyTab('vip'); setPolicyModalOpen(true); }}
+                    className={`p-4 rounded-xl border text-left flex flex-col justify-between gap-3 group transition-all
+                      ${isDarkMode ? 'border-white/10 hover:border-luxury-gold/50 bg-white/5 hover:bg-white/10' : 'border-gray-200 hover:border-luxury-gold/50 bg-gray-50 hover:bg-white'}`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="w-8 h-8 rounded-lg bg-luxury-gold/20 flex items-center justify-center text-luxury-gold">
+                        <FiAward size={16} />
+                      </div>
+                      <FiExternalLink size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-luxury-gold transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide group-hover:text-luxury-gold transition-colors">Club Membership</p>
+                      <p className={`text-[10px] mt-1 line-clamp-2 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        VIP privileges, private drops, concierge priority, and rewards
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Section: Brand & Copyright */}
+              <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-luxury-gold flex items-center justify-center text-luxury-black font-serif font-extrabold shadow-glow">
+                    S
+                  </div>
+                  <div>
+                    <BrandName size="md" />
+                    <p className="text-xs opacity-75 mt-0.5">
+                      © {new Date().getFullYear()} SKLP Fashion. All rights reserved.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs opacity-60 font-mono">
+                  <span>Version 2.4.0 • Luxury Couture Platform</span>
+                </div>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
+      <PolicyModal
+        isOpen={policyModalOpen}
+        onClose={() => setPolicyModalOpen(false)}
+        initialTab={policyTab}
+        isDarkMode={isDarkMode}
+      />
+
       {showAddressModal && <AddressModal address={editingAddress} onSave={handleSaveAddress} onClose={() => { setShowAddressModal(false); setEditingAddress(null) }} isDarkMode={isDarkMode} t={t} />}
-      {showPhoneModal && <PhoneModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
+      {showPhoneModal && <FirebasePhoneModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
+      {showBackupEmailModal && <BackupEmailModal onClose={() => setShowBackupEmailModal(false)} onBackupUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
       {showAvatarModal && (
         <AvatarModal
           currentAvatar={profileForm.avatar}

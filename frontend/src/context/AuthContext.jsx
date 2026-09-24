@@ -100,44 +100,64 @@ export const AuthProvider = ({ children }) => {
     return false
   }, [])
 
-  // Initialize auth state from localStorage and verify with API
+  // Initialize auth state from localStorage (Instant Stale-While-Revalidate pattern)
   useEffect(() => {
+    let isMounted = true
+
     const initAuth = async () => {
       const savedUser = localStorage.getItem('user')
       const savedToken = localStorage.getItem('token')
 
+      // 1. Instant optimistic hydration: unblock UI immediately if cached user exists
+      if (savedToken && savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser)
+          if (isMounted) {
+            setUser(parsed)
+            setToken(savedToken)
+            setIsAuthenticated(true)
+            setLoading(false) // Immediately render UI with cached data!
+          }
+        } catch (_) {
+          // If JSON parse failed, clean up
+          localStorage.removeItem('user')
+        }
+      } else if (savedToken) {
+        if (isMounted) {
+          setToken(savedToken)
+        }
+      }
+
+      // 2. Background revalidation: fetch authoritative profile from server
       if (savedToken) {
         try {
-          // Temporarily set credentials in state so interception logic resolves it
-          setToken(savedToken)
-          // Fetch latest user profile from backend
           const res = await userService.getCurrentUser()
-          if (res.data?.success && res.data?.user) {
+          if (res.data?.success && res.data?.user && isMounted) {
             setUser(res.data.user)
             setIsAuthenticated(true)
             localStorage.setItem('user', JSON.stringify(res.data.user))
-          } else {
-            logout()
           }
         } catch (err) {
-          console.warn('Failed to verify token on boot, falling back to cached user:', err.message)
-          if (savedUser) {
-            try {
-              setUser(JSON.parse(savedUser))
-              setToken(savedToken)
-              setIsAuthenticated(true)
-            } catch (e) {
+          // If server explicitly returned 401 Unauthorized, token is expired/invalid
+          if (err.response?.status === 401) {
+            const refreshed = await refreshAuth()
+            if (!refreshed && isMounted) {
               logout()
             }
           } else {
-            logout()
+            console.warn('[AUTH] Background revalidation offline/failed, using cached profile:', err.message)
           }
         }
       }
-      setLoading(false)
+
+      if (isMounted) {
+        setLoading(false)
+      }
     }
+
     initAuth()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { isMounted = false }
+  }, [logout, refreshAuth])
 
   const updateUser = useCallback((updatedData) => {
     setUser(prev => {

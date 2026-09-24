@@ -31,15 +31,15 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     enum: ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear'],
-    required: [true, 'Category is required'],
-    index: true
+    required: [true, 'Category is required']
+    // indexed via compound schema.index({ category: 1, gender: 1 }) below
   },
   subcategory: String,
   gender: {
     type: String,
     enum: ['men', 'women', 'kids', 'unisex'],
-    required: [true, 'Gender is required'],
-    index: true
+    required: [true, 'Gender is required']
+    // indexed via compound schema.index({ category: 1, gender: 1 }) below
   },
   brand: {
     type: String,
@@ -49,8 +49,8 @@ const productSchema = new mongoose.Schema({
   brandNormalized: {
     type: String,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
+    // indexed via compound schema.index({ brandNormalized: 1, category: 1, price: 1 }) below
   },
   nameNormalized: {
     type: String,
@@ -60,8 +60,8 @@ const productSchema = new mongoose.Schema({
   },
   sellerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Seller',
-    index: true
+    ref: 'Seller'
+    // indexed via compound schema.index({ sellerId: 1, isActive: 1 }) below
   },
   sku: {
     type: String,

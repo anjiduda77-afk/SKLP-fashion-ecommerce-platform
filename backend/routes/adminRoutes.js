@@ -3,7 +3,10 @@ import { asyncHandler } from '../middleware/errorHandler.js'
 import { verifyToken } from '../middleware/authMiddleware.js'
 import verifyRole from '../middleware/verifyRole.js'
 import { uploadProductImages, handleMulterError } from '../middleware/uploadMiddleware.js'
+import upload from '../middleware/uploadMiddleware.js'
 import * as adminController from '../controllers/adminController.js'
+import * as receiptController from '../controllers/receiptController.js'
+import * as brandingController from '../controllers/brandingController.js'
 
 const router = express.Router()
 
@@ -20,8 +23,9 @@ router.put('/products/:id', uploadProductImages, handleMulterError, asyncHandler
 router.delete('/products/:id', asyncHandler(adminController.deleteProduct))
 router.put('/products/bulk/update', asyncHandler(adminController.bulkUpdateProducts))
 
-// Orders
+// Orders & Document Receipts
 router.get('/orders', asyncHandler(adminController.getAllOrders))
+router.get('/orders/:orderId/receipt', asyncHandler(receiptController.getAdminOrderReceipt))
 router.put('/orders/:id/status', asyncHandler(adminController.updateOrderStatus))
 router.get('/orders/:id', asyncHandler(adminController.getOrderById))
 
@@ -146,6 +150,12 @@ router.delete('/reviews/:id', asyncHandler(async (req, res) => {
   const { deleteReviewAdmin } = await import('../controllers/reviewController.js')
   return deleteReviewAdmin(req, res)
 }))
+
+// Branding & Logo Management
+router.get('/branding', asyncHandler(brandingController.getAdminBranding))
+router.put('/branding', asyncHandler(brandingController.updateBranding))
+router.post('/branding/logo', upload.single('logo'), handleMulterError, asyncHandler(brandingController.uploadBrandingLogo))
+router.delete('/branding/logo', asyncHandler(brandingController.deleteBrandingLogo))
 
 export default router
 

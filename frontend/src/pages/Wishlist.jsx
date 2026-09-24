@@ -71,7 +71,7 @@ function Wishlist() {
           <FiHeart size={40} />
         </div>
         <h1 className="text-4xl font-serif font-bold mb-4">{t('wishlist.title', 'Your Wishlist')}</h1>
-        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.signInDesc', 'Sign in to save your favourite SKLP luxury pieces across devices.')}</p>
+        <p className="opacity-60 mb-8 max-w-sm">{t('wishlist.signInDesc', 'Sign in to save your favourite STYLE STREET luxury pieces across devices.')}</p>
         <Link
           to="/login?redirect=/wishlist"
           className="px-8 py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-colors"
@@ -159,7 +159,7 @@ function Wishlist() {
                 {/* Content */}
                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <span className="text-[10px] font-mono uppercase text-luxury-gold tracking-widest">{p.brand || 'SKLP Royale'}</span>
+                    <span className="text-[10px] font-mono uppercase text-luxury-gold tracking-widest">{p.brand || 'STYLE STREET Royale'}</span>
                     <h3 className="font-serif font-bold text-base line-clamp-1 group-hover:text-luxury-gold transition-colors">
                       <Link to={`/products/${p._id}`}>{p.name}</Link>
                     </h3>

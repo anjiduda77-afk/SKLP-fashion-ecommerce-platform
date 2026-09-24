@@ -19,7 +19,7 @@ function AIChatbot() {
   const [history, setHistory] = useState([
     { 
       from: 'bot', 
-      text: 'Hello! I am your SKLP Shopping Assistant. I can help you find outfits, sarees, blazers, shoes, check sizes, or track your orders. How can I help you today?' 
+      text: 'Hello! I am your Style Street Shopping Assistant. I can help you find outfits, sarees, blazers, shoes, check sizes, or track your orders. How can I help you today?' 
     }
   ])
 
@@ -84,7 +84,7 @@ function AIChatbot() {
                   <FiZap size={16} />
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.25em] text-luxury-gold font-bold">SKLP AI</p>
+                  <p className="text-[9px] uppercase tracking-[0.25em] text-luxury-gold font-bold">STYLE STREET AI</p>
                   <h3 className="text-sm font-bold tracking-wide uppercase font-serif">Shopping Assistant</h3>
                 </div>
               </div>

@@ -21,22 +21,41 @@ export const CartProvider = ({ children }) => {
   const normalizeCartItems = useCallback((items = []) => {
     return items.map((item) => {
       const product = item.productId && typeof item.productId === 'object' ? item.productId : {}
+      const seller = item.sellerId && typeof item.sellerId === 'object' ? item.sellerId : {}
       const prodId = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.id)
       const img = item.image || (typeof product.images?.[0] === 'object' ? product.images?.[0]?.url : product.images?.[0]) || product.image || product.thumbnail || ''
+
+      const availableStock = product.stock !== undefined
+        ? Math.max(0, product.stock - (product.reservedStock || 0))
+        : (item.stock !== undefined ? item.stock : 999)
+
       return {
         _id: item._id,
         id: prodId,
         productId: prodId,
         name: item.productName || product.name || item.name || 'Product',
-        brand: item.brand || product.brand || 'SKLP Fashion',
-        shopName: item.shopName || 'SKLP Official Store',
-        sellerId: item.sellerId,
+        shortDescription: product.shortDescription || item.shortDescription || '',
+        description: product.description || item.description || '',
+        brand: item.brand || product.brand || 'Style Street Fashion',
+        category: product.category || item.category || 'Fashion',
+        sku: product.sku || item.sku || '',
+        shopName: item.shopName || seller.shopName || 'Style Street Official Store',
+        sellerId: seller._id || item.sellerId || product.sellerId,
+        seller: seller,
         offerId: item.offerId,
         price: item.price ?? product.price ?? 0,
+        discount: item.discount ?? product.discount ?? 0,
         originalPrice: product.originalPrice || product.price || item.price || 0,
         image: img,
         quantity: item.quantity,
+        stock: product.stock,
+        availableStock,
+        isInStock: availableStock > 0,
         variant: item.variant || {},
+        variants: product.variants || [],
+        attributes: product.attributes || {},
+        returnPolicy: product.returnPolicy || '7 Day Returns',
+        warrantyPeriod: product.warrantyPeriod || '',
         timestamp: new Date().getTime(),
       }
     })
@@ -99,8 +118,8 @@ export const CartProvider = ({ children }) => {
       id: prodId,
       productId: prodId,
       name: product.name,
-      brand: product.brand || 'SKLP Fashion',
-      shopName: product.shopName || 'SKLP Official Store',
+      brand: product.brand || 'Style Street Fashion',
+      shopName: product.shopName || 'Style Street Official Store',
       offerId: offerId,
       price: product.discountedPrice || product.price || 0,
       originalPrice: product.originalPrice || product.price || 0,
@@ -220,8 +239,26 @@ export const CartProvider = ({ children }) => {
     setCartItems([])
   }
 
+  const moveToWishlist = async (itemId) => {
+    if (isAuthenticated) {
+      try {
+        const res = await cartService.moveToWishlist(itemId)
+        if (res.data?.success && res.data?.cart?.items) {
+          const normalized = normalizeCartItems(res.data.cart.items)
+          setCartItems(normalized)
+          calculateTotals(normalized)
+          return true
+        }
+      } catch (err) {
+        console.error('Failed to move to wishlist on server', err)
+      }
+    }
+    setCartItems((prev) => prev.filter((i) => i._id !== itemId && i.id !== itemId))
+    return true
+  }
+
   const applyCoupon = (couponCode, discount) => {
-    // This would be handled by a coupon context or API
+    // Handled by API and state
     console.log('Coupon applied:', couponCode, discount)
   }
 
@@ -234,6 +271,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateCartItem,
+        moveToWishlist,
         clearCart,
         applyCoupon,
         cartSynced

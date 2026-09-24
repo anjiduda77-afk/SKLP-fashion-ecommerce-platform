@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import { useWishlist } from '@context/WishlistContext'
+import BrandName from '@components/Common/BrandName'
 
 const navSections = [
   {
@@ -190,8 +191,7 @@ function Sidebar({ isOpen, onClose }) {
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.4em] text-luxury-gold font-bold mb-0.5">SKLP</p>
-                <h2 className="text-xl font-serif font-extrabold tracking-wide uppercase">Fashion Store</h2>
+                <BrandName size="md" />
               </div>
               <button 
                 type="button" 
@@ -227,7 +227,7 @@ function Sidebar({ isOpen, onClose }) {
                       ) : t('sidebar.welcomeGuest', 'Welcome Guest')}
                     </p>
                     <p className="mt-1 text-sm font-semibold truncate max-w-[150px]">
-                      {isAuthenticated ? `${user?.firstName || 'SKLP'} ${user?.lastName || ''}` : t('sidebar.sklpFashionStore', 'SKLP Fashion Store')}
+                      {isAuthenticated ? `${user?.firstName || 'Style Street'} ${user?.lastName || ''}` : t('sidebar.sklpFashionStore', 'Style Street')}
                     </p>
                     {isAuthenticated && user?.role && ROLE_DASHBOARD[user.role] && (
                       <Link
@@ -353,7 +353,7 @@ function Sidebar({ isOpen, onClose }) {
               >
                 <div className="flex items-center gap-3 mb-3">
                   <FiZap className="text-luxury-gold animate-bounce" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-luxury-gold">{t('sidebar.loyaltyClub', 'SKLP Rewards Club')}</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-luxury-gold">{t('sidebar.loyaltyClub', 'Style Street Rewards Club')}</h3>
                 </div>
                 <p className="text-xs opacity-70 leading-relaxed mb-4">
                   {t('sidebar.loyaltyClubText', 'Enjoy free fast delivery, custom fittings, and early access to new festive arrivals.')}

@@ -45,9 +45,12 @@ const AdminCoupons = lazy(() => import('@pages/Admin/Coupons'))
 const AdminReturns = lazy(() => import('@pages/Admin/Returns'))
 const AdminSellers = lazy(() => import('@pages/Admin/Sellers'))
 const AdminMarketing = lazy(() => import('@pages/Admin/Marketing'))
+const AdminOrderReceipt = lazy(() => import('@pages/Admin/OrderReceiptPage'))
+const AdminBrandingSettings = lazy(() => import('@pages/Admin/BrandingSettings'))
 
 // Seller & Delivery Dashboards (Lazy)
 const SellerDashboard = lazy(() => import('@pages/Seller/Dashboard'))
+const SellerOrderLabel = lazy(() => import('@pages/Seller/OrderLabelPage'))
 const DeliveryDashboard = lazy(() => import('@pages/Delivery/Dashboard'))
 
 // Marketing Components
@@ -58,11 +61,10 @@ const PageLoader = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center p-8">
     <div className="w-10 h-10 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin mb-3" />
     <span className="text-[11px] uppercase tracking-widest font-semibold opacity-60 text-amber-500">
-      Loading SKLP Fashion...
+      Loading STYLE STREET...
     </span>
   </div>
 )
-
 
 import { AuthProvider } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -70,7 +72,124 @@ import { CartProvider } from '@context/CartContext'
 import { WishlistProvider } from '@context/WishlistContext'
 import { ShopProvider } from '@context/ShopContext'
 import ChooseShopModal from '@components/Shop/ChooseShopModal'
+import { useLocation } from 'react-router-dom'
 
+function MainAppLayout({ isDarkMode }) {
+  const location = useLocation()
+  const isDocumentView = location.pathname.includes('/receipt')
+
+  return (
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
+      {/* Light/Dark Mode Background */}
+      <div className={`fixed inset-0 -z-10 transition-colors duration-300
+        ${isDarkMode 
+          ? 'bg-luxury-black' 
+          : 'bg-luxury-white'}`}
+      />
+
+      {/* Announcement Bar */}
+      {!isDocumentView && <AnnouncementBar />}
+
+      {/* Header */}
+      {!isDocumentView && <Header isDarkMode={isDarkMode} />}
+
+      {/* Choose Shop / Brand Modal */}
+      {!isDocumentView && <ChooseShopModal />}
+
+      {/* Main Content */}
+      <main className={`transition-colors duration-300 ${isDocumentView ? 'p-0 bg-slate-100' : 'pb-20 md:pb-0 ' + (isDarkMode ? 'bg-luxury-charcoal text-luxury-white' : 'bg-luxury-white text-luxury-darkBlack')}`}>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Dedicated Document Routes (Free of Navigation & Sidebars) */}
+            <Route path="/admin/orders/:orderId/receipt" element={<ProtectedRoute requiredRole="admin"><AdminOrderReceipt /></ProtectedRoute>} />
+            <Route path="/seller/orders/:orderId/receipt" element={<ProtectedRoute requiredRole="seller"><SellerOrderLabel /></ProtectedRoute>} />
+
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/:id/track" element={<OrderTracking />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Navigate to="/profile" replace />} />
+            <Route path="/policies" element={<Navigate to="/profile?tab=help-policies" replace />} />
+            <Route path="/account" element={<Navigate to="/profile" replace />} />
+            <Route path="/customer" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
+            <Route path="/become-a-seller" element={<BecomeSeller />} />
+            <Route path="/shop/:slug" element={<ShopPage />} />
+            <Route path="/shops" element={<Products />} />
+
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+
+            {/* Protected User Routes */}
+            <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+            {/* Seller Routes */}
+            <Route path="/seller/dashboard" element={<ProtectedRoute requiredRole="seller"><SellerDashboard /></ProtectedRoute>} />
+
+            {/* Delivery Partner Routes */}
+            <Route path="/delivery/dashboard" element={<ProtectedRoute requiredRole="delivery"><DeliveryDashboard /></ProtectedRoute>} />
+
+            {/* Admin Routes with nested AdminLayout */}
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="products" element={<AdminProducts />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="coupons" element={<AdminCoupons />} />
+              <Route path="returns" element={<AdminReturns />} />
+              <Route path="sellers" element={<AdminSellers />} />
+              <Route path="marketing" element={<AdminMarketing />} />
+              <Route path="branding" element={<AdminBrandingSettings />} />
+            </Route>
+
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </main>
+
+      {/* Footer */}
+      {!isDocumentView && <Footer isDarkMode={isDarkMode} />}
+
+      {/* Mobile Navigation */}
+      {!isDocumentView && <MobileNavigation />}
+
+      {/* Exit Intent Popup */}
+      {!isDocumentView && <ExitIntentPopup />}
+
+      {/* AI Chatbot */}
+      {!isDocumentView && <AIChatbot />}
+      {/* Toast Notifications */}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? 'dark' : 'light'}
+      />
+
+      {/* Vercel Analytics */}
+      <Analytics />
+    </div>
+  )
+}
 
 function App() {
   const { i18n } = useTranslation()
@@ -86,117 +205,11 @@ function App() {
         <CartProvider>
           <WishlistProvider>
             <ShopProvider>
-              <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
-                {/* Light/Dark Mode Background */}
-                <div className={`fixed inset-0 -z-10 transition-colors duration-300
-                  ${isDarkMode 
-                    ? 'bg-luxury-black' 
-                    : 'bg-luxury-white'}`}
-                />
-
-                {/* Announcement Bar */}
-                <AnnouncementBar />
-
-                {/* Header */}
-                <Header isDarkMode={isDarkMode} />
-
-                {/* Choose Shop / Brand Modal */}
-                <ChooseShopModal />
-
-                {/* Main Content */}
-                <main className={`transition-colors duration-300 pb-20 md:pb-0
-                  ${isDarkMode 
-                    ? 'bg-luxury-charcoal text-luxury-white' 
-                    : 'bg-luxury-white text-luxury-darkBlack'}`}
-                >
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      {/* Public Routes */}
-                      <Route path="/" element={<Home />} />
-                      <Route path="/products" element={<Products />} />
-                      <Route path="/products/:id" element={<ProductDetail />} />
-                      <Route path="/cart" element={<Cart />} />
-                      <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/orders" element={<Orders />} />
-                      <Route path="/orders/:id/track" element={<OrderTracking />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/account" element={<Navigate to="/profile" replace />} />
-                      <Route path="/customer" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                      <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
-                      <Route path="/become-a-seller" element={<BecomeSeller />} />
-                      <Route path="/shop/:slug" element={<ShopPage />} />
-                      <Route path="/shops" element={<Products />} />
-
-                      {/* Auth Routes */}
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="/verify-email" element={<VerifyEmail />} />
-
-                      {/* Protected User Routes */}
-                      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-                      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-
-                      {/* Seller Routes */}
-                      <Route path="/seller/dashboard" element={<ProtectedRoute requiredRole="seller"><SellerDashboard /></ProtectedRoute>} />
-
-                      {/* Delivery Partner Routes */}
-                      <Route path="/delivery/dashboard" element={<ProtectedRoute requiredRole="delivery"><DeliveryDashboard /></ProtectedRoute>} />
-
-                      {/* Admin Routes with nested AdminLayout */}
-                      <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
-                        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                        <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="products" element={<AdminProducts />} />
-                        <Route path="orders" element={<AdminOrders />} />
-                        <Route path="users" element={<AdminUsers />} />
-                        <Route path="coupons" element={<AdminCoupons />} />
-                        <Route path="returns" element={<AdminReturns />} />
-                        <Route path="sellers" element={<AdminSellers />} />
-                        <Route path="marketing" element={<AdminMarketing />} />
-                      </Route>
-
-                      {/* 404 Route */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                </main>
-
-                {/* Footer */}
-                <Footer isDarkMode={isDarkMode} />
-
-                {/* Mobile Navigation */}
-                <MobileNavigation />
-
-                {/* Exit Intent Popup */}
-                <ExitIntentPopup />
-
-                {/* AI Chatbot */}
-                <AIChatbot />
-
-                {/* Toast Notifications */}
-                <ToastContainer
-                  position="bottom-right"
-                  autoClose={3000}
-                  hideProgressBar={false}
-                  newestOnTop={true}
-                  closeOnClick
-                  rtl={false}
-                  pauseOnFocusLoss
-                  draggable
-                  pauseOnHover
-                  theme={isDarkMode ? 'dark' : 'light'}
-                />
-
-                {/* Vercel Analytics */}
-                <Analytics />
-              </div>
+              <MainAppLayout isDarkMode={isDarkMode} />
             </ShopProvider>
           </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
+        </CartProvider>
+      </AuthProvider>
     </Router>
   )
 }

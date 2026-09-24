@@ -246,7 +246,7 @@ export const updateDeliveryLocation = async (req, res) => {
       throw new ApiError(404, 'Order not found')
     }
 
-    if (order.assignedTo.toString() !== userId) {
+    if (!order.assignedTo || order.assignedTo.toString() !== userId) {
       throw new ApiError(403, 'Not authorized to update this order')
     }
 

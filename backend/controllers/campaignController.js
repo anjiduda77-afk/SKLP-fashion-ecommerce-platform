@@ -10,8 +10,8 @@ const logMarketingAction = async (campaign, action, details, req) => {
     const adminUser = req?.user ? {
       id: req.user.id || req.user._id,
       name: `${req.user.firstName || 'Admin'} ${req.user.lastName || ''}`.trim(),
-      email: req.user.email || 'admin@sklp.com'
-    } : { name: 'System Admin', email: 'admin@sklp.com' };
+      email: req.user.email || 'admin@stylestreet.in'
+    } : { name: 'System Admin', email: 'admin@stylestreet.in' };
 
     await MarketingAuditLog.create({
       campaignId: campaign?._id || null,

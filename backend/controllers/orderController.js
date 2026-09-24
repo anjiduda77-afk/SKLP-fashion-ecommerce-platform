@@ -6,18 +6,18 @@ import User from '../models/User.js'
 import SellerSettlement from '../models/SellerSettlement.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
-const calculateOrderTotals = async (cart, coupon) => {
+const calculateOrderTotals = async (cartItems, coupon) => {
   const { default: Seller } = await import('../models/Seller.js')
 
   const items = await Promise.all(
-    cart.items.map(async (item) => {
+    cartItems.map(async (item) => {
       const product = await Product.findById(item.productId).lean()
       if (!product) {
         throw new ApiError(404, 'Product not found in cart')
       }
 
-      let sellerId = item.sellerId
-      let shopNameSnapshot = item.shopName || 'SKLP Official Store'
+      let sellerId = item.sellerId || product.sellerId
+      let shopNameSnapshot = item.shopName || item.shopNameSnapshot || 'Style Street Official Store'
 
       if (!sellerId) {
         const creatorSeller = await Seller.findOne({ userId: product.createdBy }).lean()
@@ -27,8 +27,8 @@ const calculateOrderTotals = async (cart, coupon) => {
         }
       }
 
-      const itemPrice = item.price || product.price
-      const itemDiscount = item.discount !== undefined ? item.discount : (product.discount || 0)
+      const itemPrice = product.price
+      const itemDiscount = product.discount !== undefined ? product.discount : 0
       const unitFinalPrice = itemPrice - (itemPrice * itemDiscount / 100)
 
       return {
@@ -36,14 +36,14 @@ const calculateOrderTotals = async (cart, coupon) => {
         sellerId,
         offerId: item.offerId,
         shopNameSnapshot,
-        brand: product.brand || item.brand || 'SKLP Fashion',
+        brand: product.brand || item.brand || 'Style Street Fashion',
         name: product.name,
         productName: product.name,
         quantity: item.quantity,
         price: itemPrice,
         unitPrice: itemPrice,
         discount: itemDiscount,
-        variant: item.variant,
+        variant: item.variant || {},
         finalPrice: unitFinalPrice * item.quantity,
         images: product.images,
         image: product.images?.[0]?.url || product.thumbnail || item.image
@@ -92,7 +92,7 @@ export const getOrderById = async (req, res) => {
 }
 
 export const createOrder = async (req, res) => {
-  const { shippingAddress, paymentMethod, couponCode, phone } = req.body
+  const { shippingAddress, paymentMethod, couponCode, phone, isBuyNow, buyNowItem } = req.body
 
   // Verify user account status
   const user = await User.findById(req.user.id)
@@ -111,43 +111,157 @@ export const createOrder = async (req, res) => {
     throw new ApiError(400, 'Invalid payment method')
   }
 
-  // Validate phone (support +91 and spaces/formatting by taking last 10 digits)
+  // Validate phone
   const cleanPhone = phone ? String(phone).replace(/\D/g, '').slice(-10) : ''
   if (!/^[0-9]{10}$/.test(cleanPhone)) {
     throw new ApiError(400, 'Invalid phone number - please provide a valid 10-digit mobile number')
   }
 
-  const cart = await Cart.findOne({ userId: req.user.id }).lean()
-  if (!cart || cart.items.length === 0) {
-    throw new ApiError(400, 'Cart is empty')
-  }
+  let items = []
+  let subtotal = 0
+  let couponDiscount = 0
 
   let coupon = null
   if (couponCode) {
-    coupon = await Coupon.findOne({ code: couponCode, isActive: true })
+    coupon = await Coupon.findOne({ code: couponCode.trim().toUpperCase(), isActive: true })
     if (!coupon) throw new ApiError(404, 'Coupon not found or inactive')
     if (coupon.endDate && coupon.endDate < new Date()) throw new ApiError(410, 'Coupon expired')
   }
 
-  // ── 1. Calculate order item totals ────────────────────────────────────────
-  const { items, subtotal, couponDiscount } = await calculateOrderTotals(cart, coupon)
+  // ── Mode A: BUY NOW (Isolated single item purchase) ──────────────────────────
+  if (isBuyNow && buyNowItem) {
+    const { productId, quantity = 1, variant = {}, offerId, cartItemId } = buyNowItem
+    if (!productId) throw new ApiError(400, 'Buy Now product ID is required')
+
+    const product = await Product.findById(productId).lean()
+    if (!product || product.isActive === false) {
+      throw new ApiError(400, 'Product is not available for purchase')
+    }
+
+    const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
+    const reqQty = Math.max(1, parseInt(quantity, 10) || 1)
+    if (reqQty > availableStock) {
+      throw new ApiError(400, `Insufficient stock for ${product.name}. Only ${availableStock} available.`)
+    }
+
+    const { default: Seller } = await import('../models/Seller.js')
+    let sellerId = product.sellerId
+    let shopNameSnapshot = 'Style Street Official Store'
+    let itemPrice = product.price
+    let itemDiscount = product.discount || 0
+
+    if (offerId && !offerId.toString().startsWith('default_')) {
+      const { default: SellerOffer } = await import('../models/SellerOffer.js')
+      const offer = await SellerOffer.findById(offerId).populate('sellerId').lean()
+      if (offer && offer.isActive) {
+        sellerId = offer.sellerId?._id || offer.sellerId
+        shopNameSnapshot = offer.sellerId?.shopName || 'Verified Seller'
+        itemPrice = offer.price
+        itemDiscount = offer.discount || 0
+      }
+    } else if (!sellerId) {
+      const creatorSeller = await Seller.findOne({ userId: product.createdBy }).lean()
+      if (creatorSeller) {
+        sellerId = creatorSeller._id
+        shopNameSnapshot = creatorSeller.shopName
+      }
+    }
+
+    const unitFinalPrice = itemPrice - (itemPrice * itemDiscount / 100)
+    const lineFinal = unitFinalPrice * reqQty
+
+    items = [{
+      productId: product._id,
+      sellerId,
+      offerId: (offerId && !offerId.toString().startsWith('default_')) ? offerId : undefined,
+      shopNameSnapshot,
+      brand: product.brand || 'Style Street Fashion',
+      name: product.name,
+      productName: product.name,
+      quantity: reqQty,
+      price: itemPrice,
+      unitPrice: itemPrice,
+      discount: itemDiscount,
+      variant: variant || {},
+      finalPrice: lineFinal,
+      images: product.images,
+      image: product.images?.[0]?.url || product.thumbnail
+    }]
+
+    subtotal = lineFinal
+
+    if (coupon) {
+      if (coupon.minPurchaseAmount && subtotal < coupon.minPurchaseAmount) {
+        throw new ApiError(400, `Minimum purchase of ₹${coupon.minPurchaseAmount} required for coupon ${coupon.code}`)
+      }
+      if (coupon.discountType === 'percentage') {
+        couponDiscount = (subtotal * coupon.discountValue) / 100
+        if (coupon.maxDiscountAmount) couponDiscount = Math.min(couponDiscount, coupon.maxDiscountAmount)
+      } else if (coupon.discountType === 'fixed') {
+        couponDiscount = coupon.discountValue
+      }
+      couponDiscount = Math.min(couponDiscount, subtotal)
+    }
+
+    // Atomically reserve stock for Buy Now item
+    const reserveRes = await Product.updateOne(
+      { _id: product._id, stock: { $gte: reqQty + (product.reservedStock || 0) } },
+      { $inc: { reservedStock: reqQty } }
+    )
+    if (reserveRes.modifiedCount === 0) {
+      throw new ApiError(400, `Stock reservation failed for ${product.name}. Please try again.`)
+    }
+  } else {
+    // ── Mode B: FULL CART CHECKOUT ─────────────────────────────────────────────
+    const cart = await Cart.findOne({ userId: req.user.id }).lean()
+    if (!cart || cart.items.length === 0) {
+      throw new ApiError(400, 'Cart is empty')
+    }
+
+    // Validate available stock for each item before reservation
+    for (const item of cart.items) {
+      const prod = await Product.findById(item.productId).lean()
+      if (!prod || prod.isActive === false) {
+        throw new ApiError(400, `Product "${item.productName || 'in cart'}" is no longer available`)
+      }
+      const availableStock = prod.stock !== undefined ? Math.max(0, prod.stock - (prod.reservedStock || 0)) : 999
+      if (item.quantity > availableStock) {
+        throw new ApiError(400, `Insufficient stock for "${prod.name}". Available: ${availableStock}, requested: ${item.quantity}`)
+      }
+    }
+
+    const calculated = await calculateOrderTotals(cart.items, coupon)
+    items = calculated.items
+    subtotal = calculated.subtotal
+    couponDiscount = calculated.couponDiscount
+
+    // Atomically reserve stock for all items
+    for (const item of items) {
+      const r = await Product.updateOne(
+        { _id: item.productId, stock: { $gte: item.quantity } },
+        { $inc: { reservedStock: item.quantity } }
+      )
+      if (r.modifiedCount === 0) {
+        throw new ApiError(400, `Could not reserve stock for ${item.name}.`)
+      }
+    }
+  }
 
   const orderNumber = `SKLP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`
 
-  // ── 2. Construct Multi-Seller Suborders & Per-Seller Delivery Calculations ──
+  // ── Construct Multi-Seller Suborders & Per-Seller Delivery Calculations ────
   const { default: Seller } = await import('../models/Seller.js')
   const { default: DeliveryConfig } = await import('../models/DeliveryConfig.js')
   const { calculateDeliveryBreakdownForSeller } = await import('../utils/deliveryUtils.js')
   const config = await DeliveryConfig.getConfig()
 
-  // Group items by sellerId
   const sellerGroups = {}
   for (const item of items) {
     const sId = item.sellerId ? item.sellerId.toString() : 'official'
     if (!sellerGroups[sId]) {
       sellerGroups[sId] = {
         sellerId: item.sellerId,
-        shopNameSnapshot: item.shopNameSnapshot || 'SKLP Official Store',
+        shopNameSnapshot: item.shopNameSnapshot || 'Style Street Official Store',
         items: []
       }
     }
@@ -163,12 +277,11 @@ export const createOrder = async (req, res) => {
     let sellerDoc = null
 
     if (!resolvedSellerId) {
-      // Find or create default official seller record
       let officialSeller = await Seller.findOne({ shopSlug: 'sklp-official' })
       if (!officialSeller) {
         officialSeller = await Seller.create({
           userId: user._id,
-          shopName: 'SKLP Official Store',
+          shopName: 'Style Street Official Store',
           shopSlug: 'sklp-official',
           rating: 4.9,
           verificationStatus: 'verified',
@@ -186,12 +299,16 @@ export const createOrder = async (req, res) => {
     const platformCommission = parseFloat(((subSubtotal * commissionRate) / 100).toFixed(2))
     const sellerPayout = parseFloat((subSubtotal - platformCommission).toFixed(2))
 
-    // Per-seller delivery breakdown
+    const sellerLocation = sellerDoc?.pickupAddress?.lat && sellerDoc?.pickupAddress?.lng
+      ? sellerDoc.pickupAddress
+      : sellerDoc?.shopLocation
+
     const sellerDelivery = await calculateDeliveryBreakdownForSeller(
       shippingAddress,
-      sellerDoc?.shopLocation,
+      sellerLocation,
       config,
-      subSubtotal
+      subSubtotal,
+      sellerDoc?.deliveryMode || 'PAID_DELIVERY'
     )
 
     if (sellerDelivery.deliveryUnavailable) {
@@ -222,7 +339,7 @@ export const createOrder = async (req, res) => {
       sellerPayout,
       status: 'pending',
       trackingDetails: {
-        carrier: config.deliveryPartnerEnabled ? 'Partner Express' : 'SKLP Express',
+        carrier: config.deliveryPartnerEnabled ? 'Partner Express' : 'Style Street Express',
         trackingNumber: `SKLP-SUB-${orderNumber.slice(-6)}-${subIndex}`
       },
       settlementStatus: 'PENDING',
@@ -234,28 +351,28 @@ export const createOrder = async (req, res) => {
     })
   }
 
-  // ── 3. Server-side delivery fee summation across suborders ──────────────────
+  // ── Delivery fee summation across suborders ─────────────────────────────────
   const deliveryFee = sellerSuborders.reduce((sum, s) => sum + (s.deliveryFee || 0), 0)
   const validDistances = sellerSuborders.map(s => s.deliveryDistanceKm).filter(d => typeof d === 'number' && !isNaN(d))
   const deliveryDistance = validDistances.length > 0 ? Math.max(...validDistances) : null
   const deliveryLabel = deliveryFee === 0 ? 'Free delivery 🎉' : (sellerSuborders[0]?.deliveryLabel || `Delivery charge: ₹${deliveryFee}`)
 
-  // ── 4. Platform fee on subtotal ─────────────────────────────────────────────
+  // ── Platform fee on subtotal ────────────────────────────────────────────────
   const platformFee = parseFloat(((subtotal * (config.platformFeePercent ?? 5)) / 100).toFixed(2))
 
-  // ── 5. Final total: subtotal + platformFee + deliveryFee − couponDiscount ─
+  // ── Final total: subtotal + platformFee + deliveryFee − couponDiscount ──────
   const totalAmount = Math.max(0, parseFloat(
     (subtotal + platformFee + deliveryFee - couponDiscount).toFixed(2)
   ))
 
-  // ── 6. Razorpay Server-side Order Initialization ──────────────────────────
+  // ── Razorpay Server-side Order Initialization ───────────────────────────────
   let razorpayOrderId = null
   if (paymentMethod === 'razorpay') {
     const { razorpayInstance, isRazorpayConfigured } = await import('../config/razorpay.js')
     if (isRazorpayConfigured()) {
       try {
         const rzpOrder = await razorpayInstance.orders.create({
-          amount: Math.round(totalAmount * 100), // in paise
+          amount: Math.round(totalAmount * 100), // paise
           currency: 'INR',
           receipt: orderNumber,
           notes: {
@@ -272,6 +389,11 @@ export const createOrder = async (req, res) => {
     } else {
       razorpayOrderId = `order_rzp_mock_${Date.now()}`
     }
+  }
+
+  const orderMeta = {
+    isBuyNow: Boolean(isBuyNow),
+    cartItemId: buyNowItem?.cartItemId || null
   }
 
   const order = await Order.create({
@@ -296,11 +418,12 @@ export const createOrder = async (req, res) => {
     total: totalAmount,
     status: 'pending',
     phone,
+    internalNotes: JSON.stringify(orderMeta),
     statusTimeline: [{ status: 'pending', timestamp: new Date(), notes: 'Order placed successfully' }],
     statusHistory: [{ status: 'pending', updatedAt: new Date(), comment: 'Order placed successfully' }],
   })
 
-  // ── 7. Initialize Seller Settlement records (7-day post-delivery hold) ────
+  // ── Initialize Seller Settlement records ────────────────────────────────────
   for (const sub of sellerSuborders) {
     await SellerSettlement.create({
       sellerId: sub.sellerId,
@@ -312,14 +435,55 @@ export const createOrder = async (req, res) => {
       platformCommission: sub.platformCommission,
       sellerPayout: sub.sellerPayout,
       status: 'PENDING',
-      holdUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // Default 14 days or 7 days post-delivery
+      holdUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     })
   }
 
-  await Cart.findOneAndUpdate(
-    { userId: req.user.id },
-    { items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 }
-  )
+  // ── If COD, UPI, or Card: confirm order, commit stock, and clean cart ────────
+  if (paymentMethod === 'cod' || paymentMethod === 'upi' || paymentMethod === 'card') {
+    if (paymentMethod === 'upi' || paymentMethod === 'card') {
+      order.paymentStatus = 'completed'
+      order.status = 'confirmed'
+      order.transactionId = `${paymentMethod.toUpperCase()}_TXN_${Date.now()}`
+      await order.save()
+
+      try {
+        const { default: Payment } = await import('../models/Payment.js')
+        await Payment.create({
+          orderId: order._id,
+          userId: req.user.id,
+          amount: totalAmount,
+          provider: paymentMethod,
+          status: 'PAID',
+          gatewayPaymentId: order.transactionId,
+          capturedAt: new Date()
+        })
+      } catch (payErr) {
+        console.warn('[Payment] Auto-record note:', payErr.message)
+      }
+    }
+
+    if (isBuyNow && buyNowItem?.cartItemId) {
+      // Remove only this single bought item from cart
+      await Cart.updateOne(
+        { userId: req.user.id },
+        { $pull: { items: { _id: buyNowItem.cartItemId } } }
+      )
+    } else if (!isBuyNow) {
+      // Full cart checkout: clear cart
+      await Cart.findOneAndUpdate(
+        { userId: req.user.id },
+        { items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 }
+      )
+    }
+    // Commit stock for direct payment methods immediately
+    for (const it of items) {
+      await Product.updateOne(
+        { _id: it.productId },
+        { $inc: { stock: -it.quantity, reservedStock: -it.quantity } }
+      )
+    }
+  }
 
   res.status(201).json({
     success: true,
@@ -331,7 +495,7 @@ export const createOrder = async (req, res) => {
     breakdown: {
       subtotal,
       platformFee,
-      platformFeePercent: delivery.platformFeePercent,
+      platformFeePercent: config?.platformFeePercent ?? 5,
       deliveryFee,
       deliveryLabel,
       deliveryDistance,
@@ -340,7 +504,6 @@ export const createOrder = async (req, res) => {
     }
   })
 }
-
 
 export const updateOrderStatus = async (req, res) => {
   const { status } = req.body
@@ -364,10 +527,24 @@ export const cancelOrder = async (req, res) => {
   if (order.status === 'delivered') {
     throw new ApiError(400, 'Delivered orders cannot be cancelled')
   }
+
+  // Release or restore inventory
+  if (order.paymentStatus === 'completed') {
+    // Restore deducted stock
+    for (const item of order.items) {
+      await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.quantity } })
+    }
+  } else {
+    // Release reserved stock
+    for (const item of order.items) {
+      await Product.updateOne({ _id: item.productId }, { $inc: { reservedStock: -item.quantity } })
+    }
+  }
+
   order.status = 'cancelled'
   await order.save()
 
-  // Invalidate any pending or available settlements for this cancelled order
+  // Invalidate settlements
   await SellerSettlement.updateMany(
     { orderId: order._id, status: { $in: ['PENDING', 'AVAILABLE'] } },
     { $set: { status: 'CANCELLED', adjustmentReason: 'Order cancelled by user/admin' } }
@@ -406,7 +583,7 @@ export const trackOrder = async (req, res) => {
       orderId: order._id,
       status: order.status,
       shippingAddress: order.shippingAddress,
-      trackingDetails: order.trackingDetails || { carrier: 'SKLP Express', trackingNumber: 'SKLP-' + order._id.toString().substring(18).toUpperCase() },
+      trackingDetails: order.trackingDetails || { carrier: 'Style Street Express', trackingNumber: 'SS-' + order._id.toString().substring(18).toUpperCase() },
       statusHistory: order.statusHistory || [
         { status: 'pending', updatedAt: order.createdAt, comment: 'Order placed successfully' }
       ]

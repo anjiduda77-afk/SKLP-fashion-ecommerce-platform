@@ -124,12 +124,13 @@ export const register = async (req, res) => {
     role: 'customer',
     status: 'active',
     isActive: true,
-    isEmailVerified: true,
-    isPhoneVerified: true
+    isEmailVerified: false,
+    isPhoneVerified: false
   }
 
   if (cleanEmail) userData.email = cleanEmail
   if (cleanPhone) userData.phone = cleanPhone
+  if (req.body.firebaseUid) userData.firebaseUid = req.body.firebaseUid
 
   console.log('[MONGODB] User.create reached')
   let user
@@ -155,26 +156,24 @@ export const register = async (req, res) => {
     }
   }
 
-  // Generate email verification token if email provided
+  // If email signup: do NOT issue authenticated tokens until email is verified!
   if (cleanEmail) {
     const verificationToken = crypto.randomBytes(32).toString('hex')
     user.emailVerificationToken = verificationToken
     user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    const { token, refreshToken } = await issueAuthTokens(user, req)
-    console.log('[MONGODB] Save successful: YES')
+    await user.save()
 
     // Send verification email (async, don't block response)
     const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`
     sendEmail({
       to: cleanEmail,
-      subject: 'Verify Your SKLP Account',
-      text: `Welcome to SKLP! Please verify your email by clicking: ${verifyUrl}`,
+      subject: 'Verify Your Style Street Account',
+      text: `Welcome to Style Street! Please verify your email by clicking: ${verifyUrl}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #FFD700; text-align: center;">Welcome to SKLP!</h1>
+          <h1 style="color: #FFD700; text-align: center;">Welcome to Style Street!</h1>
           <p>Hi ${user.firstName || 'Customer'},</p>
-          <p>Thank you for registering with SKLP Fashion. Please verify your email address to unlock all luxury features.</p>
+          <p>Thank you for registering with Style Street Fashion. Please verify your email address to unlock all luxury features.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verifyUrl}" style="background: #FFD700; color: #000; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
               Verify Email Address
@@ -187,10 +186,9 @@ export const register = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Account created successfully. Welcome to SKLP Fashion!',
+      message: 'Account created successfully. Please verify your email address to continue.',
       user: user.toJSON(),
-      token,
-      refreshToken
+      isEmailVerified: false
     })
   }
 
@@ -199,7 +197,7 @@ export const register = async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: 'Account created successfully. Welcome to SKLP Fashion!',
+    message: 'Account created successfully. Welcome to Style Street Fashion!',
     user: user.toJSON(),
     token,
     refreshToken
@@ -207,18 +205,35 @@ export const register = async (req, res) => {
 }
 
 export const login = async (req, res) => {
-  const { email, password, rememberMe } = req.body
-  const searchEmail = email ? email.toLowerCase().trim() : ''
-  if (!searchEmail) {
-    throw new ApiError(400, 'Please enter your email address')
+  const { email, phone, identifier, password, rememberMe } = req.body
+  const rawInput = (email || phone || identifier || '').toString().trim()
+
+  if (!rawInput) {
+    throw new ApiError(400, 'Please enter your email address or 10-digit mobile number')
   }
   if (!password) {
     throw new ApiError(400, 'Please enter your password')
   }
 
-  const user = await User.findOne({ email: searchEmail }).select('+password')
+  const cleanPhone = normalizeIndianPhone(rawInput)
+  const cleanEmail = rawInput.includes('@') ? rawInput.toLowerCase().trim() : null
+
+  // Build query to find user by email or phone
+  const searchConditions = []
+  if (cleanEmail) {
+    searchConditions.push({ email: cleanEmail })
+  }
+  if (cleanPhone) {
+    searchConditions.push({ phone: cleanPhone })
+  }
+  // Fallback if input was neither standard email nor 10-digit phone (e.g. username/raw email)
+  if (searchConditions.length === 0) {
+    searchConditions.push({ email: rawInput.toLowerCase().trim() })
+  }
+
+  const user = await User.findOne({ $or: searchConditions }).select('+password')
   if (!user) {
-    throw new ApiError(401, 'Invalid email or password. Please check your credentials or register a new account.')
+    throw new ApiError(401, 'Invalid credentials. Please check your email/mobile and password, or create an account.')
   }
 
   // Informative hint if account exists without password (e.g., registered via Google)
@@ -620,7 +635,7 @@ export const resendVerification = async (req, res) => {
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`
     await sendEmail({
       to: email,
-      subject: 'Verify Your SKLP Account',
+      subject: 'Verify Your Style Street Account',
       text: `Verify your email: ${verifyUrl}`,
     })
   } catch (emailErr) {
@@ -646,29 +661,33 @@ export const forgotPassword = async (req, res) => {
   user.passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
   await user.save()
 
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
-  await sendEmail({
-    to: email,
-    subject: 'Reset Your SKLP Password',
-    text: `Reset your password using the link: ${resetUrl}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #FFD700; text-align: center;">Password Reset</h1>
-        <p>Hi ${user.firstName},</p>
-        <p>You requested a password reset. Click the button below to set a new password.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background: #FFD700; color: #000; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-            Reset Password
-          </a>
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`
+  try {
+    await sendEmail({
+      to: email,
+      subject: 'Reset Your Style Street Password',
+      text: `Reset your password using the link: ${resetUrl}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #FFD700; text-align: center;">Password Reset</h1>
+          <p>Hi ${user.firstName || 'Customer'},</p>
+          <p>You requested a password reset. Click the button below to set a new password.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background: #FFD700; color: #000; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+              Reset Password
+            </a>
+          </div>
+          <p style="color: #666; font-size: 12px;">This link expires in 1 hour. If you didn't request this, ignore this email.</p>
         </div>
-        <p style="color: #666; font-size: 12px;">This link expires in 1 hour. If you didn't request this, ignore this email.</p>
-      </div>
-    `
-  })
+      `
+    })
+  } catch (emailErr) {
+    console.warn('[AUTH] Password reset email dispatch note:', emailErr.message)
+  }
 
   res.status(200).json({
     success: true,
-    message: 'Password reset email sent',
+    message: 'Password reset link sent to your email. Please check your inbox.',
   })
 }
 
@@ -833,7 +852,7 @@ export const linkEmail = async (req, res) => {
     const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`
     await sendEmail({
       to: searchEmail,
-      subject: 'Verify Your Email — SKLP Fashion',
+      subject: 'Verify Your Email — Style Street Fashion',
       text: `Verify your email by clicking: ${verifyUrl}`,
     })
   } catch (err) {
@@ -843,6 +862,263 @@ export const linkEmail = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Verification email sent. Please verify to complete linking.',
+    user: user.toJSON()
+  })
+}
+
+/**
+ * Normalize phone number to strict E.164 standard format (+91XXXXXXXXXX)
+ */
+export const normalizeE164Phone = (rawPhone) => {
+  if (!rawPhone || typeof rawPhone !== 'string') return null
+  const cleaned = rawPhone.trim()
+  if (cleaned.startsWith('+')) {
+    const digits = cleaned.replace(/\D/g, '')
+    if (digits.length >= 10 && digits.length <= 15) {
+      return `+${digits}`
+    }
+  }
+  const digits = cleaned.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `+91${digits}`
+  } else if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits}`
+  }
+  return null
+}
+
+/**
+ * POST /api/auth/link-phone/firebase
+ * Authenticated endpoint: Cryptographically link verified Firebase phone number to current account.
+ * Follows Rule: ONE PHONE NUMBER = ONE ACCOUNT.
+ * Does NOT create duplicate accounts. Preserves roles, seller profile, and orders.
+ */
+export const linkPhoneFirebase = async (req, res) => {
+  const userId = req.user?.id || req.user?._id
+  if (!userId) throw new ApiError(401, 'Authentication required')
+
+  const { idToken } = req.body
+  if (!idToken) {
+    throw new ApiError(400, 'Firebase ID token is required for phone verification')
+  }
+
+  let decodedToken
+  try {
+    decodedToken = await verifyFirebaseIdToken(idToken)
+  } catch (err) {
+    console.warn('[AUTH] Firebase Token Verification failed in linkPhoneFirebase:', err.message)
+    throw new ApiError(401, 'Invalid or expired Firebase authentication token')
+  }
+
+  const rawPhone = decodedToken.phone_number
+  if (!rawPhone) {
+    throw new ApiError(400, 'No verified phone number found in Firebase token. Please complete SMS verification.')
+  }
+
+  const e164 = normalizeE164Phone(rawPhone)
+  const clean10 = normalizeIndianPhone(rawPhone)
+
+  if (!e164 || !clean10) {
+    throw new ApiError(400, 'Invalid phone number format')
+  }
+
+  // Check 1 Phone = 1 Account across database
+  const duplicate = await User.findOne({
+    $or: [
+      { phoneE164: e164, phoneVerified: true },
+      { phone: clean10, isPhoneVerified: true }
+    ],
+    _id: { $ne: userId }
+  })
+
+  if (duplicate) {
+    throw new ApiError(409, 'This phone number is already linked to another account.')
+  }
+
+  const user = await User.findById(userId)
+  if (!user) throw new ApiError(404, 'User not found')
+
+  // Set verified phone attributes
+  user.phoneE164 = e164
+  user.phone = clean10
+  user.phoneVerified = true
+  user.isPhoneVerified = true
+  user.phoneVerifiedAt = new Date()
+
+  // Link Firebase UID if not yet present
+  if (decodedToken.uid && !user.firebaseUid) {
+    user.firebaseUid = decodedToken.uid
+  }
+
+  await user.save()
+
+  res.status(200).json({
+    success: true,
+    message: `Phone number ${e164} successfully linked and verified.`,
+    user: user.toJSON()
+  })
+}
+
+/**
+ * POST /api/auth/unlink-phone
+ * Authenticated endpoint: Remove linked phone number from account
+ */
+export const unlinkPhone = async (req, res) => {
+  const userId = req.user?.id || req.user?._id
+  if (!userId) throw new ApiError(401, 'Authentication required')
+
+  const user = await User.findById(userId)
+  if (!user) throw new ApiError(404, 'User not found')
+
+  user.phoneE164 = undefined
+  user.phone = undefined
+  user.phoneVerified = false
+  user.isPhoneVerified = false
+  user.phoneVerifiedAt = undefined
+
+  await user.save()
+
+  res.status(200).json({
+    success: true,
+    message: 'Phone number removed successfully.',
+    user: user.toJSON()
+  })
+}
+
+/**
+ * POST /api/auth/backup-email/send-verification
+ * Authenticated endpoint: Initiate linking of optional secondary backup email.
+ * Follows Rule: ONE BACKUP EMAIL = ONE ACCOUNT.
+ */
+export const sendBackupEmailVerification = async (req, res) => {
+  const userId = req.user?.id || req.user?._id
+  if (!userId) throw new ApiError(401, 'Authentication required')
+
+  const { email } = req.body
+  if (!email) throw new ApiError(400, 'Backup email address is required')
+
+  const cleanEmail = email.toLowerCase().trim()
+  if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/.test(cleanEmail)) {
+    throw new ApiError(400, 'Please provide a valid backup email address')
+  }
+
+  // Check if this backup email is already used as primary or backup email on another account
+  const conflict = await User.findOne({
+    $or: [
+      { email: cleanEmail },
+      { primaryEmailNormalized: cleanEmail },
+      { backupEmailNormalized: cleanEmail, backupEmailVerified: true }
+    ],
+    _id: { $ne: userId }
+  })
+
+  if (conflict) {
+    throw new ApiError(409, 'This email address is already linked to another account.')
+  }
+
+  const user = await User.findById(userId)
+  if (!user) throw new ApiError(404, 'User not found')
+
+  if (user.email && user.email.toLowerCase().trim() === cleanEmail) {
+    throw new ApiError(400, 'Backup email cannot be identical to your primary email.')
+  }
+
+  const verificationToken = crypto.randomBytes(32).toString('hex')
+  user.backupEmail = cleanEmail
+  user.backupEmailNormalized = cleanEmail
+  user.backupEmailVerified = false
+  user.backupEmailVerificationToken = hashOTP(verificationToken)
+  user.backupEmailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+  await user.save()
+
+  // Send verification email
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-backup-email?token=${verificationToken}`
+  sendEmail({
+    to: cleanEmail,
+    subject: 'Verify Your Style Street Backup Email Address',
+    text: `Please verify your backup email by clicking: ${verifyUrl}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #FFD700; text-align: center;">Verify Backup Email</h2>
+        <p>Hi ${user.firstName || 'Customer'},</p>
+        <p>You added <strong>${cleanEmail}</strong> as a secondary backup recovery contact for your Style Street account.</p>
+        <div style="text-align: center; margin: 25px 0;">
+          <a href="${verifyUrl}" style="background: #FFD700; color: #000; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+            Verify Backup Email
+          </a>
+        </div>
+        <p style="color: #666; font-size: 12px;">This link is valid for 24 hours.</p>
+      </div>
+    `
+  }).catch(err => console.warn('[AUTH] Backup email send warning:', err.message))
+
+  res.status(200).json({
+    success: true,
+    message: `Verification link sent to ${cleanEmail}. Please check your inbox.`,
+    user: user.toJSON()
+  })
+}
+
+/**
+ * POST /api/auth/backup-email/verify
+ * Public/Authenticated endpoint: Confirm token and mark backup email verified
+ */
+export const verifyBackupEmail = async (req, res) => {
+  const { token } = req.body
+  if (!token) throw new ApiError(400, 'Verification token is required')
+
+  const hashedToken = hashOTP(token.trim())
+
+  const user = await User.findOne({
+    $or: [
+      { backupEmailVerificationToken: hashedToken },
+      { backupEmailVerificationToken: token.trim() }
+    ],
+    backupEmailVerificationExpiry: { $gt: new Date() }
+  })
+
+  if (!user) {
+    throw new ApiError(400, 'Invalid or expired backup email verification link.')
+  }
+
+  user.backupEmailVerified = true
+  user.backupEmailVerifiedAt = new Date()
+  user.backupEmailVerificationToken = undefined
+  user.backupEmailVerificationExpiry = undefined
+
+  await user.save()
+
+  res.status(200).json({
+    success: true,
+    message: 'Backup email verified successfully!',
+    user: user.toJSON()
+  })
+}
+
+/**
+ * POST /api/auth/backup-email/remove
+ * Authenticated endpoint: Remove backup email from account
+ */
+export const removeBackupEmail = async (req, res) => {
+  const userId = req.user?.id || req.user?._id
+  if (!userId) throw new ApiError(401, 'Authentication required')
+
+  const user = await User.findById(userId)
+  if (!user) throw new ApiError(404, 'User not found')
+
+  user.backupEmail = undefined
+  user.backupEmailNormalized = undefined
+  user.backupEmailVerified = false
+  user.backupEmailVerifiedAt = undefined
+  user.backupEmailVerificationToken = undefined
+  user.backupEmailVerificationExpiry = undefined
+
+  await user.save()
+
+  res.status(200).json({
+    success: true,
+    message: 'Backup email removed successfully.',
     user: user.toJSON()
   })
 }
@@ -865,7 +1141,7 @@ export const sendLinkPhoneOTP = async (req, res) => {
     phone: cleanPhone,
     _id: { $ne: req.user.id }
   })
-  if (existingUser && existingUser.isPhoneVerified) {
+  if (existingUser && (existingUser.isPhoneVerified || existingUser.phoneVerified)) {
     throw new ApiError(409, 'This mobile number is already linked and verified on another account')
   }
 
@@ -880,22 +1156,21 @@ export const sendLinkPhoneOTP = async (req, res) => {
   user.phoneVerificationExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
   await user.save()
 
-  let smsSent = false
+  // Dispatch real SMS — REQUIRED. No silent fallback.
   try {
     await sendOTPMessage(cleanPhone, otp)
-    smsSent = true
   } catch (err) {
-    console.warn(`[AUTH] SMS dispatch note for +91 ${cleanPhone}: ${err.message}`)
+    // Clear stored OTP if SMS fails
+    user.phoneVerificationToken = undefined
+    user.phoneVerificationExpiry = undefined
+    await user.save()
+    console.error(`[AUTH] SMS delivery failed for +91 ${cleanPhone}: ${err.message}`)
+    throw new ApiError(503, 'SMS delivery failed. Please check your number and try again.')
   }
-
-  const isDev = process.env.NODE_ENV !== 'production' || process.env.OTP_MODE === 'development'
 
   res.status(200).json({
     success: true,
-    message: smsSent
-      ? `OTP sent successfully to +91 ${cleanPhone}`
-      : `OTP generated for +91 ${cleanPhone}`,
-    devOtp: isDev ? otp : undefined
+    message: `OTP sent successfully to +91 ${cleanPhone}`
   })
 }
 
@@ -935,8 +1210,9 @@ export const verifyLinkPhone = async (req, res) => {
   // Check once more for concurrent conflicts
   const duplicate = await User.findOne({ phone: cleanPhone, _id: { $ne: user._id } })
   if (duplicate) {
-    if (!duplicate.isPhoneVerified) {
+    if (!duplicate.isPhoneVerified && !duplicate.phoneVerified) {
       duplicate.phone = undefined
+      duplicate.phoneE164 = undefined
       await duplicate.save()
     } else {
       throw new ApiError(409, 'This mobile number is already linked to another account')
@@ -944,7 +1220,10 @@ export const verifyLinkPhone = async (req, res) => {
   }
 
   user.phone = cleanPhone
+  user.phoneE164 = `+91${cleanPhone}`
+  user.phoneVerified = true
   user.isPhoneVerified = true
+  user.phoneVerifiedAt = new Date()
   user.phoneVerificationToken = undefined
   user.phoneVerificationExpiry = undefined
   await user.save()
@@ -955,4 +1234,175 @@ export const verifyLinkPhone = async (req, res) => {
     user: user.toJSON()
   })
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PHONE OTP LOGIN — Passwordless sign-in via SMS OTP (Fast2SMS / 2Factor / Twilio)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/auth/phone/send-otp   (public, rate-limited)
+ * Step 1: Generate & dispatch OTP to the given mobile number.
+ * Creates a guest record if the phone has never been seen before.
+ */
+export const sendPhoneLoginOTP = async (req, res) => {
+  const { phone } = req.body
+  if (!phone) throw new ApiError(400, 'Mobile phone number is required')
+
+  const cleanPhone = normalizeIndianPhone(phone)
+  if (!cleanPhone) {
+    throw new ApiError(400, 'Please enter a valid 10-digit Indian mobile number')
+  }
+
+  // Find existing user OR prepare to create on verify step
+  let user = await User.findOne({ phone: cleanPhone })
+
+  // Rate-guard: max 5 OTP requests per phone per 10 min
+  if (user && user.phoneLoginOtpExpiry && new Date() < new Date(user.phoneLoginOtpExpiry)) {
+    const secondsLeft = Math.ceil((new Date(user.phoneLoginOtpExpiry) - Date.now()) / 1000)
+    if (user.phoneLoginOtpAttempts >= 5) {
+      throw new ApiError(429, `Too many OTP requests. Please wait ${secondsLeft}s before retrying.`)
+    }
+  }
+
+  const { generateSecureOTP, sendOTPMessage } = await import('../services/otpService.js')
+  const otp = generateSecureOTP()
+  const hashed = hashOTP(otp)
+
+  if (user) {
+    // Update OTP fields on existing user
+    user.phoneLoginOtpToken = hashed
+    user.phoneLoginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+    user.phoneLoginOtpAttempts = (user.phoneLoginOtpAttempts || 0) + 1
+    await user.save()
+  } else {
+    // Store OTP in a temporary in-memory fashion via a stub user doc —
+    // we'll create the real account on successful verify.
+    // Use a lean temp record (no password required).
+    try {
+      user = await User.create({
+        phone: cleanPhone,
+        phoneE164: `+91${cleanPhone}`,
+        authProvider: 'firebase',
+        role: 'customer',
+        status: 'active',
+        isActive: true,
+        isPhoneVerified: false,
+        phoneVerified: false,
+        phoneLoginOtpToken: hashed,
+        phoneLoginOtpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        phoneLoginOtpAttempts: 1
+      })
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        // Race condition — user was just created; fetch and update
+        user = await User.findOne({ phone: cleanPhone })
+        if (user) {
+          user.phoneLoginOtpToken = hashed
+          user.phoneLoginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000)
+          user.phoneLoginOtpAttempts = (user.phoneLoginOtpAttempts || 0) + 1
+          await user.save()
+        } else {
+          throw new ApiError(500, 'Could not prepare OTP. Please try again.')
+        }
+      } else {
+        throw createErr
+      }
+    }
+  }
+
+  // Dispatch real SMS — REQUIRED. No silent fallback.
+  try {
+    await sendOTPMessage(cleanPhone, otp)
+    console.log(`[AUTH] Phone OTP dispatched to +91${cleanPhone.slice(0, 3)}***${cleanPhone.slice(-3)}`)
+  } catch (smsErr) {
+    // SMS failed — clear the stored OTP so it cannot be brute-forced
+    user.phoneLoginOtpToken = undefined
+    user.phoneLoginOtpExpiry = undefined
+    await user.save()
+    console.error(`[AUTH] SMS delivery failed for +91${cleanPhone}: ${smsErr.message}`)
+    throw new ApiError(503, 'SMS delivery failed. Please check your number and try again, or contact support.')
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `OTP sent to +91 ${cleanPhone.slice(0, 3)}XXXXX${cleanPhone.slice(-2)}`
+  })
+}
+
+/**
+ * POST /api/auth/phone/verify-otp   (public, rate-limited)
+ * Step 2: Verify the 6-digit OTP. Issues JWT on success.
+ * If user was brand-new, marks phone as verified and completes account setup.
+ */
+export const verifyPhoneLoginOTP = async (req, res) => {
+  const { phone, otp } = req.body
+  if (!phone || !otp) {
+    throw new ApiError(400, 'Phone number and 6-digit OTP are required')
+  }
+
+  const cleanPhone = normalizeIndianPhone(phone)
+  if (!cleanPhone) {
+    throw new ApiError(400, 'Invalid phone number format')
+  }
+
+  const cleanOtp = String(otp).replace(/\D/g, '').trim()
+  if (!/^\d{6}$/.test(cleanOtp)) {
+    throw new ApiError(400, 'OTP must be exactly 6 digits')
+  }
+
+  const user = await User.findOne({ phone: cleanPhone })
+  if (!user) {
+    throw new ApiError(400, 'No OTP request found for this number. Please request a new OTP.')
+  }
+
+  // Check account status
+  if (user.status === 'suspended' || user.status === 'blocked') {
+    throw new ApiError(403, 'Your account has been suspended or blocked. Please contact support.')
+  }
+  if (user.status === 'deleted') {
+    throw new ApiError(403, 'This account has been deleted.')
+  }
+
+  // Check OTP presence
+  if (!user.phoneLoginOtpToken || !user.phoneLoginOtpExpiry) {
+    throw new ApiError(400, 'No active OTP found. Please request a new OTP.')
+  }
+
+  // Check expiry
+  if (new Date() > new Date(user.phoneLoginOtpExpiry)) {
+    // Clear expired OTP
+    user.phoneLoginOtpToken = undefined
+    user.phoneLoginOtpExpiry = undefined
+    user.phoneLoginOtpAttempts = 0
+    await user.save()
+    throw new ApiError(400, 'OTP has expired. Please request a new one.')
+  }
+
+  // Verify OTP (compare hash)
+  const hashedInput = hashOTP(cleanOtp)
+  if (hashedInput !== user.phoneLoginOtpToken) {
+    throw new ApiError(400, 'Incorrect OTP. Please check and try again.')
+  }
+
+  // ✅ OTP is valid — clear it and mark phone verified
+  user.phoneLoginOtpToken = undefined
+  user.phoneLoginOtpExpiry = undefined
+  user.phoneLoginOtpAttempts = 0
+  user.isPhoneVerified = true
+  user.phoneVerified = true
+  user.phoneVerifiedAt = user.phoneVerifiedAt || new Date()
+  user.phoneE164 = user.phoneE164 || `+91${cleanPhone}`
+
+  const { token, refreshToken } = await issueAuthTokens(user, req)
+
+  res.status(200).json({
+    success: true,
+    message: 'Phone verified and login successful',
+    isNewUser: !user.firstName || user.firstName === 'Customer',
+    user: user.toJSON(),
+    token,
+    refreshToken
+  })
+}
+
 

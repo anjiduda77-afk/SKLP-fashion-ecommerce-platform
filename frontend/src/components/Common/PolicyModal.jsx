@@ -38,7 +38,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                 <FiFileText size={22} />
               </div>
               <div>
-                <h2 className="text-xl font-serif font-bold tracking-wide">SKLP Policies & Customer Plans</h2>
+                <h2 className="text-xl font-serif font-bold tracking-wide">STYLE STREET Policies & Customer Plans</h2>
                 <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>Official Store Policies & Customer Resolution Standards</p>
               </div>
             </div>
@@ -98,7 +98,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
 
                   <div className={`p-4 rounded-2xl border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-gray-50'}`}>
                     <h4 className="font-bold mb-2 flex items-center gap-2 text-luxury-gold">
-                      <FiCheck className="text-green-400" /> SKLP VIP Express (1-2 Days)
+                      <FiCheck className="text-green-400" /> STYLE STREET VIP Express (1-2 Days)
                     </h4>
                     <p className="text-xs opacity-75">Priority handling for metro cities (Hyderabad, Bangalore, Mumbai, Delhi, Chennai, Kolkata).</p>
                   </div>
@@ -136,7 +136,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                   <div className={`p-4 rounded-2xl border text-center ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-gray-50'}`}>
                     <div className="w-10 h-10 rounded-full bg-luxury-gold/20 text-luxury-gold flex items-center justify-center mx-auto mb-2 font-bold">2</div>
                     <h5 className="font-bold text-xs">Doorstep Pickup</h5>
-                    <p className="text-[11px] opacity-70 mt-1">Free pickup by SKLP courier partner at your convenience.</p>
+                    <p className="text-[11px] opacity-70 mt-1">Free pickup by Style Street courier partner at your convenience.</p>
                   </div>
 
                   <div className={`p-4 rounded-2xl border text-center ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-gray-50'}`}>
@@ -195,7 +195,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                   <div className="flex items-center gap-4">
                     <FiAward size={40} className="text-luxury-gold" />
                     <div>
-                      <h3 className="font-extrabold text-base text-luxury-gold uppercase tracking-wider">SKLP VIP Elite Club Plan</h3>
+                      <h3 className="font-extrabold text-base text-luxury-gold uppercase tracking-wider">STYLE STREET VIP Elite Club Plan</h3>
                       <p className="text-xs opacity-90 mt-0.5">Unlock premium perks, 1-day free shipping, and exclusive rewards.</p>
                     </div>
                   </div>
@@ -259,7 +259,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="opacity-80">✉️ Support Email:</span>
-                        <span className="font-bold">support@sklp.com</span>
+                        <span className="font-bold">support@stylestreet.in</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="opacity-80">💬 Live AI Chatbot:</span>
@@ -284,7 +284,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
 
           {/* Footer Action */}
           <div className={`p-4 md:p-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-gray-50'}`}>
-            <p className="text-xs opacity-60">SKLP Fashion Guarantee • All transactions protected by 256-bit encryption</p>
+            <p className="text-xs opacity-60">STYLE STREET Guarantee • All transactions protected by 256-bit encryption</p>
             <button
               onClick={onClose}
               className="px-6 py-2.5 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-yellow-400 transition-all shadow-glow"

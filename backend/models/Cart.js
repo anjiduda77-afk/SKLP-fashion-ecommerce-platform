@@ -29,7 +29,7 @@ const cartSchema = new mongoose.Schema({
     },
     shopName: {
       type: String,
-      default: 'SKLP Official'
+      default: 'Style Street Official'
     },
     brand: String,
     productName: String,
@@ -42,7 +42,8 @@ const cartSchema = new mongoose.Schema({
     variant: {
       size: String,
       color: String,
-      material: String
+      material: String,
+      length: String
     },
     price: Number,
     discount: Number,

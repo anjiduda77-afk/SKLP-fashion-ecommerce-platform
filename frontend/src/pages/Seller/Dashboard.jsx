@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
+import BrandName from '@components/Common/BrandName'
 import { 
   FiShoppingBag, FiDollarSign, FiInbox, 
   FiPlusCircle, FiList, FiTruck, FiMessageSquare, 
@@ -8,7 +9,8 @@ import {
   FiStar, FiChevronLeft, FiChevronRight, FiSearch, 
   FiX, FiSettings, FiAward, FiClock, FiCheckCircle,
   FiCreditCard, FiArrowRight,
-  FiRefreshCw, FiExternalLink, FiCheck
+  FiRefreshCw, FiExternalLink, FiCheck,
+  FiPrinter, FiChevronDown, FiPackage
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerService, uploadService } from '@services/apiServices'
@@ -196,6 +198,85 @@ function ImageUploadZone({ images, setImages, isDarkMode }) {
   )
 }
 
+// ── Compact Seller Receipt Dropdown ──────────────────────────────────────────
+function SellerReceiptDropdown({ orderId, isDarkMode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative inline-block text-left" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+          isDarkMode
+            ? 'border-luxury-gold/50 bg-luxury-gold/10 text-luxury-gold hover:bg-luxury-gold/20'
+            : 'border-amber-600/40 bg-amber-50 text-amber-900 hover:bg-amber-100'
+        }`}
+        title="View Packing Label, Receipt or Invoice"
+      >
+        <FiPackage size={11} />
+        <span>Receipt</span>
+        <FiChevronDown size={11} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className={`absolute right-0 mt-1 w-48 rounded-xl shadow-xl border py-1.5 z-30 animate-fade-in ${
+          isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'
+        }`}>
+          <a
+            href={`/seller/orders/${orderId}/receipt?tab=label`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiPackage size={13} /> View Packing Label
+          </a>
+          <a
+            href={`/seller/orders/${orderId}/receipt?tab=receipt`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiFileText size={13} /> View Order Receipt
+          </a>
+          <a
+            href={`/seller/orders/${orderId}/receipt?tab=invoice`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiDollarSign size={13} /> View Tax Invoice
+          </a>
+          <div className="my-1 border-t border-current/10" />
+          <a
+            href={`/seller/orders/${orderId}/receipt?tab=label`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiPrinter size={13} /> Print Packing Label
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SellerDashboard() {
   const { user } = useAuth()
   const { isDarkMode } = useTheme()
@@ -217,7 +298,7 @@ function SellerDashboard() {
   const [orderParams, setOrderParams] = useState({ page: 1, limit: 10, status: '' })
   const [ordersPagination, setOrdersPagination] = useState({ total: 0, page: 1, limit: 10, pages: 1 })
   const [dispatchingOrderId, setDispatchingOrderId] = useState(null)
-  const [dispatchData, setDispatchData] = useState({ carrier: 'SKLP Cargo', trackingNumber: '' })
+  const [dispatchData, setDispatchData] = useState({ carrier: 'Style Street Cargo', trackingNumber: '' })
 
   // Product Form state (Create/Edit)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -239,9 +320,10 @@ function SellerDashboard() {
 
   // Courier settings state
   const [courierSettings, setCourierSettings] = useState({
-    defaultCarrier: 'SKLP Air Cargo',
+    defaultCarrier: 'Style Street Air Cargo',
     bespokePackaging: true,
-    codRestricted: true
+    codRestricted: true,
+    deliveryMode: 'PAID_DELIVERY'
   })
 
   // Chat simulator state
@@ -339,6 +421,9 @@ function SellerDashboard() {
             ifscCode: p.sellerProfile?.bankDetails?.ifscCode || ''
           }
         })
+        if (sellerObj.deliveryMode) {
+          setCourierSettings(prev => ({ ...prev, deliveryMode: sellerObj.deliveryMode }))
+        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -453,6 +538,7 @@ function SellerDashboard() {
     try {
       const payload = {
         ...form,
+        brand: sellerProfile.brandName || sellerProfile.storeName || form.brand || 'Official Brand',
         price: Number(form.price),
         originalPrice: form.originalPrice ? Number(form.originalPrice) : Number(form.price),
         discount: form.discount ? Number(form.discount) : 0,
@@ -532,7 +618,7 @@ function SellerDashboard() {
       if (res.data?.success) {
         toast.success(`Order #${orderId} marked as dispatched!`)
         setDispatchingOrderId(null)
-        setDispatchData({ carrier: 'SKLP Cargo', trackingNumber: '' })
+        setDispatchData({ carrier: 'Style Street Cargo', trackingNumber: '' })
         loadOrders()
       }
     } catch (err) {
@@ -682,7 +768,7 @@ function SellerDashboard() {
           <div>
             <div className="flex items-center gap-2 text-luxury-gold mb-1">
               <FiZap className="animate-pulse" />
-              <span className="text-[10px] uppercase font-bold tracking-widest">SKLP Partner Portal</span>
+              <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest opacity-80">Partner Portal</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-wide">Seller Studio</h1>
             <p className="text-xs opacity-70 mt-1">
@@ -1242,14 +1328,20 @@ function SellerDashboard() {
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
-                      <label className={labelCls}>Brand House</label>
-                      <input 
-                        type="text" 
-                        value={form.brand}
-                        onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                        placeholder="e.g. Sabyasachi, Manish Malhotra"
-                        className={inputCls}
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className={labelCls}>Brand House</label>
+                        <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1">🔒 Official Locked</span>
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          readOnly
+                          value={sellerProfile.brandName || sellerProfile.storeName || form.brand || 'Official Brand'}
+                          className={`${inputCls} opacity-80 cursor-not-allowed bg-black/40 pr-10`}
+                        />
+                        <span className="absolute right-3 top-3 text-sm" title="Brand is locked to your verified merchant account">🔒</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">Products automatically inherit your verified official brand name</p>
                     </div>
                     <div>
                       <label className={labelCls}>Low Stock Threshold Alert</label>
@@ -1358,7 +1450,7 @@ function SellerDashboard() {
                             <p className="text-xs font-bold">Buyer: {o.userId?.firstName} {o.userId?.lastName} ({o.userId?.email})</p>
                           </div>
                           
-                          <div className="text-right">
+                          <div className="flex items-center gap-2 text-right">
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase font-black tracking-wider
                               ${o.status === 'pending' || o.status === 'confirmed' 
                                 ? 'bg-yellow-500/10 text-yellow-500 animate-pulse' 
@@ -1369,6 +1461,7 @@ function SellerDashboard() {
                                     : 'bg-green-500/10 text-green-500'}`}>
                               {o.status}
                             </span>
+                            <SellerReceiptDropdown orderId={o.orderId || o._id} isDarkMode={isDarkMode} />
                           </div>
                         </div>
 
@@ -1422,7 +1515,7 @@ function SellerDashboard() {
                                 </form>
                               ) : (
                                 <button
-                                  onClick={() => { setDispatchingOrderId(o._id); setDispatchData({ carrier: 'SKLP Air Cargo', trackingNumber: '' }) }}
+                                  onClick={() => { setDispatchingOrderId(o._id); setDispatchData({ carrier: 'Style Street Air Cargo', trackingNumber: '' }) }}
                                   className="px-4 py-2 bg-luxury-gold text-black rounded-lg text-[10px] uppercase tracking-wider font-extrabold active:scale-95 transition-all shadow-glow"
                                 >
                                   Dispatch Shipment
@@ -1433,7 +1526,7 @@ function SellerDashboard() {
 
                           {o.status === 'shipped' && o.trackingNumber && (
                             <div className="text-[10px] opacity-75 font-mono text-right w-full sm:w-auto">
-                              Carrier: <strong>{o.carrier || 'SKLP Cargo'}</strong> | Tracking: <strong>{o.trackingNumber}</strong>
+                              Carrier: <strong>{o.carrier || 'Style Street Cargo'}</strong> | Tracking: <strong>{o.trackingNumber}</strong>
                             </div>
                           )}
                         </div>
@@ -1817,7 +1910,7 @@ function SellerDashboard() {
                     <div>
                       <div className="flex items-center gap-2 text-luxury-gold mb-1">
                         <FiAward className="text-lg" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">SKLP Designer Membership</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">STYLE STREET Designer Membership</span>
                       </div>
                       <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">
                         {subscriptionInfo?.currentPlanConfig?.name || 'Studio Seller Tier'}
@@ -2124,16 +2217,21 @@ function SellerDashboard() {
                       </div>
 
                       <div>
-                        <label className={labelCls}>Brand / Label Name *</label>
-                        <input 
-                          type="text" 
-                          required
-                          value={sellerProfile.brandName}
-                          onChange={(e) => setSellerProfile({ ...sellerProfile, brandName: e.target.value })}
-                          placeholder="e.g. Sabyasachi, Zara, Manyavar"
-                          className={inputCls}
-                        />
-                        <span className="text-[10px] text-gray-400 block mt-1">Shown in the Select Brand modal and on your products</span>
+                        <div className="flex items-center justify-between">
+                          <label className={labelCls}>Brand / Label Name *</label>
+                          <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1">🔒 Locked to Merchant</span>
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            disabled
+                            value={sellerProfile.brandName ? `${sellerProfile.brandName} 🔒 Locked` : 'Official Brand 🔒 Locked'}
+                            className={`${inputCls} opacity-75 cursor-not-allowed bg-black/40`}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 block mt-1">
+                          Your brand name is officially locked to your verified merchant account. Contact Admin support to request a brand name change.
+                        </span>
                       </div>
 
                       <div>
@@ -2301,7 +2399,7 @@ function SellerDashboard() {
                       onChange={(e) => setCourierSettings({ ...courierSettings, defaultCarrier: e.target.value })}
                       className={`text-xs p-2 rounded-lg border outline-none ${isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-white'}`}
                     >
-                      <option value="SKLP Air Cargo">SKLP Air Cargo (Default)</option>
+                      <option value="Style Street Air Cargo">Style Street Air Cargo (Default)</option>
                       <option value="Delhivery Priority">Delhivery Priority</option>
                       <option value="DHL Express International">DHL Express International</option>
                     </select>
@@ -2339,11 +2437,57 @@ function SellerDashboard() {
                     </button>
                   </div>
 
+                  <div className="py-4 border-b border-current/10 space-y-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase">Customer Delivery Policy</p>
+                      <p className="text-[10px] opacity-65 mt-0.5">Choose whether customers pay distance delivery slabs or receive promotional free delivery</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setCourierSettings({ ...courierSettings, deliveryMode: 'PAID_DELIVERY' })}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          courierSettings.deliveryMode === 'PAID_DELIVERY'
+                            ? 'border-luxury-gold bg-luxury-gold/10'
+                            : isDarkMode ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">Standard Paid Delivery</span>
+                          {courierSettings.deliveryMode === 'PAID_DELIVERY' && <span className="text-luxury-gold text-xs">✓ Active</span>}
+                        </div>
+                        <p className="text-[10px] opacity-65 mt-1">Platform slabs: ₹10 (0-6km), ₹20 (6-12km), ₹30 (12-40km), ₹50 (&gt;40km)</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCourierSettings({ ...courierSettings, deliveryMode: 'FREE_DELIVERY' })}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          courierSettings.deliveryMode === 'FREE_DELIVERY'
+                            ? 'border-green-500 bg-green-500/10'
+                            : isDarkMode ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">Free Delivery (Promotional)</span>
+                          {courierSettings.deliveryMode === 'FREE_DELIVERY' && <span className="text-green-500 text-xs">✓ Active</span>}
+                        </div>
+                        <p className="text-[10px] opacity-65 mt-1">Promotional zero delivery charge (₹0) for customers on your products</p>
+                      </button>
+                    </div>
+                  </div>
+
                   <button 
-                    onClick={() => toast.success('Courier logistic rules saved successfully!')}
+                    onClick={async () => {
+                      try {
+                        await sellerService.updateDeliverySettings({ deliveryMode: courierSettings.deliveryMode })
+                        toast.success('Logistics & Delivery rules saved successfully!')
+                      } catch (err) {
+                        toast.error(err.response?.data?.message || 'Failed to save delivery policy')
+                      }
+                    }}
                     className="w-full py-4 bg-luxury-gold text-black rounded-xl text-xs font-bold uppercase tracking-widest shadow-glow active:scale-[0.98] transition-all"
                   >
-                    Save Logistics Config
+                    Save Logistics & Delivery Config
                   </button>
                 </div>
               </div>

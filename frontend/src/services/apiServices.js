@@ -34,7 +34,18 @@ export const adminService = {
   // Review Moderation
   getReviews: (params) => apiClient.get('/admin/reviews', { params }),
   updateReviewStatus: (id, data) => apiClient.put(`/admin/reviews/${id}/status`, data),
-  deleteReview: (id) => apiClient.delete(`/admin/reviews/${id}`)
+  deleteReview: (id) => apiClient.delete(`/admin/reviews/${id}`),
+  // Safe Order Receipt & Packing Document
+  getOrderReceipt: (orderId) => apiClient.get(`/admin/orders/${orderId}/receipt`),
+  // Branding & Logo Management
+  getBranding: () => apiClient.get('/admin/branding'),
+  updateBranding: (data) => apiClient.put('/admin/branding', data),
+  uploadBrandingLogo: (logoType, formData) =>
+    apiClient.post(`/admin/branding/logo?logoType=${logoType}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+  deleteBrandingLogo: (logoType) =>
+    apiClient.delete(`/admin/branding/logo?logoType=${logoType}`)
 }
 
 /**
@@ -47,6 +58,7 @@ export const sellerService = {
   updateProduct: (id, data) => apiClient.put(`/seller/products/${id}`, data),
   deleteProduct: (id) => apiClient.delete(`/seller/products/${id}`),
   getOrders: (params) => apiClient.get('/seller/orders', { params }),
+  getOrderReceipt: (orderId) => apiClient.get(`/seller/orders/${orderId}/receipt`),
   dispatchOrder: (id, data) => apiClient.put(`/seller/orders/${id}/dispatch`, data),
   getProfile: () => apiClient.get('/seller/profile'),
   updateProfile: (data) => apiClient.put('/seller/profile', data),
@@ -56,6 +68,8 @@ export const sellerService = {
   // Settlement ledger
   getSettlements: (params) => apiClient.get('/seller/settlements', { params }),
   requestPayout: (data) => apiClient.post('/seller/settlements/payout', data),
+  getDeliverySettings: () => apiClient.get('/seller/delivery-settings'),
+  updateDeliverySettings: (data) => apiClient.put('/seller/delivery-settings', data),
   // Subscriptions & Plans
   getSubscription: () => apiClient.get('/seller/subscription'),
   selectSubscriptionPlan: (data) => apiClient.post('/seller/subscription/select-plan', data)
@@ -132,8 +146,16 @@ export const authService = {
   getSessions: () => apiClient.get('/auth/sessions'),
   getMe: () => apiClient.get('/auth/me'),
   linkEmail: (email) => apiClient.post('/auth/link-email', { email }),
+  linkPhoneFirebase: (idToken) => apiClient.post('/auth/link-phone/firebase', { idToken }),
+  unlinkPhone: () => apiClient.post('/auth/unlink-phone'),
   sendLinkPhoneOTP: (phone) => apiClient.post('/auth/link-phone/send-otp', { phone }),
-  verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp })
+  verifyLinkPhone: (phone, otp) => apiClient.post('/auth/link-phone/verify', { phone, otp }),
+  sendBackupEmailVerification: (email) => apiClient.post('/auth/backup-email/send-verification', { email }),
+  verifyBackupEmail: (token) => apiClient.post('/auth/backup-email/verify', { token }),
+  removeBackupEmail: () => apiClient.post('/auth/backup-email/remove'),
+  // Phone OTP Login (passwordless)
+  sendPhoneLoginOTP: (phone) => apiClient.post('/auth/phone/send-otp', { phone }),
+  verifyPhoneLoginOTP: (phone, otp) => apiClient.post('/auth/phone/verify-otp', { phone, otp })
 }
 
 /**
@@ -177,8 +199,11 @@ export const cartService = {
     apiClient.put(`/cart/items/${itemId}`, { quantity }),
   removeCartItem: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
   removeFromCart: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
+  moveToWishlist: (itemId) => apiClient.post(`/cart/items/${itemId}/move-to-wishlist`),
   clearCart: () => apiClient.delete('/cart'),
+  getAvailableCoupons: () => apiClient.get('/cart/coupons'),
   applyCoupon: (code) => apiClient.post('/cart/coupon', { code }),
+  removeCoupon: () => apiClient.delete('/cart/coupon'),
   mergeCart: (items) => apiClient.post('/cart/merge', { items })
 }
 

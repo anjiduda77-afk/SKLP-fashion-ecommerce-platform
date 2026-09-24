@@ -112,7 +112,7 @@ const reviewSchema = new mongoose.Schema({
   sellerResponse: {
     message: String,
     respondedAt: Date,
-    respondedByName: { type: String, default: 'SKLP Official Store' },
+    respondedByName: { type: String, default: 'Style Street Official Store' },
     respondedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }
 }, {

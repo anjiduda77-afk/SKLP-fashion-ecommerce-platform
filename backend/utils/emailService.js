@@ -36,7 +36,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
     });
 
     const info = await transporter.sendMail({
-      from: `"SKLP Luxury Fashion" <${process.env.SMTP_USER}>`,
+      from: `"STYLE STREET Fashion" <${process.env.SMTP_USER}>`,
       to,
       subject,
       text,

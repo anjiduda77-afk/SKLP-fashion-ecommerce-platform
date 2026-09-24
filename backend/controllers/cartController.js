@@ -1,7 +1,21 @@
+import mongoose from 'mongoose'
 import Cart from '../models/Cart.js'
 import Product from '../models/Product.js'
 import Coupon from '../models/Coupon.js'
+import Wishlist from '../models/Wishlist.js'
 import { ApiError } from '../middleware/errorHandler.js'
+
+// Standardized deep population options for Cart items
+export const CART_POPULATE_OPTIONS = [
+  {
+    path: 'items.productId',
+    select: 'name price discountedPrice originalPrice discount isActive stock reservedStock sku category brand shortDescription description images thumbnail variants attributes returnPolicy warrantyPeriod sellerId'
+  },
+  {
+    path: 'items.sellerId',
+    select: 'shopName brandName deliveryMode pickupAddress shopLocation'
+  }
+]
 
 // Helper to recalculate cart totals, validating and applying coupon discounts automatically
 const recalculateCart = async (cart) => {
@@ -15,7 +29,7 @@ const recalculateCart = async (cart) => {
       !coupon ||
       (coupon.startDate && coupon.startDate > new Date()) ||
       (coupon.endDate && coupon.endDate < new Date()) ||
-      cart.subtotal < coupon.minPurchaseAmount
+      cart.subtotal < (coupon.minPurchaseAmount || 0)
     ) {
       // Auto-invalidate coupon if it no longer meets constraints
       cart.couponCode = undefined
@@ -42,13 +56,13 @@ const recalculateCart = async (cart) => {
 }
 
 export const getCart = async (req, res) => {
-  let cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId')
+  let cart = await Cart.findOne({ userId: req.user.id }).populate(CART_POPULATE_OPTIONS)
   if (!cart) {
     try {
       cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
     } catch (err) {
       if (err.code === 11000) {
-        cart = await Cart.findOne({ userId: req.user.id }).populate('items.productId')
+        cart = await Cart.findOne({ userId: req.user.id }).populate(CART_POPULATE_OPTIONS)
       } else {
         throw err
       }
@@ -64,30 +78,26 @@ export const getCart = async (req, res) => {
         modified = true
         return false
       }
-      if (product.stock !== undefined && item.quantity > product.stock) {
-        item.quantity = Math.max(0, product.stock)
+      const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
+      if (item.quantity > availableStock) {
+        item.quantity = Math.max(1, availableStock)
         modified = true
       }
       return item.quantity > 0
     })
 
     if (modified) {
-      // Re-map the populated productId back to just the ID before saving to avoid schema errors
-      // or we can just let mongoose handle it since we modified the document array.
-      // Actually mongoose might struggle with populated docs being saved back directly if modified.
-      // A safer approach:
       cart.items = validatedItems.map(item => ({
         ...item.toObject(),
-        productId: item.productId._id
+        productId: item.productId._id || item.productId,
+        sellerId: item.sellerId?._id || item.sellerId
       }))
     }
 
     await recalculateCart(cart)
     await cart.save()
+    await cart.populate(CART_POPULATE_OPTIONS)
   }
-  
-  // Need to populate it again for the frontend if we unpopulated it
-  await cart.populate('items.productId', 'name price discountedPrice isActive stock')
   
   res.status(200).json({ success: true, cart })
 }
@@ -100,13 +110,23 @@ export const addItemToCart = async (req, res) => {
     throw new ApiError(404, 'Product not found')
   }
 
+  if (product.isActive === false) {
+    throw new ApiError(400, 'This product is currently inactive')
+  }
+
+  const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
+  const qty = parseInt(quantity, 10)
+  if (isNaN(qty) || qty < 1) {
+    throw new ApiError(400, 'Quantity must be at least 1')
+  }
+
   let cart = await Cart.findOne({ userId: req.user.id })
   if (!cart) {
     cart = await Cart.create({ userId: req.user.id, items: [] })
   }
 
-  let sellerId = null
-  let shopName = 'SKLP Official Store'
+  let sellerId = product.sellerId || null
+  let shopName = 'Style Street Official Store'
   let itemPrice = product.price
   let itemDiscount = product.discount || 0
 
@@ -139,20 +159,27 @@ export const addItemToCart = async (req, res) => {
   )
 
   if (existingItem) {
-    existingItem.quantity += quantity
+    const newQty = existingItem.quantity + qty
+    if (newQty > availableStock) {
+      throw new ApiError(400, `Cannot add more than available stock (${availableStock} items available)`)
+    }
+    existingItem.quantity = newQty
     existingItem.finalPrice = unitFinalPrice * existingItem.quantity
   } else {
+    if (qty > availableStock) {
+      throw new ApiError(400, `Requested quantity exceeds available stock (${availableStock} items available)`)
+    }
     cart.items.push({
       productId,
       sellerId,
       offerId: (offerId && !offerId.toString().startsWith('default_')) ? offerId : undefined,
       shopName,
-      brand: product.brand || 'SKLP Fashion',
+      brand: product.brand || 'Style Street Fashion',
       productName: product.name,
-      quantity,
+      quantity: qty,
       price: itemPrice,
       discount: itemDiscount,
-      finalPrice: unitFinalPrice * quantity,
+      finalPrice: unitFinalPrice * qty,
       variant,
       image: product.images?.[0]?.url || product.thumbnail,
     })
@@ -160,6 +187,7 @@ export const addItemToCart = async (req, res) => {
 
   await recalculateCart(cart)
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
   res.status(200).json({ success: true, cart })
 }
@@ -168,8 +196,13 @@ export const updateCartItem = async (req, res) => {
   const { itemId } = req.params
   const { quantity } = req.body
 
-  if (quantity <= 0) {
+  const qty = parseInt(quantity, 10)
+  if (isNaN(qty) || qty <= 0) {
     return removeCartItem(req, res)
+  }
+
+  if (Number(quantity) !== qty) {
+    throw new ApiError(400, 'Quantity must be an integer')
   }
 
   const cart = await Cart.findOne({ userId: req.user.id })
@@ -182,12 +215,26 @@ export const updateCartItem = async (req, res) => {
     throw new ApiError(404, 'Cart item not found')
   }
 
-  item.quantity = quantity
+  const product = await Product.findById(item.productId).lean()
+  if (!product || product.isActive === false) {
+    cart.items.pull(itemId)
+    await recalculateCart(cart)
+    await cart.save()
+    throw new ApiError(400, 'This product is no longer available')
+  }
+
+  const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
+  if (qty > availableStock) {
+    throw new ApiError(400, `Cannot exceed available stock (${availableStock} items available)`)
+  }
+
+  item.quantity = qty
   const discountPercent = item.discount || 0
-  item.finalPrice = (item.price - (item.price * discountPercent / 100)) * quantity
+  item.finalPrice = (item.price - (item.price * discountPercent / 100)) * qty
 
   await recalculateCart(cart)
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
   res.status(200).json({ success: true, cart })
 }
@@ -203,6 +250,7 @@ export const removeCartItem = async (req, res) => {
   
   await recalculateCart(cart)
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
   res.status(200).json({ success: true, cart })
 }
@@ -231,32 +279,57 @@ export const applyCoupon = async (req, res) => {
     throw new ApiError(404, 'Cart not found')
   }
 
-  if (!code) {
+  if (!code || typeof code !== 'string') {
     throw new ApiError(400, 'Coupon code is required')
   }
 
-  const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true })
+  const cleanCode = code.trim().toUpperCase()
+  const coupon = await Coupon.findOne({ code: cleanCode, isActive: true })
   if (!coupon) {
     throw new ApiError(404, 'Coupon not found or inactive')
   }
 
-  if (coupon.startDate && coupon.startDate > new Date()) {
+  const now = new Date()
+  if (coupon.startDate && coupon.startDate > now) {
     throw new ApiError(400, 'Coupon is not active yet')
   }
 
-  if (coupon.endDate && coupon.endDate < new Date()) {
+  if (coupon.endDate && coupon.endDate < now) {
     throw new ApiError(410, 'Coupon has expired')
   }
 
-  if (cart.subtotal < coupon.minPurchaseAmount) {
+  if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) {
+    throw new ApiError(400, 'Coupon usage limit has been reached')
+  }
+
+  if (coupon.maxUsesPerUser && Array.isArray(coupon.usedBy)) {
+    const userUsage = coupon.usedBy.filter(u => u.userId?.toString() === req.user.id).length
+    if (userUsage >= coupon.maxUsesPerUser) {
+      throw new ApiError(400, `You have already used this coupon the maximum allowed times (${coupon.maxUsesPerUser})`)
+    }
+  }
+
+  if (cart.subtotal < (coupon.minPurchaseAmount || 0)) {
     throw new ApiError(400, `Minimum purchase of ₹${coupon.minPurchaseAmount} required to use this coupon`)
   }
 
   cart.couponCode = coupon.code
   await recalculateCart(cart)
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
-  res.status(200).json({ success: true, message: 'Coupon applied successfully', cart })
+  res.status(200).json({
+    success: true,
+    message: `Coupon "${coupon.code}" applied successfully!`,
+    cart,
+    discountAmount: cart.couponDiscount,
+    coupon: {
+      code: coupon.code,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
+      description: coupon.description
+    }
+  })
 }
 
 export const removeCoupon = async (req, res) => {
@@ -270,8 +343,105 @@ export const removeCoupon = async (req, res) => {
   cart.couponExpiry = undefined
   cart.lastModified = new Date()
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
   res.status(200).json({ success: true, message: 'Coupon removed successfully', cart })
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET AVAILABLE COUPONS — Active coupons valid for current customer
+// ──────────────────────────────────────────────────────────────────────────────
+export const getAvailableCoupons = async (req, res) => {
+  const now = new Date()
+  const allActiveCoupons = await Coupon.find({
+    isActive: true,
+    $and: [
+      { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+      { $or: [{ endDate: null }, { endDate: { $gte: now } }] }
+    ]
+  }).lean()
+
+  const userId = req.user?.id ? req.user.id.toString() : null
+
+  const availableCoupons = allActiveCoupons.filter(coupon => {
+    if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) return false
+    if (userId && coupon.maxUsesPerUser && Array.isArray(coupon.usedBy)) {
+      const userUsageCount = coupon.usedBy.filter(u => u.userId?.toString() === userId).length
+      if (userUsageCount >= coupon.maxUsesPerUser) return false
+    }
+    return true
+  }).map(c => ({
+    _id: c._id,
+    code: c.code,
+    description: c.description || (c.discountType === 'percentage' ? `Flat ${c.discountValue}% OFF` : `Save flat ₹${c.discountValue}`),
+    discountType: c.discountType,
+    discountValue: c.discountValue,
+    minPurchaseAmount: c.minPurchaseAmount || 0,
+    maxDiscountAmount: c.maxDiscountAmount || null,
+    endDate: c.endDate
+  }))
+
+  res.status(200).json({ success: true, coupons: availableCoupons })
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MOVE TO WISHLIST — Atomically move a cart item to authenticated user's wishlist
+// ──────────────────────────────────────────────────────────────────────────────
+export const moveToWishlist = async (req, res) => {
+  const { itemId } = req.params
+  const cart = await Cart.findOne({ userId: req.user.id })
+  if (!cart) {
+    throw new ApiError(404, 'Cart not found')
+  }
+
+  const item = cart.items.id(itemId)
+  if (!item) {
+    throw new ApiError(404, 'Cart item not found')
+  }
+
+  const productId = item.productId
+
+  // Find or create user Wishlist
+  let wishlist = await Wishlist.findOne({ userId: req.user.id })
+  if (!wishlist) {
+    try {
+      wishlist = await Wishlist.create({ userId: req.user.id, items: [], totalItems: 0 })
+    } catch (wErr) {
+      if (wErr.code === 11000) {
+        wishlist = await Wishlist.findOne({ userId: req.user.id })
+      } else {
+        throw wErr
+      }
+    }
+  }
+
+  const alreadyInWishlist = (wishlist.items || []).some(
+    w => w.productId && w.productId.toString() === productId.toString()
+  )
+
+  if (!alreadyInWishlist) {
+    const product = await Product.findById(productId).lean()
+    wishlist.items.push({
+      _id: new mongoose.Types.ObjectId(),
+      productId,
+      priceAtAdd: product?.price || item.price,
+      addedAt: new Date()
+    })
+    wishlist.totalItems = wishlist.items.length
+    await wishlist.save()
+  }
+
+  // Remove from cart
+  cart.items.pull(itemId)
+  await recalculateCart(cart)
+  await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
+
+  res.status(200).json({
+    success: true,
+    message: 'Item moved to wishlist successfully ❤️',
+    cart
+  })
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -281,8 +451,7 @@ export const mergeCart = async (req, res) => {
   const { items: guestItems } = req.body
 
   if (!guestItems || !Array.isArray(guestItems) || guestItems.length === 0) {
-    // Nothing to merge, just return current cart
-    let cart = await Cart.findOne({ userId: req.user.id })
+    let cart = await Cart.findOne({ userId: req.user.id }).populate(CART_POPULATE_OPTIONS)
     if (!cart) {
       cart = await Cart.create({ userId: req.user.id, items: [], subtotal: 0, totalItems: 0, totalQuantity: 0 })
     }
@@ -300,9 +469,11 @@ export const mergeCart = async (req, res) => {
     const { productId, quantity = 1, variant = {} } = guestItem
     if (!productId) continue
 
-    // Validate product exists
     const product = await Product.findById(productId).lean()
-    if (!product) continue
+    if (!product || product.isActive === false) continue
+
+    const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
+    const qty = Math.min(Math.max(1, parseInt(quantity, 10) || 1), availableStock)
 
     const existingItem = cart.items.find(
       (item) => item.productId.toString() === productId.toString() && JSON.stringify(item.variant || {}) === JSON.stringify(variant || {})
@@ -312,16 +483,15 @@ export const mergeCart = async (req, res) => {
     const unitFinalPrice = product.price - (product.price * discountPercent / 100)
 
     if (existingItem) {
-      // Sum quantities (don't add duplicates, merge them)
-      existingItem.quantity = Math.max(existingItem.quantity, quantity)
+      existingItem.quantity = Math.min(Math.max(existingItem.quantity, qty), availableStock)
       existingItem.finalPrice = unitFinalPrice * existingItem.quantity
     } else {
       cart.items.push({
         productId,
-        quantity,
+        quantity: qty,
         price: product.price,
         discount: discountPercent,
-        finalPrice: unitFinalPrice * quantity,
+        finalPrice: unitFinalPrice * qty,
         variant,
         image: product.images?.[0]?.url || product.thumbnail,
       })
@@ -331,6 +501,7 @@ export const mergeCart = async (req, res) => {
 
   await recalculateCart(cart)
   await cart.save()
+  await cart.populate(CART_POPULATE_OPTIONS)
 
   res.status(200).json({
     success: true,

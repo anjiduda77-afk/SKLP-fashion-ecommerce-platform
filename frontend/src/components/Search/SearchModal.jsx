@@ -227,7 +227,7 @@ function SearchModal({ isOpen, onClose }) {
             onClick={e => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label={t('search.modalTitle', 'Search SKLP Fashion')}
+            aria-label={t('search.modalTitle', 'Search STYLE STREET')}
           >
             {/* Search Input Row */}
             <div className={`flex items-center gap-2 px-4 py-3.5 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`}>
@@ -515,7 +515,7 @@ function SearchModal({ isOpen, onClose }) {
                               />
                             ) : (
                               <div className="w-12 h-14 rounded-xl bg-luxury-gold/10 flex items-center justify-center text-luxury-gold font-bold text-xs shrink-0">
-                                SKLP
+                                STYLE
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
@@ -561,7 +561,7 @@ function SearchModal({ isOpen, onClose }) {
             {/* Footer */}
             <div className={`flex items-center justify-between px-4 py-2.5 border-t text-[10px] ${isDarkMode ? 'border-white/10 text-white/30' : 'border-gray-100 text-gray-400'}`}>
               <span>↑↓ {t('search.navigate', 'navigate')} · Enter {t('search.select', 'select')} · Esc {t('search.close', 'close')}</span>
-              <span className="text-luxury-gold font-bold tracking-wider">SKLP SMART SEARCH</span>
+              <span className="text-luxury-gold font-bold tracking-wider">STYLE STREET SMART SEARCH</span>
             </div>
           </motion.div>
         </>

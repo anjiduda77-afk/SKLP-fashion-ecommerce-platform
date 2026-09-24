@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
+import BrandName from '@components/Common/BrandName'
 import { 
   FiTruck, FiCheckCircle, FiTrendingUp, FiMapPin, FiPhone, 
   FiKey, FiCheckSquare, FiMap, FiFileText, FiZap, FiNavigation,
@@ -204,7 +205,7 @@ function DeliveryDashboard() {
           <div>
             <div className="flex items-center gap-2 text-luxury-gold mb-1">
               <FiZap className="animate-pulse" />
-              <span className="text-[10px] uppercase font-bold tracking-widest text-luxury-gold">Flipkart Express Delivery Network</span>
+              <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest text-luxury-gold">Express Delivery Network</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-tight">Courier Agent Portal</h1>
             <p className="text-xs opacity-75 mt-1">Logged in as: <strong className="text-luxury-gold">{user?.firstName || 'Delivery Partner'} {user?.lastName || ''}</strong> ({user?.phone || 'Fleet ID: #98210'})</p>

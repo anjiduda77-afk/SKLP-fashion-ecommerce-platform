@@ -17,6 +17,7 @@ import { onForegroundMessage } from '@config/firebase'
 import Sidebar from '@components/Common/Sidebar'
 import SearchModal from '@components/Search/SearchModal'
 import sklpLogo from '@assets/images/sklp_logo.png'
+import BrandName from '@components/Common/BrandName'
 
 function Header({ isDarkMode }) {
   const { t } = useTranslation()
@@ -118,17 +119,10 @@ function Header({ isDarkMode }) {
               <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
                 <img 
                   src={sklpLogo} 
-                  alt="SKLP Logo" 
+                  alt="Style Street Logo" 
                   className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl shadow-sm"
                 />
-                <div className="flex flex-col">
-                  <p className={`text-xs sm:text-sm font-serif font-black tracking-wider leading-tight ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                    SKLP <span className="text-luxury-gold">LUXE</span>
-                  </p>
-                  <span className="text-[9px] uppercase tracking-widest text-luxury-gold font-bold hidden xs:block">
-                    Fashion Store
-                  </span>
-                </div>
+                <BrandName size="sm" />
               </Link>
             </div>
 

@@ -52,6 +52,7 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['Playfair Display', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        brand: ['Ethnocentric', 'Orbitron', 'system-ui', 'sans-serif'],
       },
       spacing: {
         '128': '32rem',

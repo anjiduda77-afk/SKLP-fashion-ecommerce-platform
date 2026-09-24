@@ -15,19 +15,51 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    sparse: true,
-    unique: true,
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please provide a valid email']
   },
-  phone: {
+  primaryEmailNormalized: {
     type: String,
     sparse: true,
     unique: true,
-    trim: true,
-    match: [/^[0-9]{10}$/, 'Phone number must be 10 digits']
+    lowercase: true,
+    trim: true
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  phoneE164: {
+    type: String,
+    trim: true
+  },
+  phoneVerified: {
+    type: Boolean,
+    default: false
+  },
+  phoneVerifiedAt: Date,
+
+  // Optional Backup Email Contact Channel
+  backupEmail: {
+    type: String,
+    sparse: true,
+    lowercase: true,
+    trim: true
+  },
+  backupEmailNormalized: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
+  backupEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  backupEmailVerifiedAt: Date,
+  backupEmailVerificationToken: String,
+  backupEmailVerificationExpiry: Date,
+
   password: {
     type: String,
     minlength: [8, 'Password must be at least 8 characters'],
@@ -41,8 +73,6 @@ const userSchema = new mongoose.Schema({
   // Unique Custom User ID (e.g. USER_12345)
   customUserId: {
     type: String,
-    unique: true,
-    sparse: true,
     default: () => `USER_${Date.now().toString().slice(-4)}${Math.floor(10000 + Math.random() * 90000)}`
   },
 
@@ -53,9 +83,7 @@ const userSchema = new mongoose.Schema({
     default: 'email'
   },
   firebaseUid: {
-    type: String,
-    sparse: true,
-    unique: true
+    type: String
   },
   googleId: String,
   isEmailVerified: {
@@ -72,6 +100,11 @@ const userSchema = new mongoose.Schema({
   passwordResetExpiry: Date,
   phoneVerificationToken: String,
   phoneVerificationExpiry: Date,
+
+  // Phone OTP Login (passwordless phone sign-in)
+  phoneLoginOtpToken: String,
+  phoneLoginOtpExpiry: Date,
+  phoneLoginOtpAttempts: { type: Number, default: 0 },
 
   // Refresh Token Management (stored per device)
   refreshTokens: [{
@@ -265,8 +298,34 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Pre-save operations: hash password & clean up refresh tokens
+// Pre-save operations: hash password, sync normalized emails & clean up refresh tokens
 userSchema.pre('save', async function () {
+  if (this.email && typeof this.email === 'string') {
+    this.email = this.email.toLowerCase().trim();
+    this.primaryEmailNormalized = this.email;
+  } else if (!this.email) {
+    this.email = undefined;
+    this.primaryEmailNormalized = undefined;
+  }
+
+  if (this.backupEmail && typeof this.backupEmail === 'string') {
+    this.backupEmail = this.backupEmail.toLowerCase().trim();
+    this.backupEmailNormalized = this.backupEmail;
+  } else if (!this.backupEmail) {
+    this.backupEmail = undefined;
+    this.backupEmailNormalized = undefined;
+  }
+
+  if (this.phone && typeof this.phone === 'string') {
+    this.phone = this.phone.trim();
+    if (!this.phoneE164 && /^[0-9]{10}$/.test(this.phone)) {
+      this.phoneE164 = `+91${this.phone}`;
+    }
+  } else if (!this.phone) {
+    this.phone = undefined;
+    this.phoneE164 = undefined;
+  }
+
   if (this.isModified('password')) {
     const salt = await bcrypt.genSalt(parseInt(process.env.BCRYPT_ROUNDS) || 10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -303,6 +362,9 @@ userSchema.methods.toJSON = function () {
   delete user.emailVerificationToken;
   delete user.emailVerificationExpiry;
   delete user.phoneVerificationToken;
+  delete user.phoneVerificationExpiry;
+  delete user.backupEmailVerificationToken;
+  delete user.backupEmailVerificationExpiry;
   delete user.passwordResetToken;
   delete user.passwordResetExpiry;
   delete user.refreshTokens;
@@ -359,20 +421,41 @@ userSchema.methods.removeAllRefreshTokens = function () {
   return this.save();
 };
 
+// Revoke all refresh tokens except the current one (e.g. on password change)
+userSchema.methods.revokeAllRefreshTokensExcept = function (keepToken) {
+  if (!this.refreshTokens) this.refreshTokens = [];
+  if (keepToken) {
+    this.refreshTokens = this.refreshTokens.filter(rt => rt.token === keepToken);
+  } else {
+    this.refreshTokens = [];
+  }
+  return this.save();
+};
+
 // Validate password strength
 userSchema.statics.validatePasswordStrength = function (password) {
   const errors = [];
+  if (!password || typeof password !== 'string') {
+    return { isValid: false, errors: ['Password is required'] };
+  }
   if (password.length < 8) errors.push('Password must be at least 8 characters');
+  if (password.length > 128) errors.push('Password cannot exceed 128 characters');
   if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
   if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
   if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
+  if (!/[!@#$%^&*(),.?":{}|<>\-_=+]/.test(password)) errors.push('Password must contain at least one special character');
   return { isValid: errors.length === 0, errors };
 };
 
-// Indexes for performance
+// Indexes for performance and unique contact channels
+userSchema.index({ email: 1 }, { sparse: true, unique: true });
+userSchema.index({ phone: 1 }, { sparse: true, unique: true });
 userSchema.index({ googleId: 1 }, { sparse: true });
-userSchema.index({ referralCode: 1 });
+userSchema.index({ firebaseUid: 1 }, { sparse: true, unique: true });
+userSchema.index({ customUserId: 1 }, { sparse: true, unique: true });
+userSchema.index({ phoneE164: 1 }, { sparse: true });
+userSchema.index({ backupEmailNormalized: 1 }, { sparse: true });
+userSchema.index({ referralCode: 1 }, { sparse: true });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ 'sellerProfile.isVerified': 1 });

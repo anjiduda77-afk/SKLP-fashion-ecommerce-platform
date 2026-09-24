@@ -38,6 +38,12 @@ export const adminService = {
   // Sellers
   getSellers: (params) => apiClient.get('/admin/sellers', { params }),
   verifySeller: (id, action, notes) => apiClient.put(`/admin/sellers/${id}/verify`, { action, notes }),
+
+  // Seller Applications (Become a Seller flow)
+  getSellerApplications: (params) => apiClient.get('/admin/seller-applications', { params }),
+  reviewSellerApplication: (id, action, notes, reason) =>
+    apiClient.put(`/admin/seller-applications/${id}/review`, { action, notes, reason }),
+
   
   // Coupons
   getCoupons: () => apiClient.get('/admin/coupons'),

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
+import BrandName from '@components/Common/BrandName'
 import { authService } from '@services/apiServices'
 import apiClient from '@services/apiClient'
 import { 
@@ -135,7 +136,7 @@ function Register() {
   // Redirect handler after successful registration
   const handleRedirectAfterLogin = useCallback((userObj) => {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
-    toast.success(`Welcome to SKLP Fashion${name ? `, ${name}` : ''}! 🎉`)
+    toast.success(`Welcome to STYLE STREET${name ? `, ${name}` : ''}! 🎉`)
 
     if (redirectUrl) {
       navigate(redirectUrl)
@@ -383,14 +384,14 @@ function Register() {
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 mb-3 font-serif font-black text-xl shadow-inner">
               S
             </div>
-            <h2 className="text-xs uppercase tracking-[0.25em] font-bold text-amber-500">
-              SKLP Fashion
-            </h2>
+            <div className="mb-1">
+              <BrandName size="xs" />
+            </div>
             <h1 className="text-2xl font-serif font-bold tracking-tight mt-1">
               {t('auth.register', 'Create an Account')}
             </h1>
             <p className="text-xs opacity-65 mt-1.5 leading-relaxed">
-              {t('auth.registerSubtitle', 'Join SKLP Fashion for a personalized luxury shopping experience.')}
+              {t('auth.registerSubtitle', 'Join STYLE STREET for a personalized luxury shopping experience.')}
             </p>
           </div>
 
@@ -550,7 +551,7 @@ function Register() {
                   required
                 />
                 <span>
-                  {t('auth.agreeTerms', "I agree to SKLP's Terms of Service and Privacy Policy.")}
+                  {t('auth.agreeTerms', "I agree to STYLE STREET's Terms of Service and Privacy Policy.")}
                 </span>
               </label>
             </div>

@@ -1,6 +1,6 @@
 {
   "common": {
-    "welcome": "SKLP కు స్వాగతం",
+    "welcome": "STYLE STREET కు స్వాగతం",
     "home": "హోమ్",
     "products": "ఉత్పత్తులు",
     "categories": "కేటగిరీలు",
@@ -108,7 +108,7 @@
     "chatWithUs": "మాతో చాట్ చేయండి",
     "callUs": "హెల్ప్‌లైన్‌కు కాల్ చేయండి",
     "emailUs": "ఈమెయిల్ మద్దతు",
-    "copyright": "© 2026 SKLP ఫ్యాషన్. సర్వహక్కులు ప్రత్యేకించబడ్డాయి."
+    "copyright": "© 2026 STYLE STREET. సర్వహక్కులు ప్రత్యేకించబడ్డాయి."
   },
   "header": {
     "search": "ఉత్పత్తుల కోసం శోధించండి...",
@@ -124,7 +124,7 @@
     "selectLanguage": "భాషను ఎంచుకోండి",
     "accessClub": "సైన్ ఇన్",
     "clubProfile": "ప్రొఫైల్",
-    "predictiveAi": "SKLP స్మార్ట్ శోధన",
+    "predictiveAi": "STYLE STREET స్మార్ట్ శోధన",
     "inputPlaceholder": "సిల్క్ చీరలు, బూట్లు, షర్టుల కోసం శోధించండి...",
     "didYouMean": "మీరు ఉద్దేశించింది:",
     "predictiveMatches": "ఫలితాలు",
@@ -141,7 +141,7 @@
     "myWishlist": "నా కోరికల జాబితా",
     "savedAddresses": "సేవ్ చేసిన చిరునామాలు",
     "currency": "కరెన్సీ",
-    "searchTitle": "SKLP ఫ్యాషన్ శోధన",
+    "searchTitle": "STYLE STREET శోధన",
     "trendingSearches": "ట్రెండింగ్ శోధనలు"
   },
   "sidebar": {
@@ -188,16 +188,16 @@
     "earningsToday": "నేటి ఆదాయం",
     "otpVerification": "ఓటీపీ ధృవీకరణ",
     "welcomeGuest": "అతిథికి స్వాగతం",
-    "sklpFashionStore": "SKLP ఫ్యాషన్ స్టోర్",
+    "sklpFashionStore": "Style Street ఫ్యాషన్ స్టోర్",
     "goToDashboard": "డాష్‌బోర్డ్‌కు వెళ్లండి",
     "signOut": "సైన్ అవుట్",
     "enterAtelier": "సైన్ ఇన్",
-    "loyaltyClub": "SKLP రివార్డ్స్ క్లబ్",
+    "loyaltyClub": "Style Street రివార్డ్స్ క్లబ్",
     "loyaltyClubText": "ఉచిత వేగవంతమైన డెలివరీ, ప్రత్యేక ఫిట్టింగ్‌లు మరియు పండుగ కలెక్షన్‌లకు ముందస్తు యాక్సెస్ పొందండి.",
     "eliteTier": "గోల్డ్ మెంబర్"
   },
   "footer": {
-    "description": "అందరికీ ప్రీమియం ఫ్యాషన్ మరియు పాదరక్షలు. SKLP తో లగ్జరీ స్టైల్ మరియు సౌకర్యాన్ని ఆస్వాదించండి.",
+    "description": "అందరికీ ప్రీమియం ఫ్యాషన్ మరియు పాదరక్షలు. STYLE STREET తో లగ్జరీ స్టైల్ మరియు సౌకర్యాన్ని ఆస్వాదించండి.",
     "quickLinks": "త్వరిత లింకులు",
     "home": "హోమ్",
     "products": "ఉత్పత్తులు",
@@ -212,7 +212,7 @@
     "newsletterText": "ప్రత్యేక ఆఫర్లు మరియు కొత్త కలెక్షన్‌ల అప్‌డేట్స్ పొందడానికి సబ్‌స్క్రయిబ్ చేసుకోండి.",
     "emailPlaceholder": "మీ ఈమెయిల్ నమోదు చేయండి",
     "join": "సబ్‌స్క్రయిబ్",
-    "allRightsReserved": "© 2026 SKLP ఫ్యాషన్. సర్వహక్కులు ప్రత్యేకించబడ్డాయి.",
+    "allRightsReserved": "© 2026 STYLE STREET. సర్వహక్కులు ప్రత్యేకించబడ్డాయి.",
     "privacyPolicy": "గోప్యతా విధానం",
     "termsOfService": "సేవా నిబంధనలు",
     "cookiePolicy": "కుకీ విధానం",
@@ -224,8 +224,8 @@
     "helplineInfo": "హెల్ప్‌లైన్ & సమాచారం",
     "customerCare": "కస్టమర్ కేర్",
     "callHelpline": "+91 9948682179 (సోమ-శని, ఉదయం 9 - రాత్రి 8)",
-    "emailSupport": "support@sklp.com",
-    "storeAddress": "SKLP లగ్జరీ టవర్, జూబ్లీ హిల్స్, హైదరాబాద్, భారతదేశం"
+    "emailSupport": "support@stylestreet.in",
+    "storeAddress": "Style Street లగ్జరీ టవర్, జూబ్లీ హిల్స్, హైదరాబాద్, భారతదేశం"
   },
   "home": {
     "hero": "అందమైన ఫ్యాషన్‌ను అన్వేషించండి",
@@ -376,7 +376,7 @@
   "cart": {
     "title": "షాపింగ్ కార్ట్",
     "empty": "మీ కార్ట్ ఖాళీగా ఉంది",
-    "emptyDesc": "మా ప్రత్యేక సేకరణలను అన్వేషించండి మరియు SKLP లగ్జరీ ఫ్యాషన్ శైలిని అనుభవించండి.",
+    "emptyDesc": "మా ప్రత్యేక సేకరణలను అన్వేషించండి మరియు STYLE STREET లగ్జరీ ఫ్యాషన్ శైలిని అనుభవించండి.",
     "startShopping": "షాపింగ్ ప్రారంభించండి",
     "continueShopping": "షాపింగ్ కొనసాగించండి",
     "subtotal": "ఉపమొత్తం",
@@ -392,7 +392,7 @@
     "clearCart": "కార్ట్‌ను ఖాళీ చేయి",
     "clearConfirm": "మీరు నిజంగా కార్ట్‌ను ఖాళీ చేయాలనుకుంటున్నారా?",
     "promoCoupon": "ప్రోమో కూపన్",
-    "couponPlaceholder": "కూపన్ కోడ్ నమోదు చేయండి (ఉదా: SKLP20)",
+    "couponPlaceholder": "కూపన్ కోడ్ నమోదు చేయండి (ఉదా: SS20)",
     "viewCoupons": "అందుబాటులో ఉన్న కూపన్లు చూడండి",
     "apply": "వర్తింపజేయి",
     "applied": "వర్తించబడింది",
@@ -567,7 +567,7 @@
     "quickActions": "త్వరిత చర్యలు & ముఖ్యమైన లింకులు",
     "myOrders": "నా ఆర్డర్లు",
     "myWishlist": "నా కోరికల జాబితా",
-    "becomeSeller": "SKLP సెల్లర్‌గా మారండి",
+    "becomeSeller": "STYLE STREET సెల్లర్‌గా మారండి",
     "addressType": "చిరునామా రకం",
     "home": "ఇల్లు",
     "work": "ఆఫీస్",
@@ -631,7 +631,7 @@
     "upiSaved": "యూపీఐ ఐడీ సేవ్ చేయబడింది!",
     "upiDeleted": "యూపీఐ ఐడీ తొలగించబడింది",
     "noUpi": "ఇంకా యూపీఐ ఐడీలు ఏవీ సేవ్ చేయలేదు.",
-    "atelierWallet": "SKLP వాలెట్",
+    "atelierWallet": "Style Street వాలెట్",
     "rewardCoins": "అందుబాటులో ఉన్న రివార్డ్ కాయిన్లు",
     "coinsWorth": "మీ తదుపరి కొనుగోలుపై ₹500 విలువైన రాయితీ",
     "coinsDesc": "అన్ని లగ్జరీ ఆర్డర్లపై 5% క్యాష్‌బ్యాక్ పొందండి, చెకౌట్ వద్ద ఆటోమేటిక్‌గా వర్తిస్తుంది.",
@@ -653,8 +653,8 @@
   "auth": {
     "login": "సైన్ ఇన్",
     "register": "ఖాతా సృష్టించండి",
-    "signIn": "SKLP కి సైన్ ఇన్ చేయండి",
-    "signUp": "SKLP లో చేరండి",
+    "signIn": "STYLE STREET కి సైన్ ఇన్ చేయండి",
+    "signUp": "STYLE STREET లో చేరండి",
     "createAccount": "ఖాతా సృష్టించండి",
     "email": "ఈమెయిల్ చిరునామా",
     "password": "పాస్‌వర్డ్",
@@ -677,9 +677,9 @@
     "continueWithGoogle": "Google తో కొనసాగించండి",
     "orContinueWith": "లేదా ఈమెయిల్‌తో లాగిన్ అవ్వండి",
     "rememberMe": "నన్ను సైన్ ఇన్ చేసి ఉంచండి",
-    "agreeToTerms": "నేను SKLP సేవా నిబంధనలు మరియు గోప్యతా విధానానికి అంగీకరిస్తున్నాను",
+    "agreeToTerms": "నేను STYLE STREET సేవా నిబంధనలు మరియు గోప్యతా విధానానికి అంగీకరిస్తున్నాను",
     "loginSuccess": "విజయవంతంగా సైన్ ఇన్ అయ్యారు!",
-    "signupSuccess": "ఖాతా విజయవంతంగా సృష్టించబడింది! SKLP కు స్వాగతం.",
+    "signupSuccess": "ఖాతా విజయవంతంగా సృష్టించబడింది! STYLE STREET కు స్వాగతం.",
     "logoutSuccess": "విజయవంతంగా సైన్ అవుట్ అయ్యారు",
     "invalidCredentials": "చెల్లని ఈమెయిల్ లేదా పాస్‌వర్డ్. దయచేసి వివరాలను తనిఖీ చేయండి.",
     "emailRequired": "దయచేసి ఈమెయిల్ నమోదు చేయండి",

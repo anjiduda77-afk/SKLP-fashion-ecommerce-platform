@@ -31,7 +31,7 @@ export const authRateLimiter = rateLimit({
   },
   skipSuccessfulRequests: true,
   keyGenerator: (req) => {
-    return req.body.email || req.body.phone || req.ip;
+    return req.body?.email || req.body?.phone || req.ip;
   }
 });
 
@@ -46,7 +46,7 @@ export const otpRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    return req.body.phone || req.ip;
+    return req.body?.phone || req.ip;
   }
 });
 

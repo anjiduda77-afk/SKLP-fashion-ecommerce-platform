@@ -47,6 +47,8 @@ A step-by-step production deployment guide for deploying **SKLP Fashion** across
 
 1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and sign in.
 2. Create a Free M0 Cluster (e.g. `Cluster0` in `AWS / Mumbai ap-south-1` or `Singapore`).
+
+
 3. **Database Access**:
    - Go to **Security** > **Database Access** > Click **Add New Database User**.
    - Authentication Method: **Password**.

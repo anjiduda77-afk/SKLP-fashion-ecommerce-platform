@@ -117,7 +117,7 @@ function VerifyEmail() {
               </div>
               <h2 className="text-2xl font-serif font-bold text-amber-500">{t('auth.emailVerifiedTitle', 'Email Verified!')}</h2>
               <p className="text-xs opacity-75 leading-relaxed">
-                {t('auth.emailVerifiedSubtitle', 'Thank you for verifying your email address. Your SKLP Luxury Fashion account is now fully active.')}
+                {t('auth.emailVerifiedSubtitle', 'Thank you for verifying your email address. Your STYLE STREET Luxury Fashion account is now fully active.')}
               </p>
               <div className="pt-2 flex flex-col gap-3">
                 <Link

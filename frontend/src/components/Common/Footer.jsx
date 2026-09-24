@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiHelpCircle, FiShield, FiTruck, FiRefreshCw, FiAward } from 'react-icons/fi'
+import { FiX, FiHelpCircle } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import PolicyModal from './PolicyModal'
 
@@ -15,8 +15,13 @@ function Footer({ isDarkMode }) {
 
   useEffect(() => {
     const handleOpenHelpline = () => setShowHelpline(true)
+    const handleOpenPolicy = (e) => openPolicy(e.detail || 'shipping')
     window.addEventListener('open-helpline', handleOpenHelpline)
-    return () => window.removeEventListener('open-helpline', handleOpenHelpline)
+    window.addEventListener('open-policy', handleOpenPolicy)
+    return () => {
+      window.removeEventListener('open-helpline', handleOpenHelpline)
+      window.removeEventListener('open-policy', handleOpenPolicy)
+    }
   }, [])
 
   const openPolicy = (tab = 'shipping') => {
@@ -27,59 +32,7 @@ function Footer({ isDarkMode }) {
 
   return (
     <>
-      <footer className={`transition-all duration-300 mt-20 border-t
-        ${isDarkMode
-          ? 'bg-gradient-to-br from-black via-luxury-charcoal to-black border-white/10 text-white'
-          : 'bg-gradient-to-br from-luxury-offWhite via-white to-luxury-offWhite border-luxury-lightGray text-luxury-black'}`}
-      >
-        <div className="container-custom py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* Logo and Copyright */}
-            <div className="flex items-center gap-4">
-              <h2 className="text-2xl font-serif font-bold text-luxury-gold">SKLP</h2>
-              <span className="opacity-50 text-xs">|</span>
-              <p className="text-xs opacity-75">{t('footer.allRightsReserved', '© 2024 SKLP. All rights reserved.')}</p>
-            </div>
-
-            {/* Quick Policy triggers */}
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
-              <button onClick={() => openPolicy('shipping')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiTruck className="text-luxury-gold" /> {t('footer.shippingPolicy', 'Shipping Policy')}
-              </button>
-              <span className="opacity-30">•</span>
-              <button onClick={() => openPolicy('returns')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiRefreshCw className="text-luxury-gold" /> {t('footer.returnsRefunds', 'Returns & Refunds')}
-              </button>
-              <span className="opacity-30">•</span>
-              <button onClick={() => openPolicy('payments')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiShield className="text-luxury-gold" /> {t('footer.paymentSecurity', 'Payment Security')}
-              </button>
-              <span className="opacity-30">•</span>
-              <button onClick={() => openPolicy('vip')} className="hover:text-luxury-gold transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100">
-                <FiAward className="text-luxury-gold" /> {t('footer.vipPlan', 'VIP Membership')}
-              </button>
-            </div>
-
-            {/* Helpline settings button & Chatbot trigger */}
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
-                className="py-2.5 px-5 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5"
-              >
-                💬 {t('footer.chatBot', 'AI Chatbot')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowHelpline(true)}
-                className="py-2.5 px-5 bg-luxury-gold text-luxury-black hover:bg-luxury-darkGold rounded-full text-xs font-extrabold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-glow"
-              >
-                📞 {t('footer.helplineInfo', 'Help Line & Info')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Footer bar removed from page bottom as requested and moved inside Settings */}
 
       {/* HELPLINE & INFO SETTINGS MODAL */}
       <AnimatePresence>
@@ -108,7 +61,7 @@ function Footer({ isDarkMode }) {
 
               <div className="flex items-center gap-2 mb-8 border-b pb-4 border-current/15">
                 <FiHelpCircle className="text-luxury-gold text-2xl animate-pulse" />
-                <h2 className="text-2xl font-serif font-bold uppercase tracking-wider">{t('footer.helplineInfo', 'SKLP Helpline & Info Settings')}</h2>
+                <h2 className="text-2xl font-serif font-bold uppercase tracking-wider">{t('footer.helplineInfo', 'Style Street Helpline & Info Settings')}</h2>
               </div>
 
               {/* Responsive columns */}
@@ -117,7 +70,7 @@ function Footer({ isDarkMode }) {
                 {/* Brand description and Newsletter */}
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-base font-bold text-luxury-gold mb-3 uppercase tracking-wider">{t('footer.aboutUs', 'About SKLP')}</h3>
+                    <h3 className="text-base font-bold text-luxury-gold mb-3 uppercase tracking-wider">{t('footer.aboutUs', 'About Style Street')}</h3>
                     <p className="text-xs opacity-75 leading-relaxed">
                       {t('footer.description', 'Premium fashion and footwear for everyone. Discover luxury style and comfort.')}
                     </p>
@@ -182,7 +135,7 @@ function Footer({ isDarkMode }) {
                 <div className="flex gap-4">
                   <span>📞 {t('footer.customerCare', 'Customer Care')}: +91 9948682179</span>
                   <span className="opacity-50">|</span>
-                  <span>✉️ {t('common.emailUs', 'Email')}: support@sklp.com</span>
+                  <span>✉️ {t('common.emailUs', 'Email')}: support@stylestreet.in</span>
                 </div>
                 <button
                   onClick={() => setShowHelpline(false)}

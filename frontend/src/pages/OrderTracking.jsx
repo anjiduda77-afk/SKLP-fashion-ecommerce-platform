@@ -8,7 +8,7 @@ import { useTheme } from '@context/ThemeContext'
 const steps = [
   { status: 'pending', label: 'Order Placed', icon: FiFileText, desc: 'Your couture request is received.' },
   { status: 'processing', label: 'Tailoring/Packing', icon: FiPackage, desc: 'Garments are being custom sized & packed.' },
-  { status: 'shipped', label: 'In Transit', icon: FiTruck, desc: 'Package hand-over complete to SKLP Express.' },
+  { status: 'shipped', label: 'In Transit', icon: FiTruck, desc: 'Package hand-over complete to Style Street Express.' },
   { status: 'delivered', label: 'Delivered', icon: FiCheckCircle, desc: 'Insured package signed at destination.' }
 ]
 
@@ -160,12 +160,12 @@ function OrderTracking() {
             <div className="space-y-6">
               <div>
                 <span className="text-[10px] uppercase opacity-50 block mb-1">{t('orderTracking.carrierNetwork', 'Carrier Network')}</span>
-                <span className="text-sm font-bold">{trackingInfo.trackingDetails?.carrier || 'SKLP Couture Express'}</span>
+                <span className="text-sm font-bold">{trackingInfo.trackingDetails?.carrier || 'Style Street Express'}</span>
               </div>
               
               <div>
                 <span className="text-[10px] uppercase opacity-50 block mb-1">{t('orderTracking.trackingId', 'Tracking ID')}</span>
-                <span className="text-sm font-mono font-bold text-luxury-gold">{trackingInfo.trackingDetails?.trackingNumber || 'SKLP-NONE'}</span>
+                <span className="text-sm font-mono font-bold text-luxury-gold">{trackingInfo.trackingDetails?.trackingNumber || 'SS-NONE'}</span>
               </div>
 
               <div className="pt-4 border-t border-white/10">

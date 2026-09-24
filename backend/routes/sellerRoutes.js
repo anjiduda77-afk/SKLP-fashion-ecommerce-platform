@@ -8,6 +8,7 @@ import * as sellerApplicationController from '../controllers/sellerApplicationCo
 import * as sellerOfferController from '../controllers/sellerOfferController.js'
 import * as settlementController from '../controllers/settlementController.js'
 import * as subscriptionController from '../controllers/subscriptionController.js'
+import * as receiptController from '../controllers/receiptController.js'
 
 const router = express.Router()
 
@@ -26,6 +27,8 @@ router.use(verifyRole(['seller', 'admin']))
 router.get('/dashboard', asyncHandler(sellerController.getSellerDashboard))
 router.get('/profile', asyncHandler(sellerController.getSellerProfile))
 router.put('/profile', asyncHandler(sellerController.updateSellerProfile))
+router.get('/delivery-settings', asyncHandler(sellerController.getSellerDeliverySettings))
+router.put('/delivery-settings', asyncHandler(sellerController.updateSellerDeliverySettings))
 
 // Products & Offers
 router.get('/products', asyncHandler(sellerController.getSellerProducts))
@@ -40,6 +43,7 @@ router.post('/offers', asyncHandler(sellerOfferController.createOrUpdateSellerOf
 
 // Orders & Suborders Fulfillment
 router.get('/orders', asyncHandler(sellerController.getSellerOrders))
+router.get('/orders/:orderId/receipt', asyncHandler(receiptController.getSellerOrderReceipt))
 router.put('/orders/:id/dispatch', asyncHandler(sellerController.dispatchOrder))
 
 // Settlement & Payout Ledger

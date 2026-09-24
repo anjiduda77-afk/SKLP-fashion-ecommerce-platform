@@ -299,7 +299,7 @@ function ProductModal({ product, onSave, onClose }) {
             </div>
             <div>
               <label className={labelCls}>Brand</label>
-              <input name="brand" value={form.brand} onChange={handleChange} placeholder="e.g. SKLP" className={inputCls} />
+              <input name="brand" value={form.brand} onChange={handleChange} placeholder="e.g. STYLE STREET" className={inputCls} />
             </div>
           </div>
           <div>

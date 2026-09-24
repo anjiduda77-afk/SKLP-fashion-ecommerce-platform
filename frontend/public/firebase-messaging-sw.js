@@ -1,4 +1,4 @@
-// SKLP Fashion - Firebase Cloud Messaging Service Worker
+// STYLE STREET - Firebase Cloud Messaging Service Worker
 // Handles background push notifications when the application is not focused or closed
 
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
@@ -26,9 +26,9 @@ if (messaging) {
   messaging.onBackgroundMessage((payload) => {
     console.log('[FCM SW] Received background message:', payload);
 
-    const notificationTitle = payload.notification?.title || payload.data?.title || 'SKLP Luxury Fashion';
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'STYLE STREET Luxury Fashion';
     const notificationOptions = {
-      body: payload.notification?.body || payload.data?.body || 'You have a new update from SKLP Fashion.',
+      body: payload.notification?.body || payload.data?.body || 'You have a new update from STYLE STREET.',
       icon: payload.notification?.icon || payload.data?.icon || '/logo.png',
       badge: '/logo.png',
       image: payload.notification?.image || payload.data?.image || undefined,

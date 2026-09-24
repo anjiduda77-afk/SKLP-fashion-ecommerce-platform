@@ -30,11 +30,8 @@ const sellerSchema = new mongoose.Schema({
   },
   brandNameNormalized: {
     type: String,
-    unique: true,
-    sparse: true,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   approvalStatus: {
     type: String,
@@ -107,14 +104,12 @@ const sellerSchema = new mongoose.Schema({
   verificationStatus: {
     type: String,
     enum: ['pending', 'verified', 'rejected', 'suspended'],
-    default: 'verified',
-    index: true
+    default: 'verified'
   },
   sellerStatus: {
     type: String,
     enum: ['active', 'inactive', 'suspended', 'on_holiday'],
-    default: 'active',
-    index: true
+    default: 'active'
   },
   commissionRate: {
     type: Number,
@@ -161,6 +156,39 @@ const sellerSchema = new mongoose.Schema({
     city: { type: String, default: '' },
     state: { type: String, default: '' },
     pincode: { type: String, default: '' }
+  },
+  pickupAddress: {
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    country: { type: String, default: 'India' },
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  deliveryMode: {
+    type: String,
+    enum: ['FREE_DELIVERY', 'PAID_DELIVERY'],
+    default: 'PAID_DELIVERY'
+  },
+  fulfillmentMethod: {
+    type: String,
+    enum: ['SELF_DELIVERY', 'DELIVERY_PARTNER'],
+    default: 'SELF_DELIVERY'
+  },
+  riskStatus: {
+    type: String,
+    enum: ['ACTIVE', 'RISK_FLAGGED', 'UNDER_REVIEW', 'PAYOUT_ON_HOLD', 'SUSPENDED', 'TERMINATED'],
+    default: 'ACTIVE',
+    index: true
+  },
+  riskNotes: {
+    type: String,
+    default: ''
+  },
+  brandLocked: {
+    type: Boolean,
+    default: true
   }
 }, { timestamps: true })
 
@@ -184,5 +212,6 @@ sellerSchema.pre('save', function(next) {
 
 sellerSchema.index({ rating: -1 });
 sellerSchema.index({ verificationStatus: 1, sellerStatus: 1 });
+sellerSchema.index({ brandNameNormalized: 1 }, { sparse: true, unique: true });
 
 export default mongoose.model('Seller', sellerSchema)

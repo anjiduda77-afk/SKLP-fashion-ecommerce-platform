@@ -27,6 +27,7 @@ import shopRoutes from './routes/shopRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
+import brandingRoutes from './routes/brandingRoutes.js';
 
 const app = express();
 
@@ -128,7 +129,7 @@ const healthCheckHandler = (req, res) => {
   res.status(isHealthy ? 200 : 503).json({ 
     success: isHealthy,
     status: isHealthy ? 'ok' : 'degraded', 
-    service: 'SKLP E-Commerce Backend API',
+    service: 'STYLE STREET E-Commerce Backend API',
     mongodb: dbStatus.state,
     database: dbStatus,
     timestamp: new Date().toISOString(),
@@ -144,7 +145,7 @@ app.get('/api/health', healthCheckHandler);
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'SKLP Fashion E-Commerce Backend API Running 🚀',
+    message: 'STYLE STREET Fashion E-Commerce Backend API Running 🚀',
     version: '1.0.0',
     docs: '/api/health'
   });
@@ -166,6 +167,7 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/branding', brandingRoutes);
 app.get('/api/categories', (req, res, next) => productController.getCategories(req, res, next));
 
 // ============== 404 Handler ==============
@@ -186,7 +188,7 @@ const PORT = process.env.PORT || process.env.BACKEND_PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
-║         SKLP BACKEND SERVER STARTED               ║
+║     STYLE STREET BACKEND SERVER STARTED           ║
 ║  🚀 Server running on http://localhost:${PORT}  ║
 ║  📍 Environment: ${process.env.NODE_ENV}                ║
 ║  🔐 Security: Enabled                             ║

@@ -12,7 +12,7 @@ import DynamicCampaignBanner from '@components/Marketing/DynamicCampaignBanner'
 
 const GENDERS = ['men', 'women', 'kids', 'unisex']
 const CATEGORIES = ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear']
-const BRANDS = ['SKLP Heritage', 'SKLP Royale', 'SKLP Studio', 'SKLP Footwear', 'SKLP Athletics', 'SKLP Kids']
+const BRANDS = ['Style Street Heritage', 'Style Street Royale', 'Style Street Studio', 'Style Street Footwear', 'Style Street Athletics', 'Style Street Kids']
 
 function Products() {
   const { isDarkMode } = useTheme()
@@ -207,7 +207,7 @@ function Products() {
       <div className="relative rounded-2xl overflow-hidden py-8 sm:py-16 px-5 sm:px-8 mb-6 sm:mb-12 bg-luxury-charcoal border border-luxury-gold/20 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-yellow-500/10 via-transparent to-transparent pointer-events-none" />
         <div className="z-10">
-          <p className="text-luxury-gold text-xs tracking-[0.35em] uppercase mb-2">SKLP Fashion Collection</p>
+          <p className="text-luxury-gold text-xs tracking-[0.35em] uppercase mb-2">Style Street Fashion Collection</p>
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-3">All Products</h1>
           <p className="text-sm text-white/60 max-w-md">Explore ethnic wear, everyday fashion, and footwear for men, women, and kids.</p>
         </div>
@@ -657,12 +657,12 @@ function Products() {
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
-                          setSingleBrand(p.brand || 'SKLP')
+                          setSingleBrand(p.brand || 'Style Street')
                         }}
                         className="text-[10px] sm:text-xs uppercase tracking-widest text-luxury-gold mb-0.5 sm:mb-1 hover:underline cursor-pointer font-bold text-left block"
-                        title={`Filter by brand: ${p.brand || 'SKLP'}`}
+                        title={`Filter by brand: ${p.brand || 'Style Street'}`}
                       >
-                        {p.brand || 'SKLP'}
+                        {p.brand || 'Style Street'}
                       </button>
                       <Link to={`/products/${p._id || p.id}`}>
                         <h3 className={`font-serif font-bold text-sm sm:text-lg mb-1 sm:mb-2 hover:text-luxury-gold transition-colors line-clamp-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{p.name}</h3>

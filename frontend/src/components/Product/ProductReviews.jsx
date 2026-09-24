@@ -248,7 +248,7 @@ export const ProductReviews = ({ productId, productName, isDarkMode = true }) =>
       setSubmittingReply(true)
       const res = await reviewService.replyToReview(productId, replyModalReview._id, {
         message: replyText,
-        responderName: user?.role === 'admin' ? 'SKLP Official Team' : (user?.shopName || 'Verified Seller')
+        responderName: user?.role === 'admin' ? 'Style Street Official Team' : (user?.shopName || 'Verified Seller')
       })
       if (res.data?.success) {
         toast.success('Response posted successfully!')
@@ -695,7 +695,7 @@ export const ProductReviews = ({ productId, productName, isDarkMode = true }) =>
                     <div className="flex items-center gap-2">
                       <FiAward size={14} className="text-luxury-gold" />
                       <span className="text-xs font-bold text-luxury-gold uppercase tracking-wider">
-                        {rev.sellerResponse.respondedByName || 'SKLP Official Store'} Response
+                        {rev.sellerResponse.respondedByName || 'Style Street Official Store'} Response
                       </span>
                     </div>
                     <span className="text-[10px] opacity-40">

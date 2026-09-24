@@ -38,6 +38,7 @@ function BecomeSeller() {
     postalCode: '',
     panNumber: '',
     gstNumber: '',
+    deliveryMode: 'PAID_DELIVERY',
     accountName: '',
     accountNumber: '',
     ifscCode: '',
@@ -158,6 +159,14 @@ function BecomeSeller() {
           postalCode: formData.postalCode,
           country: 'India'
         },
+        pickupAddress: {
+          street: formData.street,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: 'India'
+        },
+        deliveryMode: formData.deliveryMode || 'PAID_DELIVERY',
         panNumber: formData.panNumber,
         gstNumber: formData.gstNumber,
         bankDetails: {
@@ -208,7 +217,7 @@ function BecomeSeller() {
                 <FiCheckCircle />
               </div>
               <h2 className={`text-3xl font-serif font-bold ${textPrimary}`}>
-                Welcome to SKLP Merchant Portal! 🎉
+                Welcome to STYLE STREET Merchant Portal! 🎉
               </h2>
               <p className={`text-base max-w-lg mx-auto ${textSecondary}`}>
                 Your seller application for <strong className="text-luxury-gold">{app.shopName}</strong> has been approved! Your <span className="text-green-500 font-bold">30-Day Free Trial</span> is active.
@@ -265,10 +274,10 @@ function BecomeSeller() {
       {/* Header Banner */}
       <div className="text-center space-y-3 mb-10">
         <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/30">
-          <FiBriefcase size={13} /> SKLP Multi-Seller Marketplace
+          <FiBriefcase size={13} /> STYLE STREET Multi-Seller Marketplace
         </span>
         <h1 className={`text-4xl font-serif font-bold ${textPrimary}`}>
-          Sell Your Fashion Brand on SKLP
+          Sell Your Fashion Brand on STYLE STREET
         </h1>
         <p className={`text-sm max-w-xl mx-auto ${textSecondary}`}>
           Join India's premier fashion marketplace. Enjoy a <strong className="text-luxury-gold">30-day Free Trial</strong>, transparent 5% platform commission, and direct 7-day settlements.
@@ -337,7 +346,7 @@ function BecomeSeller() {
                   </p>
                 )}
                 <p className="text-[11px] text-luxury-mediumGray">
-                  Your public shop URL will be: <strong className="text-luxury-gold">sklp.com/shop/{shopNameResult?.slug || 'your-shop-name'}</strong>
+                  Your public shop URL will be: <strong className="text-luxury-gold">stylestreet.in/shop/{shopNameResult?.slug || 'your-shop-name'}</strong>
                 </p>
               </div>
 
@@ -420,6 +429,49 @@ function BecomeSeller() {
                     onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                     className={`w-full py-2.5 px-3.5 rounded-xl border text-sm ${inputBg}`}
                   />
+                </div>
+              </div>
+
+              {/* Delivery Mode Setting */}
+              <div className="space-y-2">
+                <label className={`text-xs font-bold uppercase tracking-wider ${textSecondary}`}>
+                  Customer Delivery Policy *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, deliveryMode: 'PAID_DELIVERY' })}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      formData.deliveryMode === 'PAID_DELIVERY'
+                        ? 'border-luxury-gold bg-luxury-gold/10'
+                        : isDarkMode ? 'border-luxury-darkGray bg-black/20' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${textPrimary}`}>Standard Paid Delivery</span>
+                      {formData.deliveryMode === 'PAID_DELIVERY' && <FiCheck className="text-luxury-gold" size={14} />}
+                    </div>
+                    <p className={`text-[11px] mt-1 ${textSecondary}`}>
+                      Customer pays standard platform distance slabs (₹10 / ₹20 / ₹30 / ₹50).
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, deliveryMode: 'FREE_DELIVERY' })}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      formData.deliveryMode === 'FREE_DELIVERY'
+                        ? 'border-green-500 bg-green-500/10'
+                        : isDarkMode ? 'border-luxury-darkGray bg-black/20' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${textPrimary}`}>Free Delivery (Promotional)</span>
+                      {formData.deliveryMode === 'FREE_DELIVERY' && <FiCheck className="text-green-500" size={14} />}
+                    </div>
+                    <p className={`text-[11px] mt-1 ${textSecondary}`}>
+                      Attract more orders with Free Delivery (₹0 for customers on your items).
+                    </p>
+                  </button>
                 </div>
               </div>
 
@@ -586,7 +638,7 @@ function BecomeSeller() {
               {/* Commission & Terms Notice */}
               <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-luxury-gold/5 border-luxury-gold/20' : 'bg-yellow-50 border-yellow-200'} space-y-2`}>
                 <div className="flex items-center gap-2 text-luxury-gold font-bold text-xs">
-                  <FiShield /> SKLP Merchant Terms & 30-Day Free Trial
+                  <FiShield /> STYLE STREET Merchant Terms & 30-Day Free Trial
                 </div>
                 <ul className="text-[11px] space-y-1 text-luxury-mediumGray list-disc pl-4">
                   <li>Upon approval, your store receives a <strong className="text-luxury-gold">30-day Free Trial</strong>.</li>

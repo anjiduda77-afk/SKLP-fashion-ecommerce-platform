@@ -62,7 +62,7 @@ export const getShopProducts = async (req, res) => {
       productId: o.productId._id,
       name: o.productId.name,
       slug: o.productId.slug,
-      brand: o.productId.brand || 'SKLP Fashion',
+      brand: o.productId.brand || 'Style Street Fashion',
       category: o.productId.category,
       gender: o.productId.gender,
       images: o.productId.images,

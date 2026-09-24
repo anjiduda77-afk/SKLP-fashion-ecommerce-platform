@@ -1,6 +1,6 @@
 {
   "common": {
-    "welcome": "Welcome to SKLP",
+    "welcome": "Welcome to STYLE STREET",
     "home": "Home",
     "products": "Products",
     "categories": "Categories",
@@ -108,7 +108,7 @@
     "chatWithUs": "Chat with Us",
     "callUs": "Call Support",
     "emailUs": "Email Support",
-    "copyright": "© 2026 SKLP Fashion. All rights reserved."
+    "copyright": "© 2026 STYLE STREET. All rights reserved."
   },
   "header": {
     "search": "Search products...",
@@ -141,7 +141,7 @@
     "myWishlist": "My Wishlist",
     "savedAddresses": "Saved Addresses",
     "currency": "Currency",
-    "searchTitle": "Search SKLP Fashion",
+    "searchTitle": "Search STYLE STREET",
     "trendingSearches": "Trending Searches",
     "allShops": "Brands"
   },
@@ -189,11 +189,11 @@
     "earningsToday": "Earnings Today",
     "otpVerification": "OTP Verification",
     "welcomeGuest": "Welcome Guest",
-    "sklpFashionStore": "SKLP Fashion Store",
+    "sklpFashionStore": "Style Street Fashion Store",
     "goToDashboard": "Go to Dashboard",
     "signOut": "Logout",
     "enterAtelier": "Login",
-    "loyaltyClub": "SKLP Club",
+    "loyaltyClub": "Style Street Club",
     "loyaltyClubText": "Get free fast delivery, exclusive deals, and early access to new collections.",
     "eliteTier": "Gold Member"
   },
@@ -213,7 +213,7 @@
     "newsletterText": "Subscribe to get exclusive offers, discount codes, and new arrivals.",
     "emailPlaceholder": "Enter your email address",
     "join": "Subscribe",
-    "allRightsReserved": "© 2026 SKLP Fashion. All rights reserved.",
+    "allRightsReserved": "© 2026 STYLE STREET. All rights reserved.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
     "cookiePolicy": "Cookie Policy",
@@ -225,8 +225,8 @@
     "helplineInfo": "Customer Helpline",
     "customerCare": "Customer Care",
     "callHelpline": "+91 9948682179 (Mon-Sat, 9 AM - 8 PM)",
-    "emailSupport": "support@sklp.com",
-    "storeAddress": "SKLP Fashion, Jubilee Hills, Hyderabad, India"
+    "emailSupport": "support@stylestreet.in",
+    "storeAddress": "Style Street Fashion, Jubilee Hills, Hyderabad, India"
   },
   "home": {
     "hero": "Discover Beautiful Styles",
@@ -398,7 +398,7 @@
     "clearCart": "Clear Cart",
     "clearConfirm": "Are you sure you want to clear your cart?",
     "promoCoupon": "Coupons & Offers",
-    "couponPlaceholder": "Enter coupon code (e.g. SKLP500)",
+    "couponPlaceholder": "Enter coupon code (e.g. SS500)",
     "viewCoupons": "View Coupons",
     "apply": "Apply",
     "applied": "Applied",
@@ -609,7 +609,7 @@
     "quickActions": "Quick Links",
     "myOrders": "My Orders",
     "myWishlist": "My Wishlist",
-    "becomeSeller": "Sell on SKLP",
+    "becomeSeller": "Sell on STYLE STREET",
     "addressType": "Address Type",
     "home": "Home",
     "work": "Work",
@@ -673,7 +673,7 @@
     "upiSaved": "UPI ID saved successfully!",
     "upiDeleted": "UPI ID removed",
     "noUpi": "No UPI IDs saved yet.",
-    "atelierWallet": "SKLP Wallet",
+    "atelierWallet": "Style Street Wallet",
     "rewardCoins": "Reward Coins",
     "coinsWorth": "Worth ₹500 on your next order",
     "coinsDesc": "Earn reward coins on every order and redeem on your next purchase.",
@@ -695,7 +695,7 @@
   "auth": {
     "login": "Login",
     "register": "Sign Up",
-    "signIn": "Login to SKLP",
+    "signIn": "Login to STYLE STREET",
     "signUp": "Create an Account",
     "createAccount": "Create Account",
     "email": "Email Address",
@@ -712,7 +712,7 @@
     "resetLinkSent": "Password reset link sent to your email.",
     "enterNewPassword": "Enter New Password",
     "updatePassword": "Save New Password",
-    "noAccount": "New to SKLP?",
+    "noAccount": "New to STYLE STREET?",
     "haveAccount": "Already have an account?",
     "googleLogin": "Continue with Google",
     "googleSignIn": "Continue with Google",
@@ -721,7 +721,7 @@
     "rememberMe": "Remember Me",
     "agreeToTerms": "I agree to the Terms of Service & Privacy Policy",
     "loginSuccess": "Logged in successfully!",
-    "signupSuccess": "Account created successfully! Welcome to SKLP.",
+    "signupSuccess": "Account created successfully! Welcome to STYLE STREET.",
     "logoutSuccess": "Logged out successfully",
     "invalidCredentials": "Incorrect email or password. Please try again.",
     "emailRequired": "Please enter your email address",

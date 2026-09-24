@@ -182,7 +182,7 @@ export const getProductReviews = async (req, res) => {
 
     const firstName = rev.userId?.firstName || ''
     const lastName = rev.userId?.lastName || ''
-    const displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : (rev.reviewerName || 'SKLP Customer')
+    const displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : (rev.reviewerName || 'Style Street Customer')
 
     return {
       _id: rev._id,
@@ -589,7 +589,7 @@ export const replyToReview = async (req, res) => {
   review.sellerResponse = {
     message: message.trim(),
     respondedAt: new Date(),
-    respondedByName: responderName || (userRole === 'admin' ? 'SKLP Official Team' : 'Verified Seller'),
+    respondedByName: responderName || (userRole === 'admin' ? 'Style Street Official Team' : 'Verified Seller'),
     respondedBy: userId
   }
 

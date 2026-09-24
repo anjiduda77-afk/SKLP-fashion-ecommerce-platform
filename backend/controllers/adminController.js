@@ -190,7 +190,7 @@ export const createProduct = async (req, res) => {
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const sku = `${categoryPrefix}-${genderPrefix}-${randomSuffix}`;
 
-  const assignedBrand = (brand || 'SKLP').trim();
+  const assignedBrand = (brand || 'STYLE STREET').trim();
   const brandNormalized = assignedBrand.toLowerCase().replace(/[^a-z0-9]/g, '');
   const nameNormalized = (name || '').toLowerCase().trim();
 

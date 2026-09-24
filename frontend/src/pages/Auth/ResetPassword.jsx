@@ -174,7 +174,7 @@ function ResetPassword() {
                 </div>
                 <h1 className="text-2xl font-serif font-bold tracking-tight">{t('auth.setNewPassword', 'Set New Password')}</h1>
                 <p className="text-xs opacity-65 mt-1.5">
-                  {t('auth.setNewPasswordSubtitle', 'Create a strong, secure password for your SKLP account.')}
+                  {t('auth.setNewPasswordSubtitle', 'Create a strong, secure password for your STYLE STREET account.')}
                 </p>
               </div>
 

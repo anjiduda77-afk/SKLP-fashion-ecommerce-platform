@@ -16,18 +16,17 @@ const deliveryConfigSchema = new mongoose.Schema({
   storeLocation: {
     lat:     { type: Number, default: 17.3850 },   // Hyderabad, Telangana
     lng:     { type: Number, default: 78.4867 },
-    address: { type: String, default: 'SKLP Fashion, Hyderabad, Telangana, India' }
+    address: { type: String, default: 'Style Street Fashion, Hyderabad, Telangana, India' }
   },
 
   // Delivery fee slabs ordered by ascending distance
   deliverySlabs: {
     type: [deliverySlabSchema],
     default: [
-      { minKm: 0,     maxKm: 5,     fee: 0,  label: 'Free delivery within 5 km 🎉' },
-      { minKm: 5,     maxKm: 10,    fee: 20, label: 'Delivery charge: ₹20' },
-      { minKm: 10,    maxKm: 20,    fee: 30, label: 'Delivery charge: ₹30' },
-      { minKm: 20,    maxKm: 30,    fee: 40, label: 'Delivery charge: ₹40' },
-      { minKm: 30,    maxKm: 99999, fee: 50, label: 'Delivery charge: ₹50' }
+      { minKm: 0,    maxKm: 6.0,   fee: 10, label: 'Delivery charge: ₹10 (0 - 6 km)' },
+      { minKm: 6.0,  maxKm: 12.0,  fee: 20, label: 'Delivery charge: ₹20 (6 - 12 km)' },
+      { minKm: 12.0, maxKm: 40.0,  fee: 30, label: 'Delivery charge: ₹30 (12 - 40 km)' },
+      { minKm: 40.0, maxKm: 99999, fee: 50, label: 'Delivery charge: ₹50 (>40 km)' }
     ]
   },
 
@@ -35,8 +34,8 @@ const deliveryConfigSchema = new mongoose.Schema({
   // false = Self Delivery only; true = Self Delivery or Delivery Partner
   deliveryPartnerEnabled: { type: Boolean, default: false },
 
-  // Maximum serviceable distance in kilometers (beyond this = delivery unavailable)
-  maxServiceDistanceKm: { type: Number, default: 50, min: 1 },
+  // Maximum serviceable distance in kilometers (beyond this = delivery unavailable; 4000km covers all India)
+  maxServiceDistanceKm: { type: Number, default: 4000, min: 1 },
 
   // Cart subtotal threshold for automatic free delivery (0 = disabled)
   freeDeliveryThresholdAmount: { type: Number, default: 0, min: 0 },
@@ -62,7 +61,7 @@ deliveryConfigSchema.statics.getConfig = async function () {
   }
   const obj = config.toObject ? config.toObject() : config
   if (obj.deliveryPartnerEnabled === undefined) obj.deliveryPartnerEnabled = false
-  if (obj.maxServiceDistanceKm === undefined) obj.maxServiceDistanceKm = 50
+  if (obj.maxServiceDistanceKm === undefined) obj.maxServiceDistanceKm = 4000
   if (obj.freeDeliveryThresholdAmount === undefined) obj.freeDeliveryThresholdAmount = 0
   if (obj.minimumDeliveryFee === undefined) obj.minimumDeliveryFee = 0
   return obj

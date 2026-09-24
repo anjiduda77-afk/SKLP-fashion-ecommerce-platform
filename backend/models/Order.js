@@ -36,7 +36,7 @@ const orderSchema = new mongoose.Schema({
     },
     shopNameSnapshot: {
       type: String,
-      default: 'SKLP Official'
+      default: 'Style Street Official'
     },
     brand: String,
     productName: String,
@@ -339,6 +339,14 @@ const orderSchema = new mongoose.Schema({
   // Analytics
   isProcessed: { type: Boolean, default: false },
   processingTime: Number,
+
+  // Tax Invoice
+  invoiceNumber: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  invoiceDate: Date,
 
   createdAt: {
     type: Date,

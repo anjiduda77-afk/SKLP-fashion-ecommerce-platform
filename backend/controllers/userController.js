@@ -142,7 +142,17 @@ export const changePassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   
   if (!oldPassword || !newPassword) {
-    throw new ApiError(400, 'Old and new passwords are required');
+    throw new ApiError(400, 'Current and new passwords are required');
+  }
+
+  if (oldPassword === newPassword) {
+    throw new ApiError(400, 'New password cannot be identical to your current password');
+  }
+
+  // Validate password strength
+  const { isValid, errors } = User.validatePasswordStrength(newPassword);
+  if (!isValid) {
+    throw new ApiError(400, 'New password does not meet security requirements', errors);
   }
 
   const user = await User.findById(req.user.id).select('+password');
@@ -150,17 +160,30 @@ export const changePassword = async (req, res) => {
     throw new ApiError(404, 'User not found');
   }
 
-  const isMatch = await user.comparePassword(oldPassword);
-  if (!isMatch) {
-    throw new ApiError(401, 'Invalid old password');
+  // If user has an existing password, verify it
+  if (user.password) {
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      throw new ApiError(401, 'Current password is incorrect. Please verify and try again.');
+    }
   }
 
   user.password = newPassword;
+
+  // Revoke other device sessions for security
+  const currentRefreshToken = req.body.refreshToken || req.headers['x-refresh-token'];
+  if (currentRefreshToken) {
+    await user.revokeAllRefreshTokensExcept(currentRefreshToken);
+  } else {
+    // If no specific refresh token provided, clear all to guarantee compromised devices are locked out
+    user.refreshTokens = [];
+  }
+
   await user.save();
 
   res.status(200).json({
     success: true,
-    message: 'Password updated successfully'
+    message: 'Password updated successfully. Other device sessions have been logged out for security.'
   });
 };
 
@@ -786,7 +809,7 @@ export const sendTestNotification = async (req, res) => {
   const user = await User.findById(req.user.id);
   if (!user) throw new ApiError(404, 'User not found');
 
-  const title = '✨ SKLP Royal Couture Drop';
+  const title = '✨ Style Street Royal Couture Drop';
   const message = 'Your exclusive VIP access to the Festive 2026 Collection is now live. Experience bespoke luxury.';
   const actionUrl = '/products';
 

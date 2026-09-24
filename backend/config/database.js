@@ -22,15 +22,16 @@ const connectDB = async () => {
   }
 
   const options = {
-    serverSelectionTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 15000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 15000,
-    maxPoolSize: 50, // Scaled for high concurrent ecommerce requests
-    minPoolSize: 5, // Keep warm pool of connections ready
+    heartbeatFrequencyMS: 10000,
+    maxPoolSize: 15,
+    minPoolSize: 1,
     retryWrites: true,
     w: 'majority',
-    family: 4, // Prefer IPv4 for Render & Cloud DB compatibility
-    autoIndex: process.env.NODE_ENV !== 'production' // Skip index build in production for instant boot
+    family: 4,
+    autoIndex: process.env.NODE_ENV !== 'production'
   };
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {

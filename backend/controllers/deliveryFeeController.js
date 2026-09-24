@@ -1,22 +1,97 @@
-import { calculateDeliveryBreakdown, validateCoordinates, isIndiaCoordinates } from '../utils/deliveryUtils.js'
+import {
+  calculateDeliveryBreakdown,
+  calculateDeliveryBreakdownForSeller,
+  calculateMultiSellerDeliveryBreakdown,
+  validateCoordinates,
+  isIndiaCoordinates
+} from '../utils/deliveryUtils.js'
 import DeliveryConfig from '../models/DeliveryConfig.js'
+import Seller from '../models/Seller.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
 // ── POST /api/delivery-fee/calculate ─────────────────────────────────────────
-// Customer sends their delivery address; backend returns distance, fee, and label.
-// The frontend must NOT compute its own fee — it always asks this endpoint.
+// Customer sends delivery address; backend returns distance, fee, and breakdown.
+// Authoritative calculation on backend:
+// - Free Delivery sellers: ₹0
+// - Paid Delivery sellers: 0-6km: ₹10, 6.1-12km: ₹20, 12.1-40km: ₹30, >40km: ₹50
+// - Multi-seller carts calculate each seller independently and sum them up.
 export const calculateFee = async (req, res) => {
-  const { street, city, state, postalCode, country, subtotal } = req.body
+  const { street, city, state, postalCode, country, subtotal, items, sellerIds } = req.body
 
   if (!city && !postalCode) {
     throw new ApiError(400, 'Please provide at least city or postal code to calculate delivery fee.')
   }
 
   const numericSubtotal = typeof subtotal === 'number' && subtotal >= 0 ? subtotal : 0
-  const breakdown = await calculateDeliveryBreakdown(
-    { street, city, state, postalCode, country },
-    numericSubtotal
-  )
+  const shippingAddress = { street, city, state, postalCode, country }
+
+  // Extract distinct seller IDs if provided
+  let distinctSellerIds = []
+  if (Array.isArray(sellerIds) && sellerIds.length > 0) {
+    distinctSellerIds = [...new Set(sellerIds.filter(Boolean).map(String))]
+  } else if (Array.isArray(items) && items.length > 0) {
+    distinctSellerIds = [...new Set(items.map(i => i.sellerId || i.seller).filter(Boolean).map(String))]
+  }
+
+  if (distinctSellerIds.length > 1) {
+    // Multi-seller calculation
+    const sellers = await Seller.find({ _id: { $in: distinctSellerIds } }).lean()
+    const sellerEntries = sellers.map(seller => {
+      // Calculate this seller's item subtotal if items array has prices
+      let sellerSub = 0
+      if (Array.isArray(items)) {
+        sellerSub = items
+          .filter(it => String(it.sellerId || it.seller) === String(seller._id))
+          .reduce((sum, it) => sum + ((it.price || 0) * (it.quantity || 1)), 0)
+      }
+      return { seller, subtotal: sellerSub || numericSubtotal / sellers.length }
+    })
+
+    const multiBreakdown = await calculateMultiSellerDeliveryBreakdown(
+      shippingAddress,
+      sellerEntries
+    )
+
+    return res.status(200).json({
+      success: true,
+      distanceKm: multiBreakdown.distanceKm,
+      deliveryFee: multiBreakdown.deliveryFee,
+      deliveryLabel: multiBreakdown.deliveryLabel,
+      deliveryUnavailable: multiBreakdown.deliveryUnavailable || false,
+      deliveryMethod: 'self_delivery',
+      platformFeePercent: multiBreakdown.platformFeePercent,
+      sellerBreakdowns: multiBreakdown.sellerBreakdowns
+    })
+  } else if (distinctSellerIds.length === 1) {
+    // Single specific seller
+    const seller = await Seller.findById(distinctSellerIds[0]).lean()
+    const sellerLocation = seller?.pickupAddress?.lat && seller?.pickupAddress?.lng
+      ? seller.pickupAddress
+      : seller?.shopLocation
+
+    const breakdown = await calculateDeliveryBreakdownForSeller(
+      shippingAddress,
+      sellerLocation,
+      null,
+      numericSubtotal,
+      seller?.deliveryMode || 'PAID_DELIVERY'
+    )
+
+    return res.status(200).json({
+      success: true,
+      distanceKm: breakdown.distanceKm,
+      deliveryFee: breakdown.deliveryFee,
+      deliveryLabel: breakdown.deliveryLabel,
+      deliveryUnavailable: breakdown.deliveryUnavailable || false,
+      deliveryMethod: breakdown.deliveryMethod || 'self_delivery',
+      geocodingFailed: breakdown.geocodingFailed,
+      platformFeePercent: breakdown.platformFeePercent,
+      storeAddress: breakdown.storeAddress
+    })
+  }
+
+  // Fallback default calculation
+  const breakdown = await calculateDeliveryBreakdown(shippingAddress, numericSubtotal)
 
   res.status(200).json({
     success: true,

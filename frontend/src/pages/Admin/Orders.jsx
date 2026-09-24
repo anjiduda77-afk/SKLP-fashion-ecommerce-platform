@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiSearch, FiEye, FiShoppingBag,
-  FiX, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle
+  FiX, FiPackage, FiTruck, FiCheckCircle, FiClock, FiXCircle,
+  FiFileText, FiPrinter, FiChevronDown, FiDollarSign
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import adminService from '../../services/adminService'
@@ -17,6 +19,73 @@ const STATUS_STYLES = {
   cancelled:  { cls: 'bg-red-500/10 text-red-600 border-red-500/20',      icon: FiXCircle },
   refunded:   { cls: 'bg-gray-500/10 text-gray-600 border-gray-500/20',      icon: FiXCircle },
   returned:   { cls: 'bg-orange-500/10 text-orange-600 border-orange-500/20', icon: FiXCircle },
+}
+
+// ── Compact Receipt Dropdown ──────────────────────────────────────────────────
+function ReceiptActionDropdown({ orderId, isDarkMode }) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative inline-block text-left" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+          isDarkMode
+            ? 'border-luxury-gold/50 bg-luxury-gold/10 text-luxury-gold hover:bg-luxury-gold/20'
+            : 'border-amber-600/40 bg-amber-50 text-amber-900 hover:bg-amber-100'
+        }`}
+        title="View receipt, shipping label or tax invoice"
+      >
+        <FiFileText size={12} />
+        <span>Receipt</span>
+        <FiChevronDown size={11} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className={`absolute right-0 mt-1 w-48 rounded-xl shadow-xl border py-1.5 z-30 animate-fade-in ${
+          isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray text-white' : 'bg-white border-gray-200 text-gray-800'
+        }`}>
+          <button
+            onClick={() => { setOpen(false); navigate(`/admin/orders/${orderId}/receipt?tab=receipt`) }}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiEye size={13} /> View Receipt
+          </button>
+          <button
+            onClick={() => { setOpen(false); navigate(`/admin/orders/${orderId}/receipt?tab=label`) }}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiPackage size={13} /> Shipping Label
+          </button>
+          <button
+            onClick={() => { setOpen(false); navigate(`/admin/orders/${orderId}/receipt?tab=invoice`) }}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiDollarSign size={13} /> View Invoice
+          </button>
+          <div className="my-1 border-t border-current/10" />
+          <button
+            onClick={() => { setOpen(false); navigate(`/admin/orders/${orderId}/receipt?tab=receipt`) }}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-luxury-gold/10 hover:text-luxury-gold transition font-medium"
+          >
+            <FiPrinter size={13} /> Print / Download PDF
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Order Detail Slide-over ───────────────────────────────────────────────────
@@ -121,6 +190,36 @@ function OrderDetail({ order, onClose, onStatusChange }) {
               </button>
             </div>
           )}
+
+          {/* Official Order Documents */}
+          <div className={`rounded-xl border p-4 space-y-2 ${innerBg}`}>
+            <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textSecondary}`}>Official Documents</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { onClose(); window.open(`/admin/orders/${order._id}/receipt?tab=receipt`, '_blank'); }}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold rounded-lg text-xs font-bold hover:bg-luxury-gold hover:text-black transition"
+              >
+                <FiFileText size={12} /> Receipt
+              </button>
+              <button
+                type="button"
+                onClick={() => { onClose(); window.open(`/admin/orders/${order._id}/receipt?tab=label`, '_blank'); }}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold rounded-lg text-xs font-bold hover:bg-luxury-gold hover:text-black transition"
+              >
+                <FiPackage size={12} /> Packing Label
+              </button>
+              <button
+                type="button"
+                onClick={() => { onClose(); window.open(`/admin/orders/${order._id}/receipt?tab=invoice`, '_blank'); }}
+                className={`col-span-2 flex items-center justify-center gap-1.5 py-2 px-2.5 border rounded-lg text-xs font-bold transition ${
+                  isDarkMode ? 'border-luxury-darkGray text-white hover:bg-white/5' : 'border-gray-300 text-gray-800 hover:bg-gray-100'
+                }`}
+              >
+                <FiDollarSign size={12} /> Tax Invoice
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -266,12 +365,15 @@ function AdminOrders() {
                     </td>
                     <td className={`px-5 py-3.5 text-sm ${textSecondary}`}>{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="px-5 py-3.5">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all opacity-0 group-hover:opacity-100 ${isDarkMode ? 'border-luxury-darkGray text-luxury-mediumGray hover:border-luxury-gold hover:text-luxury-gold' : 'border-gray-300 text-gray-500 hover:border-luxury-gold hover:text-luxury-gold'}`}
-                      >
-                        <FiEye size={13} /> View
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isDarkMode ? 'border-luxury-darkGray text-luxury-mediumGray hover:border-luxury-gold hover:text-luxury-gold' : 'border-gray-300 text-gray-500 hover:border-luxury-gold hover:text-luxury-gold'}`}
+                        >
+                          <FiEye size={13} /> View
+                        </button>
+                        <ReceiptActionDropdown orderId={order._id} isDarkMode={isDarkMode} />
+                      </div>
                     </td>
                   </tr>
                 )

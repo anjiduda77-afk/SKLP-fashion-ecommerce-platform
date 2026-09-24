@@ -78,9 +78,16 @@ export const submitSellerApplication = async (req, res) => {
     brandName,
     businessType,
     businessAddress,
+    pickupAddress,
+    deliveryMode,
+    storeDescription,
+    category,
+    subcategory,
+    brandLogo,
     panNumber,
     gstNumber,
     bankDetails,
+    verification,
     documents
   } = req.body
 
@@ -112,7 +119,7 @@ export const submitSellerApplication = async (req, res) => {
     userId: { $ne: userId }
   })
   if (existingSellerBrand) {
-    throw new ApiError(400, `The brand "${effectiveBrand}" is already registered by another merchant. Every brand must be unique.`)
+    throw new ApiError(409, `The brand "${effectiveBrand}" is already registered by another merchant. Every brand must be unique.`)
   }
 
   // ── Anti-Cheating & Automated Risk Calculation ──────────────────────────────
@@ -126,9 +133,7 @@ export const submitSellerApplication = async (req, res) => {
     status: { $in: ['PENDING_REVIEW', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED'] }
   })
   if (existingPendingApp) {
-    riskScore += 50
-    riskFlags.push('DUPLICATE_RISK')
-    riskFlags.push('Brand name matches another pending or active application.')
+    throw new ApiError(409, `The brand "${effectiveBrand}" is already under review in another application. Every brand must be unique.`)
   }
 
   // Check 2: Duplicate phone / email on previous suspended/rejected applications
@@ -196,13 +201,22 @@ export const submitSellerApplication = async (req, res) => {
   application.shopName = effectiveShop
   application.brandName = effectiveBrand
   application.brandNameNormalized = brandNormalized
+  application.storeDescription = storeDescription || ''
+  application.category = category || ''
+  application.subcategory = subcategory || ''
+  if (brandLogo) application.brandLogo = brandLogo
   const normBusinessType = (businessType || 'individual').toLowerCase().trim()
   const validBusinessTypes = ['individual', 'proprietorship', 'partnership', 'pvt_ltd', 'other']
   application.businessType = validBusinessTypes.includes(normBusinessType) ? normBusinessType : 'individual'
   application.businessAddress = businessAddress || {}
+  application.pickupAddress = pickupAddress || businessAddress || {}
+  application.deliveryMode = deliveryMode || 'PAID_DELIVERY'
   application.panNumber = panNumber ? panNumber.toUpperCase() : ''
   application.gstNumber = gstNumber ? gstNumber.toUpperCase() : ''
   application.bankDetails = bankDetails || {}
+  if (verification && typeof verification === 'object') {
+    application.verification = { ...application.verification, ...verification }
+  }
   if (documents && Array.isArray(documents)) {
     application.documents = documents
   }
@@ -228,6 +242,7 @@ export const submitSellerApplication = async (req, res) => {
       _id: application._id,
       id: application._id,
       shopName: application.shopName,
+      brandName: application.brandName,
       status: application.status,
       riskLevel: application.riskLevel,
       submittedAt: application.updatedAt
@@ -288,12 +303,21 @@ export const getAdminSellerApplications = async (req, res) => {
  */
 export const reviewSellerApplication = async (req, res) => {
   const { id } = req.params
-  const { action, notes, reason } = req.body // action: 'APPROVE', 'REJECT', 'REQUEST_INFO', 'SUSPEND'
+  const { action, notes, reason } = req.body // action: 'APPROVE', 'REJECT', 'REQUEST_INFO', 'SUSPEND', 'REACTIVATE'
   const adminId = req.user?.id || req.user?._id
 
   const application = await SellerApplication.findById(id)
   if (!application) {
     throw new ApiError(404, 'Seller application not found')
+  }
+
+  // ── Self-Approval Guard ──────────────────────────────────────────────────────
+  // An admin cannot approve, reject, or suspend their own seller application
+  if (
+    (action === 'APPROVE' || action === 'REJECT' || action === 'SUSPEND') &&
+    application.userId.toString() === adminId.toString()
+  ) {
+    throw new ApiError(403, 'Administrators cannot review their own seller application.')
   }
 
   const user = await User.findById(application.userId)
@@ -308,6 +332,8 @@ export const reviewSellerApplication = async (req, res) => {
     application.adminNotes = notes || 'Application approved by administrator.'
     application.reviewedBy = adminId
     application.reviewedAt = new Date()
+    application.approvedBy = adminId
+    application.approvedAt = new Date()
 
     // 1. Update User Role to 'seller'
     user.role = 'seller'
@@ -335,11 +361,15 @@ export const reviewSellerApplication = async (req, res) => {
         shopSlug: slug,
         brandName,
         brandNameNormalized,
+        brandLocked: true,
+        deliveryMode: application.deliveryMode || 'PAID_DELIVERY',
+        pickupAddress: application.pickupAddress || application.businessAddress || {},
         businessType: application.businessType,
         bankDetails: { ...application.bankDetails, isVerified: true },
         approvalStatus: 'APPROVED',
         verificationStatus: 'verified',
         sellerStatus: 'active',
+        riskStatus: 'ACTIVE',
         subscriptionStatus: 'trial',
         currentPlan: 'trial',
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -349,9 +379,13 @@ export const reviewSellerApplication = async (req, res) => {
       seller.shopSlug = slug
       seller.brandName = brandName
       seller.brandNameNormalized = brandNameNormalized
+      seller.brandLocked = true
+      seller.deliveryMode = application.deliveryMode || seller.deliveryMode || 'PAID_DELIVERY'
+      if (application.pickupAddress) seller.pickupAddress = application.pickupAddress
       seller.approvalStatus = 'APPROVED'
       seller.verificationStatus = 'verified'
       seller.sellerStatus = 'active'
+      seller.riskStatus = 'ACTIVE'
     }
     await seller.save()
 
@@ -417,6 +451,12 @@ export const reviewSellerApplication = async (req, res) => {
     })
   } else if (action === 'SUSPEND') {
     application.status = 'SUSPENDED'
+    application.adminNotes = notes || reason || 'Account suspended by administrator.'
+    application.reviewedBy = adminId
+    application.reviewedAt = new Date()
+    // Downgrade role to prevent seller dashboard access
+    user.role = 'customer'
+    await user.save()
     const seller = await Seller.findOne({ userId: user._id })
     if (seller) {
       seller.approvalStatus = 'SUSPENDED'
@@ -424,8 +464,21 @@ export const reviewSellerApplication = async (req, res) => {
       seller.sellerStatus = 'suspended'
       await seller.save()
     }
+    await Notification.create({
+      userId: user._id,
+      type: 'seller_suspended',
+      title: 'Seller Account Suspended',
+      message: `Your seller account has been suspended. Reason: ${notes || reason || 'Please contact support.'}`,
+      relatedEntity: { entityType: 'seller', entityId: application._id }
+    })
   } else if (action === 'REACTIVATE') {
     application.status = 'APPROVED'
+    application.adminNotes = notes || 'Account reactivated by administrator.'
+    application.reviewedBy = adminId
+    application.reviewedAt = new Date()
+    // Restore seller role
+    user.role = 'seller'
+    await user.save()
     const seller = await Seller.findOne({ userId: user._id })
     if (seller) {
       seller.approvalStatus = 'APPROVED'
@@ -433,6 +486,15 @@ export const reviewSellerApplication = async (req, res) => {
       seller.sellerStatus = 'active'
       await seller.save()
     }
+    await Notification.create({
+      userId: user._id,
+      type: 'seller_reactivated',
+      title: 'Seller Account Reactivated',
+      message: 'Your seller account has been reactivated. You can now access the Seller Hub.',
+      relatedEntity: { entityType: 'seller', entityId: application._id }
+    })
+  } else if (action !== 'REQUEST_INFO' && action !== 'REQUEST_CHANGES') {
+    throw new ApiError(400, `Unknown review action: ${action}. Valid actions: APPROVE, REJECT, REQUEST_INFO, REQUEST_CHANGES, SUSPEND, REACTIVATE`)
   }
 
   application.auditLogs.push({

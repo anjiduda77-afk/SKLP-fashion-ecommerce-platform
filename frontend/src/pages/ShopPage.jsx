@@ -102,7 +102,7 @@ function ShopPage() {
                 </span>
               </div>
               <p className={`text-xs md:text-sm ${textSecondary} max-w-xl line-clamp-2`}>
-                {shop.description || 'Premium curated fashion partner on SKLP Fashion Marketplace.'}
+                {shop.description || 'Premium curated fashion partner on STYLE STREET Fashion Marketplace.'}
               </p>
             </div>
           </div>
@@ -206,7 +206,7 @@ function ShopPage() {
 
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
                     <div>
-                      <p className="text-[10px] font-bold text-luxury-gold uppercase tracking-wider">{product.brand || 'SKLP'}</p>
+                      <p className="text-[10px] font-bold text-luxury-gold uppercase tracking-wider">{product.brand || 'STYLE STREET'}</p>
                       <Link to={`/products/${product.productId}`} className={`text-xs font-bold ${textPrimary} hover:text-luxury-gold line-clamp-1`}>
                         {product.name}
                       </Link>
@@ -243,7 +243,7 @@ function ShopPage() {
           <div>
             <h3 className={`text-lg font-bold ${textPrimary}`}>About {shop.shopName}</h3>
             <p className={`text-sm mt-2 leading-relaxed ${textSecondary}`}>
-              {shop.description || 'Welcome to our verified storefront on SKLP Fashion. We offer authentic, high-quality fashion wear with reliable delivery across India.'}
+              {shop.description || 'Welcome to our verified storefront on STYLE STREET. We offer authentic, high-quality fashion wear with reliable delivery across India.'}
             </p>
           </div>
 

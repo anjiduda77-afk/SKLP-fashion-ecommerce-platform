@@ -217,7 +217,7 @@ function ProductDetail() {
           {/* RIGHT: Product Specs / Interactive Selections */}
           <div className="flex flex-col justify-between">
             <div>
-              <p className="text-xs uppercase tracking-widest text-luxury-gold font-semibold mb-2">{product.brand || 'SKLP Couture'}</p>
+              <p className="text-xs uppercase tracking-widest text-luxury-gold font-semibold mb-2">{product.brand || 'Style Street Couture'}</p>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-bold mb-3 sm:mb-4 leading-tight">{product.name}</h1>
               
               {/* Review & Ratings */}
@@ -324,10 +324,10 @@ function ProductDetail() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold opacity-60">Sold by:</span>
                     <Link
-                      to={`/shop/${selectedOffer?.sellerId?.shopSlug || 'sklp-official'}`}
+                      to={`/shop/${selectedOffer?.sellerId?.shopSlug || 'style-street-official'}`}
                       className="text-xs font-bold text-luxury-gold hover:underline flex items-center gap-1"
                     >
-                      {selectedOffer?.sellerId?.shopName || 'SKLP Official Store'}
+                      {selectedOffer?.sellerId?.shopName || 'Style Street Official Store'}
                       <FiCheckCircle size={12} className="text-green-500 inline" />
                     </Link>
                   </div>
@@ -350,7 +350,7 @@ function ProductDetail() {
                 <button
                   onClick={() => {
                     addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
-                    toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'SKLP Official Store'}! 🎉`)
+                    toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'Style Street Official Store'}! 🎉`)
                   }}
                   className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap touch-target"
                 >
@@ -382,7 +382,7 @@ function ProductDetail() {
           </div>
         </div>
 
-        {/* ============ MULTI-SELLER: OTHER SELLERS ON SKLP ============ */}
+        {/* ============ MULTI-SELLER: OTHER SELLERS ON STYLE STREET ============ */}
         {offersData?.otherOffers?.length > 0 && (
           <section className={`rounded-3xl border p-6 md:p-8 ${cardBg} space-y-4 shadow-xl mb-16`}>
             <div className="flex items-center justify-between border-b pb-4 border-white/10">

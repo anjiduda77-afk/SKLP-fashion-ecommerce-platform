@@ -64,10 +64,10 @@ const servicesList = [
 ]
 
 const designerLabels = [
-  { brand: 'SKLP Heritage', desc: 'Exquisite silk weaving & royal handloom sarees' },
-  { brand: 'SKLP Royale', desc: 'Deep velvet evening wear & bespoke blazers' },
-  { brand: 'SKLP Studio', desc: 'Contemporary trench coats & modern silhouettes' },
-  { brand: 'SKLP Footwear', desc: 'Fine Italian leather boots & luxury stilettos' }
+  { brand: 'Style Street Heritage', desc: 'Exquisite silk weaving & royal handloom sarees' },
+  { brand: 'Style Street Royale', desc: 'Deep velvet evening wear & bespoke blazers' },
+  { brand: 'Style Street Studio', desc: 'Contemporary trench coats & modern silhouettes' },
+  { brand: 'Style Street Footwear', desc: 'Fine Italian leather boots & luxury stilettos' }
 ]
 
 function ProductCard({ product, isDarkMode }) {
@@ -179,7 +179,7 @@ function ProductCard({ product, isDarkMode }) {
         <div className="p-3 sm:p-5 flex-1 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-1.5 mb-1.5">
-              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-luxury-gold font-bold truncate">{product.brand || 'SKLP'}</p>
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-luxury-gold font-bold truncate">{product.brand || 'Style Street'}</p>
               <span className={`text-[8px] sm:text-[9px] uppercase tracking-wider font-bold rounded-full px-1.5 py-0.5 shrink-0
                 ${inStock ? 'bg-luxury-gold/10 text-luxury-gold' : 'bg-red-500/10 text-red-500'}`}>
                 {inStock ? 'In Stock' : 'Out'}
@@ -619,7 +619,7 @@ function Home() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-12">
             <div>
               <p className="text-luxury-gold text-xs uppercase tracking-[0.3em] font-bold mb-2">Our Top Brands</p>
-              <h2 className="text-3xl md:text-4xl font-serif font-black uppercase">SKLP Brand Partners</h2>
+              <h2 className="text-3xl md:text-4xl font-serif font-black uppercase">Style Street Brand Partners</h2>
             </div>
             <p className="max-w-md text-xs opacity-65 leading-relaxed">
               Shop directly from India's finest handloom weavers and modern fashion brands.
@@ -656,7 +656,7 @@ function Home() {
           <p className="text-luxury-gold text-xs uppercase tracking-[0.3em] font-bold mb-3">Authentic Quality</p>
           <h2 className="text-3xl md:text-5xl font-serif font-black uppercase mb-6">Uncompromising Standards</h2>
           <p className="text-sm opacity-70 leading-relaxed mb-8">
-            Every garment sold on SKLP goes through a strict quality check process. Our Banarasi silks are 100% authentic with genuine certifications, ensuring the perfect fitting and absolute comfort in every single dress.
+            Every garment sold on Style Street goes through a strict quality check process. Our Banarasi silks are 100% authentic with genuine certifications, ensuring the perfect fitting and absolute comfort in every single dress.
           </p>
           
           <div className="flex justify-center gap-6">

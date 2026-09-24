@@ -449,7 +449,7 @@ export const dispatchOrder = async (req, res) => {
   suborder.status = 'shipped';
   suborder.dispatchedAt = new Date();
   suborder.trackingDetails = {
-    carrier: carrier || 'SKLP Express',
+    carrier: carrier || 'Style Street Express',
     trackingNumber: trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
     estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
   };
@@ -527,10 +527,9 @@ export const updateSellerProfile = async (req, res) => {
     user.phone = phone;
   }
 
-  // Update user seller profile
+  // Update user seller profile (brand is locked if approved)
   if (!user.sellerProfile) user.sellerProfile = {};
-  if (storeName) user.sellerProfile.storeName = storeName;
-  if (brandName) user.sellerProfile.brandName = brandName;
+  if (storeName && !seller?.brandLocked) user.sellerProfile.storeName = storeName;
   if (logo) user.sellerProfile.logo = logo;
   if (storeDescription) user.sellerProfile.storeDescription = storeDescription;
   if (gstNumber) user.sellerProfile.gstNumber = gstNumber;
@@ -544,17 +543,17 @@ export const updateSellerProfile = async (req, res) => {
 
   await user.save();
 
-  // Sync to Seller document so brand selector and marketplace reflects immediately
-  const seller = await Seller.findOne({ userId: req.user.id });
-  if (seller) {
-    if (logo) seller.logo = logo;
-    if (storeName) seller.shopName = storeName;
-    if (brandName || storeName) {
-      seller.brandName = brandName || storeName;
-      seller.brandNameNormalized = (brandName || storeName).toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Sync to Seller document (preserving brand lock)
+  const sellerDoc = await Seller.findOne({ userId: req.user.id });
+  if (sellerDoc) {
+    if (logo) sellerDoc.logo = logo;
+    if (storeName && !sellerDoc.brandLocked) {
+      sellerDoc.shopName = storeName;
+      sellerDoc.brandName = storeName;
+      sellerDoc.brandNameNormalized = storeName.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
-    if (storeDescription) seller.description = storeDescription;
-    await seller.save();
+    if (storeDescription) sellerDoc.description = storeDescription;
+    await sellerDoc.save();
   }
 
   res.status(200).json({
@@ -566,7 +565,57 @@ export const updateSellerProfile = async (req, res) => {
       email: user.email,
       phone: user.phone,
       sellerProfile: user.sellerProfile,
-      seller
+      seller: sellerDoc
     }
   });
 };
+
+// ================= SELLER DELIVERY SETTINGS =================
+export const getSellerDeliverySettings = async (req, res) => {
+  const seller = await getOrCreateSellerProfile(req.user.id);
+  if (!seller) throw new ApiError(404, 'Seller profile not found');
+
+  res.status(200).json({
+    success: true,
+    deliverySettings: {
+      deliveryMode: seller.deliveryMode || 'PAID_DELIVERY',
+      fulfillmentMethod: seller.fulfillmentMethod || 'SELF_DELIVERY',
+      pickupAddress: seller.pickupAddress || {},
+      shopLocation: seller.shopLocation || {}
+    }
+  });
+};
+
+export const updateSellerDeliverySettings = async (req, res) => {
+  const seller = await getOrCreateSellerProfile(req.user.id);
+  if (!seller) throw new ApiError(404, 'Seller profile not found');
+
+  const { deliveryMode, fulfillmentMethod, pickupAddress } = req.body;
+  if (deliveryMode && ['FREE_DELIVERY', 'PAID_DELIVERY'].includes(deliveryMode)) {
+    seller.deliveryMode = deliveryMode;
+  }
+  if (fulfillmentMethod && ['SELF_DELIVERY', 'DELIVERY_PARTNER'].includes(fulfillmentMethod)) {
+    const { default: DeliveryConfig } = await import('../models/DeliveryConfig.js');
+    const config = await DeliveryConfig.getConfig();
+    if (fulfillmentMethod === 'DELIVERY_PARTNER' && !config.deliveryPartnerEnabled) {
+      throw new ApiError(400, 'Delivery Partner fulfillment is currently disabled platform-wide by administration.');
+    }
+    seller.fulfillmentMethod = fulfillmentMethod;
+  }
+  if (pickupAddress && typeof pickupAddress === 'object') {
+    seller.pickupAddress = { ...seller.pickupAddress, ...pickupAddress };
+  }
+
+  await seller.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Delivery settings updated successfully',
+    deliverySettings: {
+      deliveryMode: seller.deliveryMode,
+      fulfillmentMethod: seller.fulfillmentMethod,
+      pickupAddress: seller.pickupAddress
+    }
+  });
+};
+

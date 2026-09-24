@@ -28,6 +28,17 @@ router.get('/sessions', verifyToken, asyncHandler(authController.getActiveSessio
 
 // Account Linking (authenticated)
 router.post('/link-email', verifyToken, asyncHandler(authController.linkEmail))
+router.post('/link-phone/firebase', verifyToken, asyncHandler(authController.linkPhoneFirebase))
+router.post('/unlink-phone', verifyToken, asyncHandler(authController.unlinkPhone))
+router.post('/link-phone/send-otp', verifyToken, asyncHandler(authController.sendLinkPhoneOTP))
+router.post('/link-phone/verify', verifyToken, asyncHandler(authController.verifyLinkPhone))
+router.post('/backup-email/send-verification', verifyToken, asyncHandler(authController.sendBackupEmailVerification))
+router.post('/backup-email/verify', asyncHandler(authController.verifyBackupEmail))
+router.post('/backup-email/remove', verifyToken, asyncHandler(authController.removeBackupEmail))
+
+// Phone OTP Login (passwordless) — public, rate-limited
+router.post('/phone/send-otp', authRateLimiter, asyncHandler(authController.sendPhoneLoginOTP))
+router.post('/phone/verify-otp', authRateLimiter, asyncHandler(authController.verifyPhoneLoginOTP))
 
 export default router
 

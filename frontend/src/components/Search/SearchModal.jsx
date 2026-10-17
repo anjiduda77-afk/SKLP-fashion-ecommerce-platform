@@ -12,6 +12,7 @@ import { useTheme } from '@context/ThemeContext'
 import { useShop } from '@context/ShopContext'
 import { useVoiceSearch } from '@hooks/useVoiceSearch'
 import { useSearchHistory } from '@hooks/useSearchHistory'
+import { toast } from 'react-toastify'
 
 const TRENDING_FALLBACK = [
   'Gold Banarasi Silk Saree',
@@ -25,7 +26,7 @@ const TRENDING_FALLBACK = [
  * SearchModal — Full-featured intelligent search overlay
  * Features: real voice, keyboard nav, spell correction, history, suggestions
  */
-function SearchModal({ isOpen, onClose }) {
+function SearchModal({ isOpen, onClose, startWithVoice = false }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
@@ -42,26 +43,50 @@ function SearchModal({ isOpen, onClose }) {
   const debounceRef = useRef(null)
   const listRef = useRef(null)
 
-  // Voice search hook with real Web Speech API
+  const handleSearch = useCallback((searchQuery = query) => {
+    const q = (typeof searchQuery === 'string' ? searchQuery : query).trim()
+    if (!q) return
+    addSearch(q)
+    const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
+    navigate(`/products?search=${encodeURIComponent(q)}${shopParam}`)
+    onClose()
+  }, [query, addSearch, selectedShop?._id, navigate, onClose])
+
+  // Voice search hook with real Web Speech API & auto-search navigation
   const { isSupported: voiceSupported, state: voiceState, transcript, errorMessage: voiceError, start: startVoice, stop: stopVoice } = useVoiceSearch({
     onResult: (text) => {
-      setQuery(text)
-      fetchSuggestions(text)
+      const clean = text?.trim()
+      if (!clean) return
+      setQuery(clean)
+      fetchSuggestions(clean)
+      // Automatically execute search after speech recognition finishes
+      setTimeout(() => {
+        handleSearch(clean)
+        toast.success(`Voice Search: "${clean}" 🎙️`, { autoClose: 2000 })
+      }, 550)
     }
   })
 
-  // Focus input when modal opens
+  // Focus input or auto-start voice when modal opens
   useEffect(() => {
     if (isOpen) {
       setQuery('')
       setSuggestions(null)
       setActiveIndex(-1)
-      setTimeout(() => inputRef.current?.focus(), 80)
+      if (startWithVoice) {
+        const timer = setTimeout(() => {
+          startVoice()
+        }, 150)
+        return () => clearTimeout(timer)
+      } else {
+        setTimeout(() => inputRef.current?.focus(), 80)
+      }
     } else {
       // Stop voice if modal closes
-      if (voiceState === 'listening') stopVoice()
+      if (voiceState === 'listening' || voiceState === 'processing') stopVoice()
     }
-  }, [isOpen, voiceState, stopVoice])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, startWithVoice])
 
   // Sync voice transcript to input
   useEffect(() => {
@@ -107,15 +132,6 @@ function SearchModal({ isOpen, onClose }) {
     fetchSuggestions(query)
     return () => { clearTimeout(debounceRef.current) }
   }, [query, fetchSuggestions])
-
-  const handleSearch = useCallback((searchQuery = query) => {
-    const q = (typeof searchQuery === 'string' ? searchQuery : query).trim()
-    if (!q) return
-    addSearch(q)
-    const shopParam = selectedShop?._id ? `&shopId=${selectedShop._id}` : ''
-    navigate(`/products?search=${encodeURIComponent(q)}${shopParam}`)
-    onClose()
-  }, [query, addSearch, selectedShop?._id, navigate, onClose])
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
@@ -321,26 +337,55 @@ function SearchModal({ isOpen, onClose }) {
               </div>
             )}
 
-            {/* Voice error */}
+            {/* Voice error banner with Try Again action */}
             {voiceError && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs">
-                <FiAlertCircle size={14} />
-                <span>{voiceError}</span>
+              <div className="flex items-center justify-between gap-2 px-4 py-3 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs">
+                <div className="flex items-center gap-2">
+                  <FiAlertCircle size={15} className="shrink-0" />
+                  <span>{voiceError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startVoice()}
+                  className="px-3 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] uppercase tracking-wider shrink-0 transition shadow-sm"
+                >
+                  Try Again
+                </button>
               </div>
             )}
 
-            {/* Voice listening indicator */}
+            {/* Voice listening indicator & real-time transcript */}
             {(voiceState === 'listening' || voiceState === 'processing') && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-red-500/5 border-b border-red-500/15">
-                <div className="flex gap-1">
-                  {[0, 150, 300].map(delay => (
-                    <span key={delay} className="w-1.5 h-4 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
-                  ))}
+              <div className="p-4 bg-gradient-to-r from-red-500/10 via-amber-500/10 to-red-500/10 border-b border-red-500/20">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-4 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-3 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-red-400">
+                      {voiceState === 'listening' ? 'Listening to voice...' : 'Processing audio...'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => stopVoice()}
+                    className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md border border-red-400/30 text-red-300 hover:bg-red-500/20 transition"
+                  >
+                    Stop Listening
+                  </button>
                 </div>
-                <span className="text-xs text-red-400 font-medium">
-                  {voiceState === 'listening' ? t('header.listening', 'Listening...') : t('search.voiceProcessing', 'Processing...')}
-                </span>
-                {transcript && <span className="text-xs opacity-60 ml-2 italic truncate max-w-[200px]">"{transcript}"</span>}
+
+                <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                  <p className="text-xs text-white/90 font-medium">
+                    {transcript ? (
+                      <span className="text-amber-300 font-bold text-sm">"{transcript}"</span>
+                    ) : (
+                      <span className="opacity-60 italic">Speak now... (e.g. "Banarasi silk saree", "Velvet blazers", "Men sneakers")</span>
+                    )}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -561,7 +606,7 @@ function SearchModal({ isOpen, onClose }) {
             {/* Footer */}
             <div className={`flex items-center justify-between px-4 py-2.5 border-t text-[10px] ${isDarkMode ? 'border-white/10 text-white/30' : 'border-gray-100 text-gray-400'}`}>
               <span>↑↓ {t('search.navigate', 'navigate')} · Enter {t('search.select', 'select')} · Esc {t('search.close', 'close')}</span>
-              <span className="text-luxury-gold font-bold tracking-wider">STYLE STREET SMART SEARCH</span>
+              <span className="text-luxury-gold font-bold tracking-wider">STYLE STREET STORE SEARCH</span>
             </div>
           </motion.div>
         </>

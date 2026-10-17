@@ -36,31 +36,29 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('zustand')) {
-              return 'vendor'
-            }
-            if (id.includes('framer-motion')) {
-              return 'motion'
-            }
-            if (id.includes('react-icons')) {
-              return 'icons'
-            }
-            if (id.includes('swiper') || id.includes('embla-carousel') || id.includes('nuka-carousel')) {
-              return 'carousel'
-            }
-            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
-              return 'charts'
-            }
-            if (id.includes('i18next')) {
-              return 'i18n'
-            }
-            if (id.includes('firebase')) {
+            if (id.includes('node_modules/firebase/')) {
               return 'firebase'
             }
-            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
-              return 'forms'
+            if (id.includes('node_modules/chart.js/') || id.includes('node_modules/react-chartjs-2/')) {
+              return 'charts'
             }
-            return 'libs'
+            if (id.includes('node_modules/framer-motion/')) {
+              return 'motion'
+            }
+            if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next/')) {
+              return 'i18n'
+            }
+            if (id.includes('node_modules/react-icons/')) {
+              return 'icons'
+            }
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/react-router/') ||
+              id.includes('node_modules/react-router-dom/')
+            ) {
+              return 'vendor'
+            }
           }
         },
       },

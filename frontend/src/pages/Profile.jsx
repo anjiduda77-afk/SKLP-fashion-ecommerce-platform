@@ -582,7 +582,7 @@ function Profile() {
       if (token) {
         await notificationService.registerFcmToken(token)
         setPushPermission('granted')
-        toast.success('✨ Web Push Notifications enabled! You will receive live order & drop updates.')
+        toast.success('Web Push Notifications enabled! You will receive live order & drop updates.')
       } else {
         setPushPermission(Notification.permission)
         if (Notification.permission === 'denied') {
@@ -646,7 +646,7 @@ function Profile() {
               </div>
               <div>
                 <h3 className="text-base font-serif font-bold text-luxury-gold">Help, Helpline & Store Policies</h3>
-                <p className="text-[11px] opacity-65">Access our instant AI assistant, customer helpline and official store guidelines</p>
+                <p className="text-[11px] opacity-65">Access our customer support desk, phone helpline and official store guidelines</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -906,38 +906,69 @@ function Profile() {
       )}
       <div className="flex-1 flex flex-col min-w-0">
         <div className={`lg:hidden flex items-center gap-3 px-4 py-3 border-b sticky top-0 z-30 ${isDarkMode ? 'bg-[#111111] border-white/8' : 'bg-white border-gray-200'}`}>
-          <button onClick={() => setSidebarOpen(true)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-black'}`} aria-label="Open navigation menu"><FiMenu size={20} /></button>
+          <button onClick={() => setSidebarOpen(true)} className={`p-2 rounded-xl transition-colors touch-target ${isDarkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-black'}`} aria-label="Open navigation menu"><FiMenu size={20} /></button>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-luxury-gold flex items-center justify-center flex-shrink-0"><span className="text-luxury-black font-extrabold text-xs font-serif">S</span></div>
             <span className={`text-sm font-extrabold tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>{TABS.find(t => t.id === activeTab)?.label || 'Settings'}</span>
           </div>
         </div>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <div className={`rounded-2xl border p-5 md:p-6 mb-6 ${isDarkMode ? 'bg-luxury-charcoal border-white/10' : 'bg-white border-gray-200'}`}>
+
+        {/* ── Mobile Horizontal Scrollable Tab Bar ── */}
+        <div className={`lg:hidden flex gap-1.5 overflow-x-auto py-2.5 px-3 border-b scrollbar-none sticky top-[49px] z-20 backdrop-blur-md ${isDarkMode ? 'bg-[#111111]/95 border-white/8' : 'bg-white/95 border-gray-200'}`}>
+          {TABS.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all touch-target ${
+                  isActive
+                    ? 'bg-luxury-gold text-black shadow-glow'
+                    : isDarkMode
+                    ? 'bg-white/5 text-white/70 hover:bg-white/10'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Icon size={12} />
+                <span className="whitespace-nowrap">{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <main className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8">
+          <div className={`rounded-2xl border p-4 sm:p-6 mb-5 sm:mb-6 ${isDarkMode ? 'bg-luxury-charcoal border-white/10' : 'bg-white border-gray-200'}`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 w-full sm:w-auto">
                 <div className="relative group flex-shrink-0">
-                  {profileForm.avatar ? <img src={profileForm.avatar} alt={user?.firstName} className="w-16 h-16 rounded-full object-cover border-2 border-luxury-gold shadow-glow" /> : <div className="w-16 h-16 rounded-full bg-luxury-gold flex items-center justify-center text-luxury-black font-extrabold text-2xl font-serif shadow-glow">{user?.firstName?.[0]?.toUpperCase() || 'U'}</div>}
-                  <button type="button" onClick={() => setShowAvatarModal(true)} className="absolute bottom-0 right-0 p-1.5 bg-luxury-gold text-black rounded-full shadow-md hover:scale-110 transition-transform" title="Change Avatar"><FiEdit2 size={11} /></button>
+                  {profileForm.avatar ? (
+                    <img src={profileForm.avatar} alt={user?.firstName} className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-luxury-gold shadow-glow" />
+                  ) : (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-luxury-gold flex items-center justify-center text-luxury-black font-extrabold text-xl sm:text-2xl font-serif shadow-glow">
+                      {user?.firstName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <button type="button" onClick={() => setShowAvatarModal(true)} className="absolute bottom-0 right-0 p-1.5 bg-luxury-gold text-black rounded-full shadow-md hover:scale-110 transition-transform touch-target" title="Change Avatar"><FiEdit2 size={11} /></button>
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className={`text-xl md:text-2xl font-serif font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>{user?.firstName} {user?.lastName}</h1>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">{user?.role || 'Customer'}</span>
-                    {user?.isEmailVerified && <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20"><FiCheckCircle size={9} /> Verified</span>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h1 className={`text-lg sm:text-2xl font-serif font-bold truncate ${isDarkMode ? 'text-white' : 'text-black'}`}>{user?.firstName} {user?.lastName}</h1>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">{user?.role || 'Customer'}</span>
+                    {user?.isEmailVerified && <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20"><FiCheckCircle size={9} /> Verified</span>}
                   </div>
-                  <div className={`flex flex-wrap items-center gap-3 text-[11px] font-mono mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
-                    <span>ID: {displayUserId}</span>
+                  <div className={`flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-mono mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                    <span className="truncate">ID: {displayUserId}</span>
                     {user?.phone && <span>+91 {user.phone}</span>}
-                    {user?.email && <span>{user.email}</span>}
+                    {user?.email && <span className="truncate max-w-[170px] xs:max-w-none">{user.email}</span>}
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:flex-col sm:items-end justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-current/10">
                 {user?.role === 'admin' && (
                   <Link
                     to="/admin/dashboard"
-                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                    className="px-3.5 sm:px-4 py-2 bg-luxury-gold text-luxury-black text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all touch-target"
                   >
                     Admin Dashboard <FiArrowRight size={13} />
                   </Link>
@@ -945,7 +976,7 @@ function Profile() {
                 {(user?.role === 'delivery' || user?.role === 'deliverypartner') && (
                   <Link
                     to="/delivery/dashboard"
-                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                    className="px-3.5 sm:px-4 py-2 bg-luxury-gold text-luxury-black text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all touch-target"
                   >
                     Delivery Portal <FiTruck size={13} />
                   </Link>
@@ -953,7 +984,7 @@ function Profile() {
                 {user?.role === 'seller' && (
                   <Link
                     to="/seller/dashboard"
-                    className="px-4 py-2 bg-luxury-gold text-luxury-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all"
+                    className="px-3.5 sm:px-4 py-2 bg-luxury-gold text-luxury-black text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold flex items-center gap-1.5 transition-all touch-target"
                   >
                     Seller Portal <FiShoppingBag size={13} />
                   </Link>
@@ -961,11 +992,11 @@ function Profile() {
                 <div className="flex items-center gap-2">
                   <div className="px-3 py-1.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/20 text-center">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-luxury-gold">Club Tier</p>
-                    <p className="text-sm font-serif font-extrabold text-luxury-gold">Gold Elite</p>
+                    <p className="text-xs sm:text-sm font-serif font-extrabold text-luxury-gold">Gold Elite</p>
                   </div>
                   <div className={`px-3 py-1.5 rounded-xl border text-center ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}>
                     <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">Addresses</p>
-                    <p className="text-sm font-extrabold">{addresses.length}</p>
+                    <p className="text-xs sm:text-sm font-extrabold">{addresses.length}</p>
                   </div>
                 </div>
               </div>
@@ -1475,7 +1506,7 @@ function Profile() {
                       Help, Helpline & Store Policies
                     </h3>
                     <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                      Access 24/7 AI Assistance, live customer helpline, and official store policies
+                      Access 24/7 customer support, live phone helpline, and official store policies
                     </p>
                   </div>
                 </div>
@@ -1497,13 +1528,13 @@ function Profile() {
                         💬
                       </div>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">
-                        24/7 AI Assistant
+                        24/7 Help Desk
                       </span>
                     </div>
                     <div>
-                      <h4 className="text-lg font-bold text-luxury-gold">Help Assistant</h4>
+                      <h4 className="text-lg font-bold text-luxury-gold">Customer Support</h4>
                       <p className={`text-xs leading-relaxed mt-1 ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
-                        Need instant answers about size fits, tracking your shipments, return status, or product recommendations? Our smart AI assistant is ready right now.
+                        Need instant answers about size fits, tracking your shipments, return status, or product recommendations? Our customer support desk is ready right now.
                       </p>
                     </div>
                   </div>

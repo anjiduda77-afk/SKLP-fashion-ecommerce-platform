@@ -23,6 +23,7 @@ function Header({ isDarkMode }) {
   const { t } = useTranslation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [startWithVoice, setStartWithVoice] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
@@ -97,30 +98,31 @@ function Header({ isDarkMode }) {
         <div className="container-custom flex flex-col gap-2.5">
           
           {/* TOP ROW: Brand, Shop, Theme, Lang, Cart, Wishlist, Profile */}
+          {/* TOP ROW: Brand, Shop, Theme, Lang, Cart, Wishlist, Profile */}
           <div className="flex items-center justify-between gap-2 md:gap-4">
             {/* LEFT: Hamburger & Brand logo */}
-            <div className="flex items-center gap-2.5 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               {/* Professional Animated Hamburger */}
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className={`relative flex flex-col items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl border transition-all duration-300 group touch-target
+                className={`relative flex flex-col items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl border transition-all duration-300 group touch-target shrink-0
                   ${isDarkMode 
                     ? 'bg-white/5 border-white/10 hover:bg-white/10 text-luxury-gold' 
                     : 'bg-luxury-gold/10 border-luxury-gold/20 hover:bg-luxury-gold/25 text-luxury-darkBlack'
                   }`}
                 aria-label="Open sidebar menu"
               >
-                <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[-4px] group-hover:scale-x-110" />
-                <span className="w-5 h-[2px] bg-current rounded-full transition-all duration-300" />
-                <span className="w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[4px] group-hover:scale-x-95" />
+                <span className="w-4 sm:w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[-4px] group-hover:scale-x-110" />
+                <span className="w-4 sm:w-5 h-[2px] bg-current rounded-full transition-all duration-300" />
+                <span className="w-4 sm:w-5 h-[2px] bg-current rounded-full transition-transform duration-300 translate-y-[4px] group-hover:scale-x-95" />
               </button>
 
               {/* Premium Logo */}
-              <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
+              <Link to="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0">
                 <img 
                   src={sklpLogo} 
                   alt="Style Street Logo" 
-                  className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl shadow-sm"
+                  className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-xl shadow-sm shrink-0"
                 />
                 <BrandName size="sm" />
               </Link>
@@ -128,33 +130,49 @@ function Header({ isDarkMode }) {
 
             {/* MIDDLE: Desktop-Only Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md lg:max-w-lg items-center relative mx-2">
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl border text-left text-sm transition-all duration-300
+              <div
+                onClick={() => {
+                  setStartWithVoice(false)
+                  setIsSearchOpen(true)
+                }}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border text-left text-sm transition-all duration-300 cursor-pointer shadow-sm
                   ${isDarkMode 
-                    ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10' 
+                    ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:border-luxury-gold/40' 
                     : 'bg-luxury-offWhite border-luxury-gold/20 text-luxury-mediumGray hover:text-luxury-darkGray hover:border-luxury-gold/45'
                   }`}
               >
                 <FiSearch className="text-luxury-gold text-lg shrink-0" />
-                <span className="truncate">
+                <span className="truncate flex-1">
                   {selectedShop 
                     ? `Search in ${selectedShop.brandName || selectedShop.shopName}...`
                     : t('header.searchPlaceholder', 'Search luxury couture, brands...')}
                 </span>
-                <span className="ml-auto text-[10px] bg-luxury-gold/20 text-luxury-gold px-2 py-0.5 rounded-md font-mono shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setStartWithVoice(true)
+                    setIsSearchOpen(true)
+                  }}
+                  className="p-1.5 rounded-xl text-luxury-gold hover:bg-luxury-gold/20 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                  title="Search by Voice 🎙️"
+                  aria-label="Search by Voice"
+                >
+                  <FiMic size={16} />
+                </button>
+                <span className="text-[10px] bg-luxury-gold/20 text-luxury-gold px-2 py-0.5 rounded-md font-mono shrink-0">
                   ⌘K
                 </span>
-              </button>
+              </div>
             </div>
 
             {/* RIGHT: Quick Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               
               {/* Shop / Brand Selector Pill */}
               <button
                 onClick={openShopModal}
-                className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex items-center gap-1.5 text-xs font-bold transition-all duration-300 ${
+                className={`${selectedShop ? 'flex' : 'hidden sm:flex'} h-9 sm:h-10 px-2 sm:px-3 rounded-xl sm:rounded-2xl border items-center gap-1.5 text-xs font-bold transition-all duration-300 ${
                   selectedShop
                     ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-glow'
                     : isDarkMode
@@ -170,9 +188,9 @@ function Header({ isDarkMode }) {
                     className="w-4 h-4 rounded-full object-cover border border-amber-400/50 shrink-0"
                   />
                 ) : (
-                  <RiStore2Line size={16} className="text-luxury-gold shrink-0" />
+                  <RiStore2Line size={15} className="text-luxury-gold shrink-0" />
                 )}
-                <span className="max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
+                <span className="max-w-[55px] xs:max-w-[80px] sm:max-w-[100px] truncate text-[10px] sm:text-xs">
                   {selectedShop ? (selectedShop.brandName || selectedShop.shopName) : t('header.allShops', 'Brands')}
                 </span>
                 <FiChevronDown size={12} className="text-luxury-gold opacity-80 shrink-0" />
@@ -190,7 +208,7 @@ function Header({ isDarkMode }) {
                   }`}
                   aria-label="Notifications"
                 >
-                  <FiBell size={18} />
+                  <FiBell size={17} />
                   <AnimatePresence>
                     {unreadCount > 0 && (
                       <motion.span
@@ -218,7 +236,7 @@ function Header({ isDarkMode }) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl border p-4 shadow-2xl z-50 backdrop-blur-2xl ${
+                        className={`absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 rounded-3xl border p-4 shadow-2xl z-50 backdrop-blur-2xl ${
                           isDarkMode 
                             ? 'bg-[#0f0f0f]/95 border-white/15 text-white shadow-black/80' 
                             : 'bg-white/95 border-gray-200 text-gray-900 shadow-gray-200'
@@ -298,10 +316,10 @@ function Header({ isDarkMode }) {
                 </AnimatePresence>
               </div>
 
-              {/* Wishlist Synchronized Badge */}
+              {/* Wishlist Synchronized Badge - Desktop & Tablet Only */}
               <Link 
                 to="/wishlist" 
-                className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-300 touch-target
+                className={`desktop-only-header-item hidden sm:flex relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl items-center justify-center border transition-all duration-300 touch-target
                   ${isDarkMode 
                     ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
                     : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
@@ -323,10 +341,10 @@ function Header({ isDarkMode }) {
                 </AnimatePresence>
               </Link>
 
-              {/* Cart Synchronized Badge */}
+              {/* Cart Synchronized Badge - Desktop & Tablet Only */}
               <Link 
                 to="/cart" 
-                className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center border transition-all duration-300 touch-target
+                className={`desktop-only-header-item hidden sm:flex relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl items-center justify-center border transition-all duration-300 touch-target
                   ${isDarkMode 
                     ? 'bg-white/5 border-white/10 text-luxury-gold hover:bg-white/10' 
                     : 'bg-luxury-gold/10 border-luxury-gold/20 text-luxury-darkBlack hover:bg-luxury-gold/25'
@@ -348,9 +366,9 @@ function Header({ isDarkMode }) {
                 </AnimatePresence>
               </Link>
 
-              {/* Authentication States */}
+              {/* Authentication States - Desktop & Tablet Only (Mobile has Account in bottom nav & sidebar) */}
               {isAuthenticated ? (
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="desktop-only-header-item hidden sm:flex items-center gap-1.5 sm:gap-2">
                   {user?.role && user.role !== 'customer' && (
                     <Link
                       to={
@@ -384,12 +402,11 @@ function Header({ isDarkMode }) {
                     <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
                     <span className="hidden xl:inline-block">{t('header.profile', 'Profile')}</span>
                   </Link>
-
                 </div>
               ) : (
                 <button
                   onClick={() => navigate('/login')}
-                  className={`w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
+                  className={`desktop-only-header-item hidden sm:flex w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
                     ${isDarkMode 
                       ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
                       : 'bg-luxury-gold text-black border-luxury-gold/40 hover:bg-luxury-darkGold'
@@ -406,7 +423,10 @@ function Header({ isDarkMode }) {
           {/* SECOND ROW (Mobile & Tablet): Full-Width Dedicated Search Bar */}
           <div className="md:hidden w-full">
             <div 
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => {
+                setStartWithVoice(false)
+                setIsSearchOpen(true)
+              }}
               className={`w-full h-11 px-3.5 rounded-2xl border flex items-center gap-2.5 text-xs transition-all cursor-pointer shadow-sm touch-target ${
                 isDarkMode 
                   ? 'bg-white/5 border-white/10 text-white/70 hover:border-luxury-gold/40' 
@@ -424,15 +444,34 @@ function Header({ isDarkMode }) {
                   {selectedShop.brandName || selectedShop.shopName}
                 </span>
               ) : (
-                <FiMic className="text-luxury-gold text-sm shrink-0 opacity-80" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setStartWithVoice(true)
+                    setIsSearchOpen(true)
+                  }}
+                  className="p-1.5 -mr-1 rounded-full text-luxury-gold hover:bg-luxury-gold/20 active:scale-90 transition-all flex items-center justify-center shrink-0"
+                  title="Search by Voice 🎙️"
+                  aria-label="Search by Voice"
+                >
+                  <FiMic className="text-base" />
+                </button>
               )}
             </div>
           </div>
 
         </div>
       </header>
-      {/* ADVANCED AI-STYLE SEARCH SYSTEM MODAL */}
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      {/* ADVANCED STORE SEARCH SYSTEM MODAL */}
+      <SearchModal 
+        isOpen={isSearchOpen} 
+        onClose={() => {
+          setIsSearchOpen(false)
+          setStartWithVoice(false)
+        }} 
+        startWithVoice={startWithVoice}
+      />
 
       {/* Slide-out Sidebar Drawer Component */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />

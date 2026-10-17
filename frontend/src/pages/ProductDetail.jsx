@@ -166,7 +166,7 @@ function ProductDetail() {
   const activeImg = product.images?.[activeImageIdx]?.url || product.image
 
   return (
-    <div className="min-h-screen py-4 sm:py-12">
+    <div className="min-h-screen py-4 sm:py-12 pb-24 sm:pb-12">
       <div className="container-custom">
         {/* Breadcrumb */}
         <nav className="text-xs uppercase tracking-widest opacity-60 mb-8 flex items-center gap-2">
@@ -505,20 +505,31 @@ function ProductDetail() {
       </div>
 
       {/* ============ MOBILE STICKY BOTTOM ACTION BAR ============ */}
-      <div className={`fixed bottom-0 left-0 right-0 z-30 sm:hidden glass-bottom-bar safe-pb border-t ${
-        isDarkMode ? 'bg-luxury-black/95 border-luxury-gold/20' : 'bg-white/95 border-gray-200'
-      } backdrop-blur-xl`}>
+      <div className={`fixed bottom-0 left-0 right-0 z-40 sm:hidden safe-pb border-t ${
+        isDarkMode ? 'bg-luxury-black/98 border-luxury-gold/30' : 'bg-white/98 border-gray-200'
+      } backdrop-blur-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.25)]`}>
         <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-          <div className="flex-1">
-            <p className="text-[10px] uppercase tracking-widest text-luxury-gold">Price</p>
-            <p className="text-lg font-bold text-luxury-gold">₹{product.price.toLocaleString()}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-luxury-gold font-mono">
+                {formatPrice(product.price)}
+              </span>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-[11px] line-through opacity-40 font-mono">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
+            </div>
+            <p className="text-[9px] uppercase tracking-wider text-green-500 font-bold truncate">
+              In Stock • Free Delivery
+            </p>
           </div>
           <button
             onClick={() => toggleWishlist(product)}
-            className={`p-3 border rounded-xl transition-colors duration-200 touch-target ${
+            className={`p-3 border rounded-xl transition-colors duration-200 touch-target shrink-0 ${
               isInWishlist(product._id || product.id)
                 ? 'bg-red-500/10 border-red-500/30 text-red-500'
-                : 'border-luxury-gold/30 text-luxury-gold'
+                : isDarkMode ? 'border-white/10 text-luxury-gold' : 'border-gray-200 text-luxury-gold'
             }`}
             aria-label="Toggle Wishlist"
           >
@@ -529,9 +540,9 @@ function ProductDetail() {
               addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
               toast.success('Added to Cart! 🎉')
             }}
-            className="flex-grow max-w-[180px] py-3 px-4 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl touch-target"
+            className="flex-grow max-w-[200px] py-3.5 px-4 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl shadow-glow touch-target"
           >
-            <FiShoppingBag size={14} /> Add to Cart
+            <FiShoppingBag size={15} /> Add to Cart
           </button>
         </div>
       </div>
@@ -552,7 +563,7 @@ function ProductDetail() {
               className={`w-full max-w-md p-6 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-luxury-gold/20 text-white' : 'bg-white text-black'}`}
             >
               <div className="flex justify-between items-center pb-4 border-b border-white/10 mb-6">
-                <h3 className="text-lg font-serif font-bold">AI Size Recommendation</h3>
+                <h3 className="text-lg font-serif font-bold">Size & Fit Guide</h3>
                 <button onClick={() => setShowSizeAdvisor(false)}>
                   <FiX size={24} className="text-luxury-gold" />
                 </button>
@@ -621,7 +632,7 @@ function ProductDetail() {
         )}
       </AnimatePresence>
 
-      {/* ============ AI OUTFIT STYLE LOOK DRAWER ============ */}
+      {/* ============ OUTFIT STYLE LOOK DRAWER ============ */}
       <AnimatePresence>
         {showOutfitDrawer && (
           <motion.div
@@ -641,7 +652,7 @@ function ProductDetail() {
                 <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
                   <div>
                     <h3 className="text-lg font-serif font-bold uppercase tracking-wider">{outfitLook.title}</h3>
-                    <p className="text-xs opacity-60">AI Stylist Curated Complete Styling Outfit</p>
+                    <p className="text-xs opacity-60">Stylist Curated Complete Look</p>
                   </div>
                   <button onClick={() => setShowOutfitDrawer(false)}>
                     <FiX size={24} className="text-luxury-gold" />

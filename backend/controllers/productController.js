@@ -1,8 +1,95 @@
 import Product from '../models/Product.js'
 import { ApiError } from '../middleware/errorHandler.js'
 
+export const expandCategoryFilter = (category) => {
+  if (!category) return null;
+  let catArray = typeof category === 'string' ? category.split(',') : (Array.isArray(category) ? category : [category]);
+  catArray = catArray.map(c => c.trim().toLowerCase()).filter(c => c && c !== 'all');
+  if (catArray.length === 0) return null;
+
+  const expanded = new Set();
+  catArray.forEach(c => {
+    const dashed = c.replace(/\s+/g, '-');
+    expanded.add(c);
+    expanded.add(dashed);
+
+    if (dashed === 't-shirts' || c === 't shirts' || c === 'tshirt' || c === 'tshirts' || c === 't-shirt') {
+      expanded.add('t-shirts');
+      expanded.add('t shirts');
+    }
+    if (dashed === 'fashion-wear' || c === 'fashion wear' || c === 'fashionwear' || c === 'fashion') {
+      expanded.add('fashion-wear');
+      expanded.add('fashion wear');
+    }
+    if (c === 'shoes' || c === 'footwear' || c === 'shoe') {
+      expanded.add('shoes');
+      expanded.add('footwear');
+    }
+    if (c === 'sarees' || c === 'saree') {
+      expanded.add('sarees');
+      expanded.add('saree');
+    }
+    if (c === 'hoodies' || c === 'hoodie') {
+      expanded.add('hoodies');
+      expanded.add('hoodie');
+    }
+    if (c === 'jeans' || c === 'jean') {
+      expanded.add('jeans');
+      expanded.add('jean');
+    }
+    if (c === 'shirts' || c === 'shirt') {
+      expanded.add('shirts');
+      expanded.add('shirt');
+    }
+    if (c === 'accessories' || c === 'accessory') {
+      expanded.add('accessories');
+      expanded.add('accessory');
+    }
+    if (dashed === 'sportswear' || c === 'sportswear' || c === 'sports') {
+      expanded.add('fashion-wear');
+      expanded.add('hoodies');
+      expanded.add('shoes');
+      expanded.add('t-shirts');
+    }
+    if (dashed === 'exclusive-collections' || c === 'exclusive collections' || c === 'exclusive') {
+      expanded.add('sarees');
+      expanded.add('fashion-wear');
+      expanded.add('accessories');
+    }
+    if (dashed === 'trending-fashion' || c === 'trending fashion' || c === 'trending') {
+      expanded.add('t-shirts');
+      expanded.add('hoodies');
+      expanded.add('jeans');
+      expanded.add('shoes');
+      expanded.add('fashion-wear');
+    }
+  });
+
+  return Array.from(expanded);
+};
+
+export const expandGenderFilter = (gender) => {
+  if (!gender) return null;
+  let gArray = typeof gender === 'string' ? gender.split(',') : (Array.isArray(gender) ? gender : [gender]);
+  gArray = gArray.map(g => g.trim().toLowerCase()).filter(Boolean);
+  if (gArray.length === 0 || gArray.includes('all')) return null;
+
+  const expanded = new Set();
+  gArray.forEach(g => {
+    expanded.add(g);
+    if (['men', 'women', 'kids'].includes(g)) {
+      expanded.add('unisex');
+      expanded.add('all');
+    } else if (g === 'unisex') {
+      expanded.add('all');
+    }
+  });
+
+  return Array.from(expanded);
+};
+
 export const getProducts = async (req, res) => {
-  const { page = 1, limit = 12, category, gender, priceMin, priceMax, search, sort, tag, offers, brand, sellerId, shopId } = req.query
+  const { page = 1, limit = 12, category, gender, priceMin, priceMax, search, sort, tag, offers, brand, sellerId, shopId, subcategory } = req.query
   const query = { isActive: true }
 
   // Shop / Brand Scoping
@@ -24,21 +111,14 @@ export const getProducts = async (req, res) => {
     }
   }
 
-  if (category) {
-    let catArray = typeof category === 'string' ? category.split(',') : (Array.isArray(category) ? category : [category])
-    catArray = catArray.map(c => c.trim().toLowerCase())
-    if (catArray.includes('footwear') && !catArray.includes('shoes')) catArray.push('shoes')
-    if (catArray.includes('shoes') && !catArray.includes('footwear')) catArray.push('footwear')
-    query.category = { $in: catArray }
+  const expandedCats = expandCategoryFilter(category)
+  if (expandedCats && expandedCats.length > 0) {
+    query.category = { $in: expandedCats }
   }
 
-  if (gender) {
-    if (typeof gender === 'string') {
-      const gArray = gender.split(',').map(g => g.trim().toLowerCase())
-      query.gender = { $in: gArray }
-    } else if (Array.isArray(gender)) {
-      query.gender = { $in: gender }
-    }
+  const expandedGenders = expandGenderFilter(gender)
+  if (expandedGenders && expandedGenders.length > 0) {
+    query.gender = { $in: expandedGenders }
   }
 
   if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) }
@@ -50,6 +130,24 @@ export const getProducts = async (req, res) => {
 
   if (offers === 'true') {
     query.discount = { $gt: 0 }
+  }
+
+  if (subcategory && subcategory.toLowerCase() !== 'all') {
+    const subClean = subcategory.trim()
+    const subRegex = new RegExp(subClean.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i')
+    const mappedCats = expandCategoryFilter(subClean)
+    const orClauses = [
+      { subcategory: subRegex },
+      { tags: { $in: [subRegex] } },
+      { name: subRegex },
+      { description: subRegex }
+    ]
+    if (mappedCats && mappedCats.length > 0) {
+      orClauses.push({ category: { $in: mappedCats } })
+    }
+
+    if (!query.$and) query.$and = []
+    query.$and.push({ $or: orClauses })
   }
 
   if (search) {
@@ -84,6 +182,7 @@ export const getProducts = async (req, res) => {
     limit: Number(limit),
     sort: sortOptions[sort] || { createdAt: -1 },
     lean: true,
+    select: 'name slug price originalPrice discount images brand brandNormalized rating reviewCount category gender stock isFeatured isTrending tags isOutOfStock'
   }
 
   const products = await Product.paginate(query, options)
@@ -103,8 +202,7 @@ export const getTrendingProducts = async (req, res) => {
 export const getCategories = async (req, res) => {
   const categories = await Product.distinct('category', { isActive: true })
   const defaultCategories = [
-    'sarees', 'kurtas', 'lehengas', 'dresses', 'shirts', 
-    'trousers', 'jackets', 'footwear', 'accessories'
+    'shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear'
   ]
   const combined = Array.from(new Set([...(categories || []), ...defaultCategories])).filter(Boolean)
   res.status(200).json({ success: true, count: combined.length, categories: combined })
@@ -131,24 +229,24 @@ export const searchProducts = async (req, res) => {
       })
     }
   }
-  if (category) {
-    if (typeof category === 'string') {
-      query.category = category.includes(',') ? { $in: category.split(',') } : category
-    } else if (Array.isArray(category)) {
-      query.category = { $in: category }
-    }
+
+  const expandedCats = expandCategoryFilter(category)
+  if (expandedCats && expandedCats.length > 0) {
+    query.category = { $in: expandedCats }
   }
-  if (gender) {
-    if (typeof gender === 'string') {
-      query.gender = gender.includes(',') ? { $in: gender.split(',') } : gender
-    } else if (Array.isArray(gender)) {
-      query.gender = { $in: gender }
-    }
+
+  const expandedGenders = expandGenderFilter(gender)
+  if (expandedGenders && expandedGenders.length > 0) {
+    query.gender = { $in: expandedGenders }
   }
+
   if (priceMin) query.price = { ...query.price, $gte: Number(priceMin) }
   if (priceMax) query.price = { ...query.price, $lte: Number(priceMax) }
 
-  const products = await Product.find(query).limit(24).lean()
+  const products = await Product.find(query)
+    .select('name slug price originalPrice discount images brand brandNormalized rating reviewCount category gender stock isFeatured isTrending tags isOutOfStock')
+    .limit(24)
+    .lean()
   res.status(200).json({ success: true, products })
 }
 

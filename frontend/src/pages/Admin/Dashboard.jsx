@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiTrendingUp, FiShoppingBag, FiUsers, FiPackage,
@@ -169,8 +170,8 @@ function AdminDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Period Selector */}
-      <div className="flex items-center justify-between">
-        <h2 className={`text-2xl font-serif font-bold ${textPrimary}`}>Overview</h2>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className={`text-xl sm:text-2xl font-serif font-bold ${textPrimary}`}>Overview</h2>
         <div className={`flex gap-1 p-1 rounded-lg ${isDarkMode ? 'bg-luxury-charcoal' : 'bg-gray-100'}`}>
           {['7d', '30d', '90d', '1y'].map((p) => (
             <button
@@ -235,9 +236,9 @@ function AdminDashboard() {
         <div className={`xl:col-span-2 rounded-xl border overflow-hidden ${cardBg}`}>
           <div className={`px-5 py-4 border-b flex items-center justify-between ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold ${textPrimary}`}>Recent Orders</h3>
-            <a href="/admin/orders" className="text-sm text-luxury-gold hover:underline flex items-center gap-1">
+            <Link to="/admin/orders" className="text-sm text-luxury-gold hover:underline flex items-center gap-1">
               View all <FiArrowUp size={12} className="rotate-45" />
-            </a>
+            </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -286,9 +287,9 @@ function AdminDashboard() {
           <div className={`divide-y p-5 text-center ${isDarkMode ? 'divide-luxury-darkGray/50' : 'divide-gray-100'}`}>
             <p className={`text-4xl font-bold text-red-500 mb-2`}>{safeMetrics.lowStockCount || 0}</p>
             <p className={`text-sm ${textSecondary}`}>Products have fallen below the stock threshold and need re-ordering.</p>
-            <a href="/admin/products?filter=low_stock" className="inline-block mt-4 text-sm text-luxury-gold hover:underline">
+            <Link to="/admin/products?filter=low_stock" className="inline-block mt-4 text-sm text-luxury-gold hover:underline">
               View Inventory
-            </a>
+            </Link>
           </div>
         </div>
       </div>

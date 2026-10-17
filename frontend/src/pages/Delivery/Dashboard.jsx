@@ -195,11 +195,11 @@ function DeliveryDashboard() {
   })
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen py-4 sm:py-6 md:py-8 px-2 sm:px-4 md:px-0">
       <div className="container-custom">
         
         {/* Banner Welcome Panel */}
-        <div className={`rounded-[1.5rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm transition-all duration-300
+        <div className={`rounded-[1.25rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-4 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 sm:gap-4 shadow-sm transition-all duration-300
           ${isDarkMode ? 'bg-luxury-charcoal border-white/10 text-white' : 'bg-white border-luxury-gold/30 text-luxury-darkBlack'}`}
         >
           <div>
@@ -208,21 +208,21 @@ function DeliveryDashboard() {
               <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest text-luxury-gold">Express Delivery Network</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-tight">Courier Agent Portal</h1>
-            <p className="text-xs opacity-75 mt-1">Logged in as: <strong className="text-luxury-gold">{user?.firstName || 'Delivery Partner'} {user?.lastName || ''}</strong> ({user?.phone || 'Fleet ID: #98210'})</p>
+            <p className="text-xs opacity-75 mt-0.5 sm:mt-1">Logged in as: <strong className="text-luxury-gold">{user?.firstName || 'Delivery Partner'} {user?.lastName || ''}</strong> ({user?.phone || 'Fleet ID: #98210'})</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-current/10">
             <button
               onClick={fetchDeliveryData}
               disabled={loading}
-              className={`p-3 rounded-full border text-xs font-bold transition-all flex items-center justify-center touch-target
+              className={`p-2.5 sm:p-3 rounded-full border text-xs font-bold transition-all flex items-center justify-center touch-target
                 ${isDarkMode ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200'}`}
               title="Refresh Data"
             >
               <FiRefreshCw className={loading ? 'animate-spin' : ''} size={16} />
             </button>
 
-            <span className="px-3 sm:px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/30 rounded-full text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-500/10 text-green-500 border border-green-500/30 rounded-full text-[11px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
               On Duty
             </span>
@@ -239,15 +239,15 @@ function DeliveryDashboard() {
             { id: 'earnings', name: 'Earnings', icon: <FiDollarSign /> }
           ]
           return (
-            <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-4 px-4">
+            <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0">
               {navItems.map(item => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wider transition-all touch-target ${
+                  className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all touch-target ${
                     activeTab === item.id
-                      ? 'bg-luxury-gold text-black border-luxury-gold'
-                      : isDarkMode ? 'bg-white/5 border-white/10 text-white/70' : 'bg-white border-black/10 text-slate-700'
+                      ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow'
+                      : isDarkMode ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10' : 'bg-white border-black/10 text-slate-700 hover:bg-gray-50'
                   }`}
                 >
                   {item.icon}

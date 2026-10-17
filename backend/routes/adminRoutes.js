@@ -26,6 +26,8 @@ router.put('/products/bulk/update', asyncHandler(adminController.bulkUpdateProdu
 // Orders & Document Receipts
 router.get('/orders', asyncHandler(adminController.getAllOrders))
 router.get('/orders/:orderId/receipt', asyncHandler(receiptController.getAdminOrderReceipt))
+router.get('/orders/:orderId/packing-slip-pdf', asyncHandler(receiptController.getAdminPackingSlipPdf))
+router.get('/orders/:orderId/invoice-pdf', asyncHandler(receiptController.getAdminTaxInvoicePdf))
 router.put('/orders/:id/status', asyncHandler(adminController.updateOrderStatus))
 router.get('/orders/:id', asyncHandler(adminController.getOrderById))
 
@@ -43,6 +45,10 @@ router.put('/sellers/:id/verify', asyncHandler(adminController.verifySeller))
 router.get('/seller-applications', asyncHandler(async (req, res) => {
   const { getAdminSellerApplications } = await import('../controllers/sellerApplicationController.js')
   return getAdminSellerApplications(req, res)
+}))
+router.get('/seller-applications/:id/agreement-pdf', asyncHandler(async (req, res) => {
+  const { getAdminSellerAgreementPdf } = await import('../controllers/sellerApplicationController.js')
+  return getAdminSellerAgreementPdf(req, res)
 }))
 router.put('/seller-applications/:id/review', asyncHandler(async (req, res) => {
   const { reviewSellerApplication } = await import('../controllers/sellerApplicationController.js')
@@ -85,7 +91,9 @@ router.delete('/banners/:id', asyncHandler(adminController.deleteBanner))
 
 // Notifications
 router.get('/notifications', asyncHandler(adminController.getNotifications))
+router.get('/notifications/stats', asyncHandler(adminController.getNotificationStats))
 router.post('/notifications', asyncHandler(adminController.createNotification))
+router.delete('/notifications/:id', asyncHandler(adminController.deleteNotification))
 
 // Campaigns & Advanced Marketing
 router.get('/campaigns', asyncHandler(async (req, res) => {

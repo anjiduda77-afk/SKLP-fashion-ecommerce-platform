@@ -29,5 +29,10 @@
     "vite"
   ],
   "author": "SKLP Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "express": "^5.2.1",
+    "react": "^19.3.0"
+  }
 }

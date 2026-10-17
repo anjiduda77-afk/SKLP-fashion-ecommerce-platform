@@ -59,6 +59,10 @@ export const sellerService = {
   deleteProduct: (id) => apiClient.delete(`/seller/products/${id}`),
   getOrders: (params) => apiClient.get('/seller/orders', { params }),
   getOrderReceipt: (orderId) => apiClient.get(`/seller/orders/${orderId}/receipt`),
+  getPackingSlipPdf: (orderId, pkgIndex = 0) =>
+    apiClient.get(`/seller/orders/${orderId}/packing-slip-pdf?pkgIndex=${pkgIndex}`, { responseType: 'blob' }),
+  getTaxInvoicePdf: (orderId) =>
+    apiClient.get(`/seller/orders/${orderId}/invoice-pdf`, { responseType: 'blob' }),
   dispatchOrder: (id, data) => apiClient.put(`/seller/orders/${id}/dispatch`, data),
   getProfile: () => apiClient.get('/seller/profile'),
   updateProfile: (data) => apiClient.put('/seller/profile', data),
@@ -81,7 +85,8 @@ export const sellerService = {
 export const sellerApplicationService = {
   checkShopName: (shopName) => apiClient.get('/seller/check-shop-name', { params: { shopName } }),
   submitApplication: (data) => apiClient.post('/seller/apply', data),
-  getStatus: () => apiClient.get('/seller/application/status')
+  getStatus: () => apiClient.get('/seller/application/status'),
+  downloadAgreementPdf: () => apiClient.get('/seller/application/agreement-pdf', { responseType: 'blob' })
 }
 
 /**
@@ -214,6 +219,9 @@ export const orderService = {
   createOrder: (data) => apiClient.post('/orders', data),
   getOrders: () => apiClient.get('/orders'),
   getOrderById: (id) => apiClient.get(`/orders/${id}`),
+  getOrderReceipt: (id) => apiClient.get(`/orders/${id}/receipt`),
+  getInvoicePdf: (id) => apiClient.get(`/orders/${id}/invoice-pdf`, { responseType: 'blob' }),
+  verifyDocument: (params) => apiClient.get('/orders/verify-document', { params }),
   trackOrder: (id) => apiClient.get(`/orders/${id}/track`),
   verifyRazorpayPayment: (data) => apiClient.post('/orders/verify-payment', data),
   cancelOrder: (id, reason) => apiClient.put(`/orders/${id}/cancel`, { reason }),

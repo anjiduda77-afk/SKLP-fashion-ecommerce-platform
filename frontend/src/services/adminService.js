@@ -43,7 +43,14 @@ export const adminService = {
   getSellerApplications: (params) => apiClient.get('/admin/seller-applications', { params }),
   reviewSellerApplication: (id, action, notes, reason) =>
     apiClient.put(`/admin/seller-applications/${id}/review`, { action, notes, reason }),
-
+  downloadSellerAgreementPdf: (id) =>
+    apiClient.get(`/admin/seller-applications/${id}/agreement-pdf`, { responseType: 'blob' }),
+  getOrderPackingSlipPdf: (orderId, pkgIndex = 0) =>
+    apiClient.get(`/admin/orders/${orderId}/packing-slip-pdf?pkgIndex=${pkgIndex}`, { responseType: 'blob' }),
+  getOrderTaxInvoicePdf: (orderId) =>
+    apiClient.get(`/admin/orders/${orderId}/invoice-pdf`, { responseType: 'blob' }),
+  getOrderReceipt: (orderId) =>
+    apiClient.get(`/admin/orders/${orderId}/receipt`),
   
   // Coupons
   getCoupons: () => apiClient.get('/admin/coupons'),
@@ -62,8 +69,10 @@ export const adminService = {
   deleteBanner: (id) => apiClient.delete(`/admin/banners/${id}`),
   
   // Notifications
-  getNotifications: () => apiClient.get('/admin/notifications'),
-  createNotification: (notificationData) => apiClient.post('/admin/notifications', notificationData)
+  getNotifications: (params) => apiClient.get('/admin/notifications', { params }),
+  getNotificationStats: () => apiClient.get('/admin/notifications/stats'),
+  createNotification: (notificationData) => apiClient.post('/admin/notifications', notificationData),
+  deleteNotification: (id) => apiClient.delete(`/admin/notifications/${id}`)
 }
 
 export default adminService

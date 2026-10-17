@@ -130,7 +130,7 @@ export const createOrder = async (req, res) => {
 
   // ── Mode A: BUY NOW (Isolated single item purchase) ──────────────────────────
   if (isBuyNow && buyNowItem) {
-    const { productId, quantity = 1, variant = {}, offerId, cartItemId } = buyNowItem
+    const { productId, quantity = 1, variant = {}, offerId } = buyNowItem
     if (!productId) throw new ApiError(400, 'Buy Now product ID is required')
 
     const product = await Product.findById(productId).lean()

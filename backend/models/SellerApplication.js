@@ -28,6 +28,12 @@ const auditLogSchema = new mongoose.Schema({
 }, { _id: false })
 
 const sellerApplicationSchema = new mongoose.Schema({
+  applicationReference: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -37,6 +43,12 @@ const sellerApplicationSchema = new mongoose.Schema({
   applicantName: {
     type: String,
     required: true
+  },
+  ownerName: {
+    type: String
+  },
+  dob: {
+    type: String
   },
   email: {
     type: String,
@@ -48,6 +60,11 @@ const sellerApplicationSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  altPhone: {
+    type: String,
+    trim: true,
+    default: ''
   },
   shopName: {
     type: String,
@@ -63,6 +80,9 @@ const sellerApplicationSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  productCategories: [{
+    type: String
+  }],
   storeDescription: {
     type: String,
     default: '',
@@ -70,6 +90,20 @@ const sellerApplicationSchema = new mongoose.Schema({
   },
   category: String,
   subcategory: String,
+  businessEmail: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    default: ''
+  },
+  businessPhone: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  yearEstablished: {
+    type: Number
+  },
   brandLogo: {
     url: { type: String, default: null },
     publicId: { type: String, default: null }
@@ -80,18 +114,59 @@ const sellerApplicationSchema = new mongoose.Schema({
     default: 'individual'
   },
   businessAddress: {
-    street: String,
-    city: String,
-    state: String,
-    postalCode: String,
+    street: { type: String, default: '' },
+    street2: { type: String, default: '' },
+    landmark: { type: String, default: '' },
+    city: { type: String, default: '' },
+    district: { type: String, default: '' },
+    state: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
     country: { type: String, default: 'India' }
   },
+  pickupAddressSameAsBusiness: {
+    type: Boolean,
+    default: true
+  },
   pickupAddress: {
-    street: String,
-    city: String,
-    state: String,
-    postalCode: String,
+    street: { type: String, default: '' },
+    street2: { type: String, default: '' },
+    landmark: { type: String, default: '' },
+    city: { type: String, default: '' },
+    district: { type: String, default: '' },
+    state: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
     country: { type: String, default: 'India' }
+  },
+  shopImages: [{
+    url: { type: String, required: true },
+    publicId: { type: String, default: null },
+    imageType: { type: String, default: 'shop_exterior' },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  ownerPhoto: {
+    url: { type: String, default: null },
+    publicId: { type: String, default: null },
+    uploadedAt: { type: Date, default: Date.now }
+  },
+  signature: {
+    url: { type: String, default: null },
+    publicId: { type: String, default: null },
+    uploadedAt: { type: Date, default: Date.now }
+  },
+  termsAccepted: {
+    type: Boolean,
+    default: false
+  },
+  sellerTermsVersion: {
+    type: String,
+    default: 'v1.0'
+  },
+  termsAcceptedAt: {
+    type: Date
+  },
+  termsAcceptedIp: {
+    type: String,
+    default: ''
   },
   deliveryMode: {
     type: String,
@@ -118,14 +193,14 @@ const sellerApplicationSchema = new mongoose.Schema({
   verification: {
     pan: {
       number: String,
-      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW'], default: 'PENDING' },
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW', 'NOT_CONFIGURED'], default: 'PENDING' },
       nameOnPan: String,
       verifiedAt: Date
     },
     gst: {
       isRegistered: { type: Boolean, default: false },
       gstin: String,
-      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'NOT_APPLICABLE'], default: 'NOT_APPLICABLE' },
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'NOT_APPLICABLE', 'NOT_CONFIGURED'], default: 'NOT_APPLICABLE' },
       tradeName: String,
       verifiedAt: Date
     },
@@ -149,7 +224,7 @@ const sellerApplicationSchema = new mongoose.Schema({
       accountNumber: String,
       ifscCode: String,
       bankName: String,
-      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MISMATCH'], default: 'PENDING' },
+      status: { type: String, enum: ['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'FAILED', 'MISMATCH', 'NOT_CONFIGURED'], default: 'PENDING' },
       verifiedAt: Date
     },
     shopImages: [{
@@ -170,7 +245,7 @@ const sellerApplicationSchema = new mongoose.Schema({
   documents: [documentSchema],
   status: {
     type: String,
-    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'REVIEW_REQUIRED', 'VERIFICATION_REQUIRED', 'APPROVED', 'REQUEST_CHANGES', 'REJECTED', 'SUSPENDED'],
+    enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'NEEDS_CORRECTION', 'REVIEW_REQUIRED', 'VERIFICATION_REQUIRED', 'APPROVED', 'REQUEST_CHANGES', 'REJECTED', 'SUSPENDED'],
     default: 'PENDING_REVIEW',
     index: true
   },
@@ -196,6 +271,10 @@ const sellerApplicationSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  correctionReason: {
+    type: String,
+    default: ''
+  },
   rejectionReason: {
     type: String,
     default: ''
@@ -205,13 +284,18 @@ const sellerApplicationSchema = new mongoose.Schema({
     ref: 'User'
   },
   reviewedAt: Date,
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  approvedAt: Date,
   kyc: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SellerKYC'
   },
   kycStatus: {
     type: String,
-    enum: ['NOT_STARTED', 'IN_PROGRESS', 'PARTIALLY_VERIFIED', 'VERIFIED', 'NEEDS_REVIEW', 'FAILED', 'REJECTED'],
+    enum: ['NOT_STARTED', 'PENDING', 'IN_PROGRESS', 'PARTIALLY_VERIFIED', 'VERIFIED', 'NEEDS_REVIEW', 'FAILED', 'REJECTED', 'NOT_CONFIGURED'],
     default: 'NOT_STARTED',
     index: true
   },
@@ -222,8 +306,19 @@ sellerApplicationSchema.pre('save', function(next) {
   if (!this.brandName) {
     this.brandName = this.shopName;
   }
+  if (!this.ownerName && this.applicantName) {
+    this.ownerName = this.applicantName;
+  }
+  if (!this.applicantName && this.ownerName) {
+    this.applicantName = this.ownerName;
+  }
   if (this.brandName) {
     this.brandNameNormalized = this.brandName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  if (!this.applicationReference) {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    this.applicationReference = `SSA-${dateStr}-${rand}`;
   }
   next();
 });

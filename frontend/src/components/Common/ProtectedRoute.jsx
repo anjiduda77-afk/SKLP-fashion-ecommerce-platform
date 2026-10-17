@@ -32,6 +32,11 @@ const ProtectedRoute = ({ allowedRoles = [], requiredRole, children }) => {
     const rawRole = (user?.role || '').toLowerCase().replace(/\s+/g, '').trim()
     const userRole = rawRole === 'deliverypartner' ? 'delivery' : rawRole
 
+    // Admin has master privileges across role consoles
+    if (userRole === 'admin') {
+      return children
+    }
+
     const allowedRolesNorm = rolesList.map(r => {
       const norm = r.toLowerCase().replace(/\s+/g, '').trim()
       return norm === 'deliverypartner' ? 'delivery' : norm
@@ -39,7 +44,6 @@ const ProtectedRoute = ({ allowedRoles = [], requiredRole, children }) => {
 
     if (!allowedRolesNorm.includes(userRole)) {
       const fallbackUrl = 
-        userRole === 'admin' ? '/admin/dashboard' :
         userRole === 'seller' ? '/seller/dashboard' :
         userRole === 'delivery' ? '/delivery/dashboard' : '/customer'
 

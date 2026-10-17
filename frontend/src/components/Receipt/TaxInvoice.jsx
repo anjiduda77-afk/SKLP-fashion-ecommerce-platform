@@ -1,5 +1,6 @@
 import sklpLogo from '@assets/images/sklp_logo.png';
 import { useBranding, resolveLogoUrl } from '@context/BrandingContext';
+import QRCodeGenerator from './QRCodeGenerator';
 
 /**
  * Number to Indian Words Converter for Invoice
@@ -300,14 +301,21 @@ export default function TaxInvoice({
       </div>
 
       {/* ── DECLARATION & SIGNATORY ────────────────────────────────────────── */}
-      <div className="flex justify-between items-end border-t border-black/40 pt-4 text-xs">
-        <div className="text-[10px] text-gray-600 max-w-sm space-y-0.5 leading-snug">
-          <p className="font-bold text-black">Declaration:</p>
-          <p>This is a computer generated invoice and does not require physical signature unless demanded by statutory authority.</p>
-          <p>Goods once sold can be returned within 7 days under standard marketplace return policy.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-t border-black/40 pt-4 text-xs">
+        <div className="flex items-center gap-3">
+          <QRCodeGenerator
+            value={`${typeof window !== 'undefined' ? window.location.origin : 'https://stylestreet.in'}/verify-receipt?order=${receipt.orderNumber}&invoice=${invoiceNumber}`}
+            size={70}
+            caption="Scan to Verify"
+          />
+          <div className="text-[10px] text-gray-600 max-w-sm space-y-0.5 leading-snug">
+            <p className="font-bold text-black">Declaration & Statutory Verification:</p>
+            <p>Official GST Tax Invoice issued under Rule 46 of CGST Act, 2017. Scan QR code to verify authenticity and dispatch tracking.</p>
+            <p>Goods once sold can be returned within 7 days under standard marketplace return policy.</p>
+          </div>
         </div>
 
-        <div className="text-center font-mono">
+        <div className="text-center font-mono self-end sm:self-auto">
           <div className="w-40 border-b border-black pb-8 mb-1">
             <span className="text-[9px] text-gray-400 uppercase">Authorized Signatory</span>
           </div>

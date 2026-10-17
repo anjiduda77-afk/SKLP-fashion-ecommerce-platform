@@ -121,15 +121,15 @@ function OrderDetail({ order, onClose, onStatusChange }) {
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={`w-full max-w-md border-l h-full overflow-y-auto animate-slide-in flex flex-col ${panelBg}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b sticky top-0 z-10 ${isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'}`}>
-          <div>
-            <h3 className={`text-lg font-bold ${textPrimary}`}>{order.orderNumber}</h3>
+        <div className={`flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b sticky top-0 z-10 ${isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'}`}>
+          <div className="min-w-0 pr-2">
+            <h3 className={`text-base sm:text-lg font-bold truncate ${textPrimary}`}>{order.orderNumber}</h3>
             <p className={`text-xs ${textSecondary}`}>{new Date(order.createdAt).toLocaleDateString()}</p>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}><FiX /></button>
+          <button onClick={onClose} className={`p-2 rounded-lg transition-colors flex-shrink-0 ${isDarkMode ? 'hover:bg-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}><FiX /></button>
         </div>
 
-        <div className="p-6 space-y-6 flex-1">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1">
           {/* Status Badge */}
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-bold ${cls}`}>
             {StatusIcon && <StatusIcon size={14} />}
@@ -294,7 +294,7 @@ function AdminOrders() {
       </div>
 
       {/* Status Quick Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1 sm:flex-wrap">
         {STATUSES.map((s) => {
           const isAll = s === 'All'
           const count = isAll ? orders.length : statusCount(s)
@@ -303,7 +303,7 @@ function AdminOrders() {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
                 isActive
                   ? 'bg-luxury-gold text-luxury-black border-luxury-gold'
                   : isDarkMode
@@ -318,8 +318,8 @@ function AdminOrders() {
       </div>
 
       {/* Search */}
-      <div className={`rounded-xl border p-4 ${cardBg}`}>
-        <div className="relative max-w-sm">
+      <div className={`rounded-xl border p-3.5 sm:p-4 ${cardBg}`}>
+        <div className="relative w-full sm:max-w-sm">
           <FiSearch size={15} className={`absolute left-3 top-3 ${textSecondary}`} />
           <input
             value={search}

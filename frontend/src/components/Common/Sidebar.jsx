@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { 
   FiChevronDown, FiChevronLeft, FiHeart, FiShoppingBag, FiSettings, 
   FiZap, FiTrendingUp, FiHelpCircle, FiGlobe, FiMoon, FiSun, FiActivity, FiGift,
-  FiGrid, FiPackage, FiUsers, FiBarChart2, FiTruck, FiMapPin, FiClipboard, FiDollarSign, FiPlusSquare, FiExternalLink
+  FiGrid, FiPackage, FiUsers, FiBarChart2, FiTruck, FiMapPin, FiClipboard, FiDollarSign, FiPlusSquare, FiExternalLink, FiStar
 } from 'react-icons/fi'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -20,9 +20,13 @@ const navSections = [
       { label: 'Men\'s Fashion', labelKey: 'sidebar.mensFashion', link: '/products?gender=men' },
       { label: 'Women\'s Fashion', labelKey: 'sidebar.womensFashion', link: '/products?gender=women' },
       { label: 'Kids\' Corner', labelKey: 'sidebar.kidsCorner', link: '/products?gender=kids' },
-      { label: 'Premium Footwear', labelKey: 'sidebar.premiumFootwear', link: '/products?category=footwear' },
+      { label: 'Authentic Sarees', link: '/products?category=sarees' },
+      { label: 'Shirts & T-Shirts', link: '/products?category=shirts,t-shirts' },
+      { label: 'Denim & Jeans', link: '/products?category=jeans' },
+      { label: 'Hoodies & Outerwear', link: '/products?category=hoodies' },
+      { label: 'Luxury Fashion Wear', link: '/products?category=fashion-wear' },
+      { label: 'Premium Shoes & Footwear', labelKey: 'sidebar.premiumFootwear', link: '/products?category=shoes' },
       { label: 'Luxury Accessories', labelKey: 'sidebar.luxuryAccessories', link: '/products?category=accessories' },
-      { label: 'Luxury Collections', labelKey: 'sidebar.luxuryCollections', link: '/products?tag=luxury' },
       { label: 'Trending Products', labelKey: 'sidebar.trendingProducts', link: '/products?sort=trending' },
       { label: 'New Arrivals', labelKey: 'sidebar.newArrivals', link: '/products?sort=new' },
       { label: 'Couture Offers', labelKey: 'sidebar.coutureOffers', link: '/products?offers=true' }
@@ -35,7 +39,7 @@ const navSections = [
       { label: 'Trending Outfits', labelKey: 'sidebar.trendingProducts', link: '/products?sort=trending', icon: <FiZap className="text-luxury-gold mr-2" /> },
       { label: 'Special Offers', labelKey: 'sidebar.specialOffers', link: '/products?offers=true', icon: <FiGift className="text-luxury-gold mr-2" /> },
       { label: 'Recommended For You', labelKey: 'sidebar.recommendedForYou', link: '/products', icon: <FiHeart className="text-luxury-gold mr-2" /> },
-      { label: 'New Arrivals', labelKey: 'sidebar.newArrivals', link: '/products?sort=new', icon: <FiSparklesIcon className="text-luxury-gold mr-2" /> }
+      { label: 'New Arrivals', labelKey: 'sidebar.newArrivals', link: '/products?sort=new', icon: <FiStar className="text-luxury-gold mr-2" /> }
     ]
   },
   {
@@ -50,25 +54,6 @@ const navSections = [
   }
 ]
 
-// Simple helper icon for AI features
-function FiSparklesIcon({ className }) {
-  return (
-    <svg 
-      className={className} 
-      stroke="currentColor" 
-      fill="none" 
-      strokeWidth="2" 
-      viewBox="0 0 24 24" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      height="1em" 
-      width="1em" 
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />
-    </svg>
-  )
-}
 
 // Role-specific dashboard paths
 const ROLE_DASHBOARD = {

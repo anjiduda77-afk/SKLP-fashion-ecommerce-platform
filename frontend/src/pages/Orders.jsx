@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown, FiStar } from 'react-icons/fi'
+import { FiTruck, FiCornerUpLeft, FiXCircle, FiChevronDown, FiStar, FiFileText, FiDownload } from 'react-icons/fi'
 import { orderService } from '@services/apiServices'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -21,6 +21,26 @@ function Orders() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
   const [showCancelAnimation, setShowCancelAnimation] = useState(false)
   const [cancelConfirmId, setCancelConfirmId] = useState(null)
+
+  const handleDownloadCustomerInvoice = async (orderId, orderNumber) => {
+    try {
+      toast.info('Downloading official Tax Invoice PDF...');
+      const response = await orderService.getInvoicePdf(orderId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `StyleStreet_TaxInvoice_${orderNumber || orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Tax Invoice PDF downloaded successfully!');
+    } catch (err) {
+      console.error('Invoice download error:', err);
+      toast.error('Unable to download invoice PDF.');
+    }
+  };
 
   useEffect(() => {
     if (location.state?.newOrder) {
@@ -156,23 +176,22 @@ function Orders() {
                 {/* Header overview */}
                 <div
                   onClick={() => setExpandedOrderId(isExpanded ? null : order._id)}
-                  className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer select-none"
+                  className="p-4 sm:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 cursor-pointer select-none touch-target"
                 >
-                  <div>
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold tracking-wider text-luxury-gold">#{order._id.toString().toUpperCase()}</span>
-                      <span className={`text-[10px] px-3 py-1 border rounded-full uppercase font-semibold ${getStatusBadgeClass(order.status)}`}>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold tracking-wider text-luxury-gold truncate max-w-[160px] xs:max-w-none">#{order._id.toString().toUpperCase()}</span>
+                      <span className={`text-[10px] px-2.5 sm:px-3 py-0.5 sm:py-1 border rounded-full uppercase font-semibold ${getStatusBadgeClass(order.status)}`}>
                         {t(`orders.status.${order.status}`, order.status)}
                       </span>
                     </div>
-                    <p className="text-xs opacity-60 font-mono">{t('orders.placedOn', 'Placed on')}: {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
+                    <p className="text-[11px] sm:text-xs opacity-60 font-mono">{t('orders.placedOn', 'Placed on')}: {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
                   </div>
 
-
-                  <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                  <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
                     <div>
-                      <p className="text-xs opacity-60">Grand Total</p>
-                      <p className="text-lg font-bold text-luxury-gold font-mono">₹{(order.total || order.totalAmount || 0).toLocaleString()}</p>
+                      <p className="text-[11px] sm:text-xs opacity-60">Grand Total</p>
+                      <p className="text-base sm:text-lg font-bold text-luxury-gold font-mono">₹{(order.total || order.totalAmount || 0).toLocaleString()}</p>
                     </div>
                     <FiChevronDown className={`text-luxury-gold transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
@@ -187,7 +206,7 @@ function Orders() {
                       exit={{ height: 0 }}
                       className="overflow-hidden border-t border-white/5"
                     >
-                      <div className="p-6 space-y-6">
+                      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                         {/* Products list */}
                         <div className="space-y-4">
                           <h4 className="text-xs uppercase tracking-wider text-luxury-gold font-bold">Items Purchased</h4>
@@ -228,13 +247,33 @@ function Orders() {
                           </div>
 
                           <div className="flex flex-col gap-2 justify-end">
+                            {/* Receipt & Invoice Links */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <Link
+                                to={`/orders/${order._id}/receipt`}
+                                className="py-2.5 px-3 rounded-lg border border-luxury-gold/50 text-luxury-gold hover:bg-luxury-gold hover:text-luxury-black text-[11px] font-bold uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5 touch-target"
+                              >
+                                <FiFileText size={13} /> View Receipt
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDownloadCustomerInvoice(order._id, order.orderNumber)
+                                }}
+                                className="py-2.5 px-3 rounded-lg bg-luxury-gold/15 hover:bg-luxury-gold text-luxury-gold hover:text-luxury-black border border-luxury-gold/40 text-[11px] font-bold uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5 touch-target"
+                              >
+                                <FiDownload size={13} /> Tax Invoice
+                              </button>
+                            </div>
+
                             {/* Tracking Link */}
                             {order.status !== 'cancelled' && (
                               <Link
                                 to={`/orders/${order._id}/track`}
-                                className="py-3 px-6 bg-luxury-gold text-luxury-black text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-colors text-center flex items-center justify-center gap-2"
+                                className="py-2.5 px-4 bg-luxury-gold text-luxury-black text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-colors text-center flex items-center justify-center gap-2 rounded-lg touch-target"
                               >
-                                <FiTruck /> Live Ship Tracking
+                                <FiTruck /> Live Tracking
                               </Link>
                             )}
 

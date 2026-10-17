@@ -37,7 +37,7 @@ const productSchema = new mongoose.Schema({
   subcategory: String,
   gender: {
     type: String,
-    enum: ['men', 'women', 'kids', 'unisex'],
+    enum: ['all', 'men', 'women', 'kids', 'unisex'],
     required: [true, 'Gender is required']
     // indexed via compound schema.index({ category: 1, gender: 1 }) below
   },
@@ -267,6 +267,32 @@ productSchema.virtual('discountedPrice').get(function() {
 // Ensure virtuals are serialized
 productSchema.set('toJSON', { virtuals: true });
 
+// Middleware: normalize category and gender before schema validation
+productSchema.pre('validate', function(next) {
+  if (this.category) {
+    let cat = this.category.toString().trim().toLowerCase().replace(/\s+/g, '-');
+    if (['tshirt', 'tshirts', 't-shirt', 't-shirts'].includes(cat)) cat = 't-shirts';
+    else if (['fashionwear', 'fashion-wear', 'fashion'].includes(cat)) cat = 'fashion-wear';
+    else if (['footwear', 'shoe', 'shoes'].includes(cat)) cat = 'shoes';
+    else if (['saree', 'sarees'].includes(cat)) cat = 'sarees';
+    else if (['hoodie', 'hoodies'].includes(cat)) cat = 'hoodies';
+    else if (['jean', 'jeans'].includes(cat)) cat = 'jeans';
+    else if (['shirt', 'shirts'].includes(cat)) cat = 'shirts';
+    else if (['accessory', 'accessories'].includes(cat)) cat = 'accessories';
+    this.category = cat;
+  }
+  if (this.gender) {
+    let g = this.gender.toString().trim().toLowerCase();
+    if (['male', 'man', 'men'].includes(g)) g = 'men';
+    else if (['female', 'woman', 'women'].includes(g)) g = 'women';
+    else if (['kid', 'kids', 'child', 'children', 'boys', 'girls'].includes(g)) g = 'kids';
+    else if (['unisex', 'uni'].includes(g)) g = 'unisex';
+    else if (['all', 'everyone', 'universal'].includes(g)) g = 'all';
+    this.gender = g;
+  }
+  next();
+});
+
 // Middleware: auto-generate unique slug and update derived fields before save
 productSchema.pre('save', async function(next) {
   this.isOutOfStock = this.stock <= 0;
@@ -300,6 +326,8 @@ productSchema.index({ createdAt: -1 });
 productSchema.index({ isActive: 1, publishedAt: -1 });
 productSchema.index({ brandNormalized: 1, category: 1, price: 1 });
 productSchema.index({ sellerId: 1, isActive: 1 });
+productSchema.index({ isActive: 1, category: 1, gender: 1, price: 1 });
+productSchema.index({ isActive: 1, createdAt: -1 });
 
 // Plugin for pagination
 productSchema.plugin(mongoosePaginate);

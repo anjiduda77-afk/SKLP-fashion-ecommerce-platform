@@ -8,6 +8,12 @@ import Review from '../models/Review.js';
 import SellerSettlement from '../models/SellerSettlement.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { uploadMultipleImages } from '../config/cloudinary.js';
+import {
+  broadcastNotification,
+  notifyOrderStatusChanged,
+  notifySellerVerification,
+  notifyReturnStatusChanged
+} from '../services/notificationService.js';
 
 // ================= ENHANCED DASHBOARD =================
 export const getDashboardMetrics = async (req, res) => {
@@ -365,30 +371,48 @@ export const getAllOrders = async (req, res) => {
   const { status, page = 1, limit = 20, search } = req.query;
   const query = {};
 
-  if (status) query.status = status;
-  if (search) {
+  if (status && status !== 'all') query.status = status;
+
+  if (search && search.trim()) {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    const matchingUsers = await User.find({
+      $or: [
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex }
+      ]
+    }).select('_id').lean();
+
+    const matchedUserIds = matchingUsers.map(u => u._id);
+
     query.$or = [
-      { orderNumber: { $regex: search, $options: 'i' } },
+      { orderNumber: searchRegex },
+      ...(matchedUserIds.length > 0 ? [{ userId: { $in: matchedUserIds } }] : [])
     ];
   }
 
-  const orders = await Order.find(query)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(Number(limit))
-    .populate('userId', 'firstName lastName email')
-    .lean();
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
 
-  const total = await Order.countDocuments(query);
+  const [orders, total] = await Promise.all([
+    Order.find(query)
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .populate('userId', 'firstName lastName email phone')
+      .lean(),
+    Order.countDocuments(query)
+  ]);
 
   res.status(200).json({
     success: true,
     orders,
     pagination: {
       total,
-      page: Number(page),
-      limit: Number(limit),
-      pages: Math.ceil(total / limit)
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1
     }
   });
 };
@@ -416,13 +440,12 @@ export const updateOrderStatus = async (req, res) => {
 
   await order.save();
 
-  await Notification.create({
-    userId: order.userId,
-    type: 'order',
-    title: `Order Status: ${status.toUpperCase()}`,
-    message: `Your order #${order._id.toString().substring(18)} status has been updated to: ${status}.`,
-    relatedEntity: { entityType: 'order', entityId: order._id }
-  });
+  // Trigger push + in-app notification via centralized service
+  try {
+    await notifyOrderStatusChanged(order, status, trackingDetails);
+  } catch (notifErr) {
+    console.warn('[ADMIN CONTROLLER] Order status notification error:', notifErr.message);
+  }
 
   res.status(200).json({
     success: true,
@@ -451,23 +474,30 @@ export const getAllUsers = async (req, res) => {
   const { role, search, status, page = 1, limit = 20 } = req.query;
   const query = {};
 
-  if (role) query.role = role;
-  if (status) query.status = status;
-  if (search) {
+  if (role && role !== 'all') query.role = role;
+  if (status && status !== 'all') query.status = status;
+  if (search && search.trim()) {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
     query.$or = [
-      { firstName: { $regex: search, $options: 'i' } },
-      { lastName: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } }
+      { firstName: searchRegex },
+      { lastName: searchRegex },
+      { email: searchRegex },
+      { phone: searchRegex },
+      { customUserId: searchRegex }
     ];
   }
 
-  const users = await User.find(query)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(Number(limit))
-    .lean();
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
 
-  const total = await User.countDocuments(query);
+  const [users, total] = await Promise.all([
+    User.find(query)
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(),
+    User.countDocuments(query)
+  ]);
 
   res.status(200).json({
     success: true,
@@ -479,9 +509,9 @@ export const getAllUsers = async (req, res) => {
     }),
     pagination: {
       total,
-      page: Number(page),
-      limit: Number(limit),
-      pages: Math.ceil(total / limit)
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1
     }
   });
 };
@@ -637,14 +667,12 @@ export const verifySeller = async (req, res) => {
 
   await seller.save();
 
-  await Notification.create({
-    userId: seller._id,
-    type: 'system',
-    title: `Seller Account ${action === 'verify' ? 'Verified' : 'Rejected'}`,
-    message: action === 'verify'
-      ? 'Congratulations! Your seller account has been verified. You can now list products.'
-      : `Your seller verification was rejected. ${notes || 'Please contact support.'}`,
-  });
+  // Send push + in-app notification to seller
+  try {
+    await notifySellerVerification(seller, action, notes);
+  } catch (notifErr) {
+    console.warn('[ADMIN CONTROLLER] Seller verification notification error:', notifErr.message);
+  }
 
   res.status(200).json({
     success: true,
@@ -753,13 +781,12 @@ export const updateReturnStatus = async (req, res) => {
 
   await order.save();
 
-  await Notification.create({
-    userId: order.userId,
-    type: 'return',
-    title: `Return Request: ${action.toUpperCase()}`,
-    message: `Your return request for order #${order._id.toString().substring(18)} has been ${action}d. ${adminNotes || ''}`,
-    relatedEntity: { entityType: 'order', entityId: order._id }
-  });
+  // Send push + in-app notification to customer
+  try {
+    await notifyReturnStatusChanged(order, action, adminNotes);
+  } catch (notifErr) {
+    console.warn('[ADMIN CONTROLLER] Return status notification error:', notifErr.message);
+  }
 
   res.status(200).json({ success: true, message: `Return request has been ${action}d`, order });
 };
@@ -820,42 +847,135 @@ export const deleteBanner = async (req, res) => {
 
 // ================= NOTIFICATIONS =================
 export const getNotifications = async (req, res) => {
-  const notifications = await Notification.find({ userId: req.user.id })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .lean();
+  const { page = 1, limit = 20, type, search, scope = 'all' } = req.query;
+  const query = {};
 
-  res.status(200).json({ success: true, notifications });
+  if (scope === 'personal') {
+    query.userId = req.user.id;
+  } else if (scope === 'users') {
+    query.userId = { $ne: req.user.id };
+  }
+
+  if (type && type !== 'all') {
+    query.type = type;
+  }
+
+  if (search && search.trim()) {
+    const searchRegex = { $regex: search.trim(), $options: 'i' };
+    query.$or = [
+      { title: searchRegex },
+      { message: searchRegex }
+    ];
+  }
+
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
+
+  const [notifications, total, unreadCount] = await Promise.all([
+    Notification.find(query)
+      .populate('userId', 'firstName lastName email role phone')
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(),
+    Notification.countDocuments(query),
+    Notification.countDocuments({ ...query, isRead: false })
+  ]);
+
+  res.status(200).json({
+    success: true,
+    notifications,
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1
+    },
+    unreadCount
+  });
 };
 
 export const createNotification = async (req, res) => {
-  const { userId, type, title, message, actionUrl } = req.body;
+  const {
+    userId,
+    targetRole = 'all',
+    userIds,
+    type = 'system',
+    title,
+    message,
+    actionUrl,
+    imageUrl
+  } = req.body;
 
-  let targetUsers = [];
-  if (userId === 'all') {
-    const customers = await User.find({ role: 'customer' }).select('_id');
-    targetUsers = customers.map(c => c._id);
-  } else {
-    targetUsers = [userId];
+  if (!title || !message) {
+    throw new ApiError(400, 'Notification title and message are required');
   }
 
-  const notifications = await Promise.all(
-    targetUsers.map(uId =>
-      Notification.create({
-        userId: uId,
-        type: type || 'system',
-        title,
-        message,
-        actionUrl,
-        channels: { inApp: true }
-      })
-    )
-  );
+  // Handle targeting parameters
+  let effectiveUserIds = Array.isArray(userIds) && userIds.length > 0 ? userIds : null;
+  let effectiveRole = targetRole;
+
+  if (userId && userId !== 'all') {
+    effectiveUserIds = [userId];
+  } else if (userId === 'all') {
+    effectiveRole = 'customer';
+  }
+
+  const result = await broadcastNotification({
+    targetRole: effectiveRole,
+    userIds: effectiveUserIds,
+    type: type || 'system',
+    title,
+    message,
+    actionUrl: actionUrl || '/',
+    imageUrl: imageUrl || null
+  });
 
   res.status(201).json({
     success: true,
-    message: `Notifications sent to ${targetUsers.length} users`,
-    count: notifications.length
+    message: result.message || `Notifications broadcasted successfully to ${result.count} users`,
+    result
+  });
+};
+
+export const deleteNotification = async (req, res) => {
+  const { id } = req.params;
+  const notification = await Notification.findByIdAndDelete(id);
+
+  if (!notification) {
+    throw new ApiError(404, 'Notification not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Notification deleted successfully'
+  });
+};
+
+export const getNotificationStats = async (req, res) => {
+  const [
+    totalCount,
+    unreadCount,
+    pushReadyUsers,
+    typeBreakdown
+  ] = await Promise.all([
+    Notification.countDocuments({}),
+    Notification.countDocuments({ isRead: false }),
+    User.countDocuments({ fcmTokens: { $exists: true, $ne: [] } }),
+    Notification.aggregate([
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ])
+  ]);
+
+  res.status(200).json({
+    success: true,
+    stats: {
+      totalCount,
+      unreadCount,
+      pushReadyUsers,
+      types: (typeBreakdown || []).map(t => ({ type: t._id, count: t.count }))
+    }
   });
 };
 

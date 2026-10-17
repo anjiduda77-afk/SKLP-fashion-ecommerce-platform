@@ -15,20 +15,6 @@ export const kycService = {
   verifyPhone: (idToken, phoneNumber) =>
     apiClient.post('/seller/kyc/phone/verify', { idToken, phoneNumber }),
 
-  // Aadhaar KYC flow via compliant provider
-  startAadhaar: (aadhaarNumber, consent) =>
-    apiClient.post('/seller/kyc/aadhaar/start', { aadhaarNumber, consent }),
-
-  verifyAadhaarOtp: (refId, otp, consent) =>
-    apiClient.post('/seller/kyc/aadhaar/verify', { refId, otp, consent }),
-
-  // PAN Verification via real provider
-  verifyPan: (panNumber, applicantName, dob) =>
-    apiClient.post('/seller/kyc/pan/verify', { panNumber, applicantName, dob }),
-
-  // Bank Account Verification via real provider
-  verifyBank: (accountNumber, ifscCode, accountHolderName) =>
-    apiClient.post('/seller/kyc/bank/verify', { accountNumber, ifscCode, accountHolderName }),
 
   // Admin Compliance Dossier
   getAdminApplicationKyc: (applicationId) =>

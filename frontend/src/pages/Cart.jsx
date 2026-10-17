@@ -379,11 +379,11 @@ function Cart() {
                   } shadow-xl relative overflow-hidden transition-all`}
                 >
                   {/* Card Main Info Row */}
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                  <div className="flex flex-row gap-3 sm:gap-6">
                     {/* Product Image */}
                     <Link
                       to={`/products/${prodId}`}
-                      className="w-full sm:w-32 aspect-[3/4] sm:aspect-square rounded-xl overflow-hidden bg-black/40 shrink-0 block group"
+                      className="w-20 xs:w-24 sm:w-32 aspect-[3/4] sm:aspect-square rounded-xl overflow-hidden bg-black/40 shrink-0 block group"
                     >
                       <img
                         src={item.image || '/assets/style-street-logo.png'}

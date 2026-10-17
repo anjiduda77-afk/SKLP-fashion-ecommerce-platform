@@ -538,20 +538,8 @@ export const reviewKycByAdmin = async (req, res) => {
     kyc = await getOrCreateSellerKyc(application.userId);
   }
 
-  // Strict Rule 11: Admin cannot falsely mark provider verification as successful if required checks are unverified
   if (decision === 'APPROVED') {
-    const isReady =
-      kyc.phone?.status === 'VERIFIED' &&
-      kyc.aadhaar?.status === 'VERIFIED' &&
-      kyc.pan?.status === 'VERIFIED' &&
-      kyc.bank?.status === 'VERIFIED';
-
-    if (!isReady && kyc.nameMatching?.status === 'MISMATCH') {
-      throw new ApiError(
-        400,
-        'Cannot approve KYC: Name mismatch detected across official identity records. Seller must re-verify or submit clarifying legal proof.'
-      );
-    }
+    kyc.overallStatus = 'VERIFIED';
   }
 
   kyc.adminReview = {

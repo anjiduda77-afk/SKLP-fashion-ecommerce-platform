@@ -22,7 +22,7 @@ export const CONSENT_STATEMENT = 'I consent to Aadhaar-based identity verificati
  * @param {boolean} params.consent User explicit consent
  * @param {string} params.userId Authenticated seller user ID
  */
-export const initiateAadhaarKyc = async ({ aadhaarNumber, consent, userId }) => {
+export const initiateAadhaarKyc = async ({ aadhaarNumber, consent, userId: _userId }) => {
   if (!consent) {
     return {
       success: false,
@@ -112,7 +112,7 @@ export const initiateAadhaarKyc = async ({ aadhaarNumber, consent, userId }) => 
  * @param {string} params.refId Provider reference ID from initiateAadhaarKyc
  * @param {string} params.otp 6-digit OTP received by seller
  */
-export const verifyAadhaarOtp = async ({ refId, otp, consent }) => {
+export const verifyAadhaarOtp = async ({ refId, otp, consent: _consent }) => {
   if (!refId || !otp || typeof otp !== 'string' || otp.trim().length !== 6) {
     return {
       success: false,

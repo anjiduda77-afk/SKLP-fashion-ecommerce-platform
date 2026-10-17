@@ -22,6 +22,12 @@ function MobileNavigation() {
   const [visible, setVisible] = useState(true)
   const [lastScroll, setLastScroll] = useState(0)
 
+  // Hide mobile bottom navigation on dedicated purchase/checkout views to prevent button collision
+  const isDedicatedFlow = 
+    location.pathname.startsWith('/checkout') || 
+    location.pathname.includes('/receipt') || 
+    (location.pathname.startsWith('/products/') && location.pathname !== '/products')
+
   // Detect scroll direction to auto-hide or show bottom navigation bar
   useEffect(() => {
     const handleScroll = () => {
@@ -38,6 +44,10 @@ function MobileNavigation() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [lastScroll])
+
+  if (isDedicatedFlow) {
+    return null
+  }
 
   const navItems = [
     {

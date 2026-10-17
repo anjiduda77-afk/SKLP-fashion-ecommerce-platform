@@ -3,8 +3,21 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiArrowRight, FiChevronLeft, FiChevronRight, FiStar, FiHeart, 
-  FiShoppingBag, FiTruck, FiShield, FiRefreshCw, FiHeadphones, FiZap, FiLoader 
+  FiShoppingBag, FiTruck, FiShield, FiZap, FiLoader 
 } from 'react-icons/fi'
+import {
+  GiSuits, GiDress, GiRunningShoe, GiWatch, GiCrown, GiShirt,
+  GiTrousers, GiUnderwearShorts, GiUnderwear, GiHoodie, GiClothes,
+  GiConverseShoe, GiSunglasses, GiDiamondRing, GiLipstick, GiPerfumeBottle,
+  GiKimono, GiRolledCloth, GiBoots, GiHighHeel, GiBilledCap, GiBackpack
+} from 'react-icons/gi'
+import {
+  RiRunLine, RiFireLine, RiApps2Line, RiTShirt2Line, RiBearSmileLine,
+  RiMagicLine
+} from 'react-icons/ri'
+import {
+  FaChild, FaShoppingBag, FaShoePrints
+} from 'react-icons/fa'
 import { useTheme } from '@context/ThemeContext'
 import { useCart } from '@context/CartContext'
 import { useWishlist } from '@context/WishlistContext'
@@ -46,22 +59,118 @@ const heroSlides = [
 ]
 
 const mainCategories = [
-  { name: 'Men', subcategories: ['Trending', 'Shirts', 'T-Shirts', 'Jeans', 'Pants', 'Track Pants', 'Shorts', 'Underwear', 'Hoodies', 'Clothes', 'Shoes', 'Sneakers', 'Slippers', 'Watches', 'Accessories', 'Sportswear', 'Exclusive Collections'] },
-  { name: 'Women', subcategories: ['Sarees', 'Blouses', 'Dresses', 'Kurtis', 'Cosmetics', 'Jewelry', 'Handbags', 'Footwear', 'Makeup', 'Fashion Accessories', 'Exclusive Collections', 'Trending Styles'] },
-  { name: 'Kids', subcategories: ['Clothing', 'School Wear', 'Shoes', 'Toys', 'Accessories', 'Trending Collections'] },
-  { name: 'Footwear', subcategories: ['Sneakers', 'Boots', 'Loafers', 'Oxfords', 'High Heels', 'Slippers'] },
-  { name: 'Accessories', subcategories: ['Exclusive Watches', 'Leather Handbags', 'Fine Jewelry', 'Sunglasses', 'Wallets'] },
-  { name: 'Sportswear', subcategories: ['Athleisure', 'Hoodies', 'Track Pants', 'Running Shoes', 'Caps'] },
-  { name: 'Exclusive Collections', subcategories: ['Pure Banarasi Silk', 'Premium Cotton', 'Elite Leather', 'Designer Drops'] },
-  { name: 'Trending Fashion', subcategories: ['Weekend Drops', 'Summer wear', 'Athletic Sneakers'] }
+  { 
+    name: 'Men', 
+    icon: GiSuits, 
+    subcategories: ['Trending', 'Shirts', 'T-Shirts', 'Jeans', 'Pants', 'Track Pants', 'Shorts', 'Underwear', 'Hoodies', 'Clothes', 'Shoes', 'Sneakers', 'Slippers', 'Watches', 'Accessories', 'Sportswear', 'Exclusive Collections'] 
+  },
+  { 
+    name: 'Women', 
+    icon: GiDress, 
+    subcategories: ['Trending', 'Sarees', 'Blouses', 'Dresses', 'Kurtis', 'Cosmetics', 'Jewelry', 'Handbags', 'Footwear', 'Makeup', 'Fashion Accessories', 'Exclusive Collections', 'Trending Styles'] 
+  },
+  { 
+    name: 'Kids', 
+    icon: FaChild, 
+    subcategories: ['Trending', 'Clothing', 'T-Shirts', 'Jeans', 'School Wear', 'Shoes', 'Toys', 'Accessories', 'Trending Collections'] 
+  },
+  { 
+    name: 'Footwear', 
+    icon: GiRunningShoe, 
+    subcategories: ['Trending', 'Sneakers', 'Boots', 'Loafers', 'Oxfords', 'High Heels', 'Slippers', 'Running Shoes'] 
+  },
+  { 
+    name: 'Accessories', 
+    icon: GiWatch, 
+    subcategories: ['Trending', 'Exclusive Watches', 'Leather Handbags', 'Fine Jewelry', 'Sunglasses', 'Wallets', 'Caps', 'Belts'] 
+  },
+  { 
+    name: 'Sportswear', 
+    icon: RiRunLine, 
+    subcategories: ['Trending', 'Athleisure', 'Track Pants', 'T-Shirts', 'Hoodies', 'Running Shoes', 'Shorts', 'Caps'] 
+  },
+  { 
+    name: 'Exclusive Collections', 
+    icon: GiCrown, 
+    subcategories: ['Trending', 'Pure Banarasi Silk', 'Premium Cotton', 'Elite Leather', 'Designer Drops', 'Suits & Blazers'] 
+  },
+  { 
+    name: 'Trending Fashion', 
+    icon: RiFireLine, 
+    subcategories: ['Weekend Drops', 'Summer wear', 'Streetwear', 'Athletic Sneakers', 'Jackets'] 
+  }
 ]
 
-const servicesList = [
-  { icon: FiTruck, title: 'Free Fast Delivery', desc: 'On orders above ₹1,999' },
-  { icon: FiShield, title: '100% Original Products', desc: 'Genuine high-quality items' },
-  { icon: FiRefreshCw, title: 'Easy 7-Day Returns', desc: '7-day easy returns & refunds' },
-  { icon: FiHeadphones, title: '24/7 Customer Support', desc: 'We are here to help you anytime' },
-]
+const subcategoryIcons = {
+  'All Collections': RiApps2Line,
+  'Trending': RiFireLine,
+  'Shirts': GiShirt,
+  'T-Shirts': RiTShirt2Line,
+  'Jeans': GiTrousers,
+  'Pants': GiTrousers,
+  'Track Pants': RiRunLine,
+  'Shorts': GiUnderwearShorts,
+  'Underwear': GiUnderwear,
+  'Hoodies': GiHoodie,
+  'Clothes': GiClothes,
+  'Clothing': GiClothes,
+  'Shoes': GiRunningShoe,
+  'Sneakers': GiConverseShoe,
+  'Slippers': FaShoePrints,
+  'Watches': GiWatch,
+  'Accessories': GiSunglasses,
+  'Sportswear': RiRunLine,
+  'Exclusive Collections': GiCrown,
+  'Sarees': GiRolledCloth,
+  'Blouses': GiShirt,
+  'Dresses': GiDress,
+  'Kurtis': GiKimono,
+  'Cosmetics': GiLipstick,
+  'Jewelry': GiDiamondRing,
+  'Fine Jewelry': GiDiamondRing,
+  'Handbags': FaShoppingBag,
+  'Leather Handbags': FaShoppingBag,
+  'Footwear': GiHighHeel,
+  'Makeup': GiPerfumeBottle,
+  'Fashion Accessories': GiSunglasses,
+  'Trending Styles': RiFireLine,
+  'School Wear': GiBackpack,
+  'Toys': RiBearSmileLine,
+  'Trending Collections': GiCrown,
+  'Boots': GiBoots,
+  'Loafers': FaShoePrints,
+  'Oxfords': FaShoePrints,
+  'High Heels': GiHighHeel,
+  'Running Shoes': GiRunningShoe,
+  'Exclusive Watches': GiWatch,
+  'Sunglasses': GiSunglasses,
+  'Wallets': FaShoppingBag,
+  'Caps': GiBilledCap,
+  'Belts': GiSuits,
+  'Athleisure': RiRunLine,
+  'Pure Banarasi Silk': GiRolledCloth,
+  'Premium Cotton': GiClothes,
+  'Elite Leather': GiSuits,
+  'Designer Drops': RiMagicLine,
+  'Suits & Blazers': GiSuits,
+  'Weekend Drops': RiMagicLine,
+  'Summer wear': GiSunglasses,
+  'Streetwear': GiHoodie,
+  'Athletic Sneakers': GiRunningShoe,
+  'Jackets': GiSuits
+}
+
+const getSubcategoryIcon = (name) => {
+  if (!name) return RiApps2Line
+  if (subcategoryIcons[name]) return subcategoryIcons[name]
+  const lower = name.toLowerCase()
+  for (const [key, icon] of Object.entries(subcategoryIcons)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) {
+      return icon
+    }
+  }
+  return RiApps2Line
+}
 
 const designerLabels = [
   { brand: 'Style Street Heritage', desc: 'Exquisite silk weaving & royal handloom sarees' },
@@ -136,10 +245,19 @@ function ProductCard({ product, isDarkMode }) {
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
             loading="lazy"
           />
+
+          {/* Mobile-only Quick Wishlist Button (Always visible on touch devices) */}
+          <button
+            onClick={handleWishlistToggle}
+            className="sm:hidden absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center active:scale-90 transition shadow-sm z-10"
+            aria-label="Wishlist"
+          >
+            <FiHeart size={13} className={wishlisted ? 'fill-red-500 text-red-500' : 'text-white'} />
+          </button>
           
-          {/* Glassmorphic Action Tray Overlay on Hover */}
-          <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center gap-2 sm:gap-3 transition-opacity duration-300
-            ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none md:pointer-events-auto'}`}
+          {/* Glassmorphic Action Tray Overlay on Hover (Desktop/Tablet) */}
+          <div className={`hidden sm:flex absolute inset-0 bg-black/40 backdrop-blur-[2px] items-center justify-center gap-2 sm:gap-3 transition-opacity duration-300
+            ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
             <button 
               onClick={handleAddToCart}
@@ -162,14 +280,14 @@ function ProductCard({ product, isDarkMode }) {
 
           {/* Discount badge */}
           {product.discount > 0 && (
-            <span className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 rounded-full bg-luxury-gold px-2 py-0.5 sm:px-3 sm:py-1 text-[9px] sm:text-[10px] font-black text-black shadow-glow">
+            <span className="absolute top-2 left-2 sm:top-3.5 sm:left-3.5 rounded-full bg-luxury-gold px-1.5 py-0.5 sm:px-3 sm:py-1 text-[8px] sm:text-[10px] font-black text-black shadow-glow">
               -{product.discount}%
             </span>
           )}
 
           {/* Stock Alert Badge */}
           {stockLeft <= 3 && stockLeft > 0 && (
-            <span className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 rounded-full bg-red-500 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[9px] font-bold text-white shadow-lg animate-pulse">
+            <span className="absolute top-2 right-10 sm:top-3.5 sm:right-3.5 rounded-full bg-red-500 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[9px] font-bold text-white shadow-lg animate-pulse">
               Only {stockLeft} left
             </span>
           )}
@@ -313,15 +431,21 @@ function Home() {
   return (
     <div className="min-h-screen">
       
-      {/* 1. HORIZONTALLY SCROLLABLE PREMIUM CATEGORY EXPANDER */}
-      <section className={`py-4 border-b transition-all duration-300
-        ${isDarkMode ? 'bg-luxury-black/40 border-white/5' : 'bg-luxury-offWhite/80 border-luxury-gold/15'}`}
+      {/* 1. HORIZONTALLY SCROLLABLE LUXURY CATEGORY SHOWCASE */}
+      {/* 1. COMPACT LUXURY CATEGORY & SUBCATEGORY NAVIGATION STRIP */}
+      <section className={`py-1.5 sm:py-2 border-b transition-colors duration-300 relative
+        ${isDarkMode ? 'bg-luxury-black/95 border-white/10' : 'bg-[#FAF8F5] border-black/10'}`}
       >
-        <div className="container-custom">
-          {/* Main Categories Horizontal Scroll */}
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 px-1">
+        <div className="container-custom space-y-1">
+          {/* Main Categories Row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 px-0.5 -webkit-overflow-scrolling-touch">
+            <span className="text-[10px] font-black uppercase tracking-wider text-luxury-gold shrink-0 pr-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-luxury-gold inline-block animate-pulse" />
+              Categories
+            </span>
             {mainCategories.map((cat) => {
               const isSelected = selectedCategory === cat.name
+              const CatIcon = cat.icon
               return (
                 <button
                   key={cat.name}
@@ -330,58 +454,71 @@ function Home() {
                     setSelectedCategory(cat.name)
                     setSelectedSubcategory('All')
                   }}
-                  className={`whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-bold uppercase tracking-widest transition-all duration-300 border
-                    ${isSelected 
-                      ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow' 
-                      : isDarkMode ? 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10' : 'bg-white border-black/5 text-luxury-darkBlack hover:bg-luxury-gold/10'}`}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isSelected
+                      ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow font-black'
+                      : isDarkMode
+                        ? 'bg-white/[0.04] border-white/10 text-white/80 hover:border-luxury-gold/50 hover:text-white'
+                        : 'bg-white border-black/10 text-slate-700 hover:border-luxury-gold/50 hover:text-black shadow-sm'
+                  }`}
                 >
-                  {cat.name}
+                  <CatIcon className={`text-xs ${isSelected ? 'text-black' : 'text-luxury-gold'}`} />
+                  <span className="whitespace-nowrap">{cat.name}</span>
                 </button>
               )
             })}
           </div>
 
-          {/* Subcategories Horizontal Pill Drawer */}
-          <div className={`mt-3 pt-3 border-t overflow-hidden ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
-            <p className="text-[9px] uppercase tracking-widest text-luxury-gold font-bold mb-2.5">
-              Recommended for {selectedCategory}
-            </p>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
-              <button
-                type="button"
-                onClick={() => setSelectedSubcategory('All')}
-                className={`whitespace-nowrap text-[10px] font-bold uppercase tracking-wider rounded-full px-4 py-2 transition
-                  ${selectedSubcategory === 'All'
-                    ? 'bg-luxury-gold/20 text-luxury-gold border border-luxury-gold/40' 
-                    : isDarkMode ? 'bg-white/5 text-white/60 hover:text-white border border-transparent' : 'bg-black/5 text-black/60 hover:text-black border border-transparent'}`}
-              >
-                All Collections
-              </button>
-              {currentSubcategories.map((sub) => {
-                const isSubSelected = selectedSubcategory === sub
-                return (
-                  <button
-                    key={sub}
-                    type="button"
-                    onClick={() => setSelectedSubcategory(sub)}
-                    className={`whitespace-nowrap text-[10px] font-bold uppercase tracking-wider rounded-full px-4 py-2 transition border
-                      ${isSubSelected
-                        ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow' 
-                        : isDarkMode 
-                          ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10' 
-                          : 'bg-white border-black/10 text-slate-700 hover:bg-luxury-gold/5'}`}
-                  >
-                    {sub}
-                  </button>
-                )
-              })}
-            </div>
+          {/* Subcategories Row */}
+          <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar py-0.5 px-0.5 -webkit-overflow-scrolling-touch">
+            <span className="text-[9px] font-extrabold uppercase tracking-wider text-luxury-gold/90 shrink-0 pr-1">
+              {selectedCategory}:
+            </span>
+
+            {/* All Collections Button */}
+            <button
+              type="button"
+              onClick={() => setSelectedSubcategory('All')}
+              className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all duration-200 active:scale-95 cursor-pointer ${
+                selectedSubcategory === 'All'
+                  ? 'bg-luxury-gold/25 text-luxury-gold border-luxury-gold/80 shadow-sm font-bold'
+                  : isDarkMode
+                    ? 'bg-white/[0.02] border-white/10 text-white/60 hover:text-white'
+                    : 'bg-white/80 border-black/10 text-slate-600 hover:text-black'
+              }`}
+            >
+              <RiApps2Line size={11} className={selectedSubcategory === 'All' ? 'text-luxury-gold' : 'opacity-60'} />
+              <span className="whitespace-nowrap">All Collections</span>
+            </button>
+
+            {/* Dynamic Subcategories */}
+            {currentSubcategories.map((sub) => {
+              const isSubSelected = selectedSubcategory === sub
+              const SubIcon = getSubcategoryIcon(sub)
+              return (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => setSelectedSubcategory(sub)}
+                  className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isSubSelected
+                      ? 'bg-luxury-gold/25 text-luxury-gold border-luxury-gold/80 shadow-sm font-bold'
+                      : isDarkMode
+                        ? 'bg-white/[0.02] border-white/10 text-white/60 hover:text-white'
+                        : 'bg-white/80 border-black/10 text-slate-600 hover:text-black'
+                  }`}
+                >
+                  <SubIcon size={11} className={isSubSelected ? 'text-luxury-gold' : 'opacity-60'} />
+                  <span className="whitespace-nowrap">{sub}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </section>
 
       {/* 2. CINEMATIC AUTO-SCROLLING HERO BANNER WITH PARALLAX */}
-      <section className="relative h-[80vh] min-h-[550px] overflow-hidden bg-black">
+      <section className="relative h-[42vh] sm:h-[55vh] md:h-[68vh] min-h-[300px] sm:min-h-[420px] overflow-hidden bg-black">
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
@@ -402,40 +539,40 @@ function Home() {
         </AnimatePresence>
 
         <div className="relative z-10 h-full">
-          <div className="container-custom h-full flex flex-col justify-center">
+          <div className="container-custom h-full flex flex-col justify-center pb-6 sm:pb-0">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="max-w-3xl"
+              className="max-w-2xl"
             >
               <motion.p
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-luxury-gold text-xs md:text-sm font-extrabold tracking-[0.4em] uppercase mb-4"
+                transition={{ delay: 0.3 }}
+                className="text-luxury-gold text-[9px] sm:text-xs font-extrabold tracking-[0.25em] sm:tracking-[0.35em] uppercase mb-1 sm:mb-2.5"
               >
                 {slide.subtitle}
               </motion.p>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-black leading-tight text-white whitespace-pre-line mb-6 shadow-sm">
+              <h1 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-black leading-tight text-white whitespace-pre-line mb-2 sm:mb-4 shadow-sm">
                 {slide.title}
               </h1>
-              <p className="text-white/80 text-base md:text-lg max-w-2xl mb-10 leading-relaxed">
+              <p className="text-white/80 text-[11px] sm:text-sm md:text-base max-w-xl mb-3 sm:mb-6 leading-relaxed line-clamp-2">
                 {slide.description}
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <Link 
                   to={slide.link} 
-                  className="inline-flex items-center gap-3 rounded-full bg-luxury-gold px-8 py-4 text-xs font-bold uppercase tracking-[0.25em] text-black transition hover:bg-luxury-darkGold shadow-glow"
+                  className="inline-flex items-center gap-1.5 sm:gap-2.5 rounded-full bg-luxury-gold px-4 py-2 sm:px-6 sm:py-3 text-[9px] sm:text-xs font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] text-black transition hover:bg-luxury-darkGold shadow-glow"
                 >
                   <span>{slide.cta}</span>
-                  <FiArrowRight size={14} />
+                  <FiArrowRight size={12} />
                 </Link>
                 <Link 
-                  to="/products"
-                  className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-8 py-4 text-xs font-bold uppercase tracking-[0.25em] text-white hover:bg-white/25 transition"
+                  to="/products" 
+                  className="inline-flex items-center gap-1.5 sm:gap-2.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 sm:px-6 sm:py-3 text-[9px] sm:text-xs font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white hover:bg-white/25 transition"
                 >
-                  <FiZap size={14} className="text-luxury-gold" />
+                  <FiZap size={12} className="text-luxury-gold" />
                   <span>All Products</span>
                 </Link>
               </div>
@@ -444,27 +581,27 @@ function Home() {
         </div>
 
         {/* Carousel Slider manual arrows */}
-        <div className="absolute bottom-8 right-8 z-20 flex items-center gap-3">
+        <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 z-20 flex items-center gap-2">
           <button
             type="button"
             onClick={() => goToSlide(-1)}
-            className="w-12 h-12 rounded-full border border-white/30 bg-black/40 text-white flex items-center justify-center hover:bg-luxury-gold hover:text-black hover:border-luxury-gold transition-all"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/30 bg-black/40 text-white flex items-center justify-center hover:bg-luxury-gold hover:text-black hover:border-luxury-gold transition-all"
             aria-label="Previous couture view"
           >
-            <FiChevronLeft size={20} />
+            <FiChevronLeft size={16} />
           </button>
           <button
             type="button"
             onClick={() => goToSlide(1)}
-            className="w-12 h-12 rounded-full border border-white/30 bg-black/40 text-white flex items-center justify-center hover:bg-luxury-gold hover:text-black hover:border-luxury-gold transition-all"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/30 bg-black/40 text-white flex items-center justify-center hover:bg-luxury-gold hover:text-black hover:border-luxury-gold transition-all"
             aria-label="Next couture view"
           >
-            <FiChevronRight size={20} />
+            <FiChevronRight size={16} />
           </button>
         </div>
 
         {/* Slide Indicator Dots */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
           {heroSlides.map((_, idx) => (
             <button
               key={idx}
@@ -474,36 +611,13 @@ function Home() {
                 setCurrentSlide(idx)
               }}
               aria-label={`Go to slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-500 ${idx === currentSlide ? 'w-10 bg-luxury-gold shadow-glow' : 'w-4 bg-white/40'}`}
+              className={`h-1 rounded-full transition-all duration-500 ${idx === currentSlide ? 'w-7 bg-luxury-gold shadow-glow' : 'w-3 bg-white/40'}`}
             />
           ))}
         </div>
       </section>
 
-      {/* 3. PREMIUM SERVICES / BRAND STATS STRIP */}
-      <section className={`py-6 border-b transition-all duration-300
-        ${isDarkMode ? 'bg-luxury-charcoal border-white/5' : 'bg-white border-black/5'}`}
-      >
-        <div className="container-custom">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {servicesList.map((item, index) => (
-              <div 
-                key={index} 
-                className={`flex items-center gap-3.5 p-4 rounded-2xl border transition-all
-                  ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-luxury-offWhite border-luxury-gold/20'}`}
-              >
-                <div className="w-11 h-11 rounded-2xl bg-luxury-gold/10 flex items-center justify-center text-luxury-gold shadow-sm shrink-0">
-                  <item.icon size={18} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider">{item.title}</h4>
-                  <p className="text-[10px] opacity-60 mt-0.5">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* 4. DYNAMIC FEED - PERSONALIZED RECOMMENDATIONS */}
       <section className={`py-16 transition-colors duration-300 ${isDarkMode ? 'bg-[#090909]' : 'bg-[#fafafa]'}`}>

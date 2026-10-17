@@ -248,16 +248,29 @@ export default function OrderReceipt({
       </div>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-500 space-y-1">
-        <p className="font-serif italic text-black font-semibold text-sm">
-          Thank you for shopping with STYLE STREET
-        </p>
-        <p className="text-[10px] uppercase tracking-widest text-[#B8860B] font-bold">
-          Wear Your Story
-        </p>
-        <p className="text-[10px] text-gray-400">
-          For support or returns, visit stylestreet.in/support or email support@stylestreet.in
-        </p>
+      <div className="mt-8 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+        <div className="flex items-center gap-3">
+          <QRCodeGenerator
+            value={`${typeof window !== 'undefined' ? window.location.origin : 'https://stylestreet.in'}/verify-receipt?order=${receipt.orderNumber}&invoice=${receipt.invoiceNumber || 'INV-' + receipt.orderNumber}`}
+            size={64}
+            caption="Scan to Verify"
+          />
+          <div className="text-left text-[10px] space-y-0.5">
+            <p className="font-serif italic text-black font-semibold text-xs">
+              Thank you for shopping with STYLE STREET
+            </p>
+            <p className="text-[10px] uppercase tracking-widest text-[#B8860B] font-bold">
+              Wear Your Story
+            </p>
+            <p className="text-[10px] text-gray-400">
+              For support or queries, email support@stylestreet.in
+            </p>
+          </div>
+        </div>
+        <div className="text-right text-[10px] font-mono text-gray-400">
+          <p>Certified E-Commerce Order Record</p>
+          <p>STYLE STREET Retail Marketplace</p>
+        </div>
       </div>
     </div>
   );

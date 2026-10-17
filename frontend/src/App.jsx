@@ -47,11 +47,13 @@ const AdminSellers = lazy(() => import('@pages/Admin/Sellers'))
 const AdminMarketing = lazy(() => import('@pages/Admin/Marketing'))
 const AdminOrderReceipt = lazy(() => import('@pages/Admin/OrderReceiptPage'))
 const AdminBrandingSettings = lazy(() => import('@pages/Admin/BrandingSettings'))
+const AdminNotifications = lazy(() => import('@pages/Admin/Notifications'))
 
 // Seller & Delivery Dashboards (Lazy)
 const SellerDashboard = lazy(() => import('@pages/Seller/Dashboard'))
 const SellerOrderLabel = lazy(() => import('@pages/Seller/OrderLabelPage'))
 const DeliveryDashboard = lazy(() => import('@pages/Delivery/Dashboard'))
+const VerifyReceipt = lazy(() => import('@pages/VerifyReceipt'))
 
 // Marketing Components
 import AnnouncementBar from '@components/Marketing/AnnouncementBar'
@@ -76,7 +78,9 @@ import { useLocation } from 'react-router-dom'
 
 function MainAppLayout({ isDarkMode }) {
   const location = useLocation()
-  const isDocumentView = location.pathname.includes('/receipt')
+  const isDocumentView = location.pathname.includes('/receipt') || location.pathname.includes('/verify-receipt')
+  const isAdminView = location.pathname.startsWith('/admin')
+  const isDedicatedConsole = isDocumentView || isAdminView
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
@@ -88,21 +92,23 @@ function MainAppLayout({ isDarkMode }) {
       />
 
       {/* Announcement Bar */}
-      {!isDocumentView && <AnnouncementBar />}
+      {!isDedicatedConsole && <AnnouncementBar />}
 
       {/* Header */}
-      {!isDocumentView && <Header isDarkMode={isDarkMode} />}
+      {!isDedicatedConsole && <Header isDarkMode={isDarkMode} />}
 
       {/* Choose Shop / Brand Modal */}
-      {!isDocumentView && <ChooseShopModal />}
+      {!isDedicatedConsole && <ChooseShopModal />}
 
       {/* Main Content */}
-      <main className={`transition-colors duration-300 ${isDocumentView ? 'p-0 bg-slate-100' : 'pb-20 md:pb-0 ' + (isDarkMode ? 'bg-luxury-charcoal text-luxury-white' : 'bg-luxury-white text-luxury-darkBlack')}`}>
+      <main className={`transition-colors duration-300 ${isDedicatedConsole ? 'p-0' : 'pb-20 md:pb-0 ' + (isDarkMode ? 'bg-luxury-charcoal text-luxury-white' : 'bg-luxury-white text-luxury-darkBlack')}`}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Dedicated Document Routes (Free of Navigation & Sidebars) */}
             <Route path="/admin/orders/:orderId/receipt" element={<ProtectedRoute requiredRole="admin"><AdminOrderReceipt /></ProtectedRoute>} />
             <Route path="/seller/orders/:orderId/receipt" element={<ProtectedRoute requiredRole="seller"><SellerOrderLabel /></ProtectedRoute>} />
+            <Route path="/orders/:orderId/receipt" element={<ProtectedRoute><AdminOrderReceipt isCustomerView={true} /></ProtectedRoute>} />
+            <Route path="/verify-receipt" element={<VerifyReceipt />} />
 
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
@@ -118,8 +124,8 @@ function MainAppLayout({ isDarkMode }) {
             <Route path="/policies" element={<Navigate to="/profile?tab=help-policies" replace />} />
             <Route path="/account" element={<Navigate to="/profile" replace />} />
             <Route path="/customer" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/customer/dashboard" element={<Navigate to="/customer" replace />} />
             <Route path="/become-a-seller" element={<BecomeSeller />} />
+            <Route path="/become-seller" element={<BecomeSeller />} />
             <Route path="/shop/:slug" element={<ShopPage />} />
             <Route path="/shops" element={<Products />} />
 
@@ -151,6 +157,7 @@ function MainAppLayout({ isDarkMode }) {
               <Route path="returns" element={<AdminReturns />} />
               <Route path="sellers" element={<AdminSellers />} />
               <Route path="marketing" element={<AdminMarketing />} />
+              <Route path="notifications" element={<AdminNotifications />} />
               <Route path="branding" element={<AdminBrandingSettings />} />
             </Route>
 
@@ -161,16 +168,16 @@ function MainAppLayout({ isDarkMode }) {
       </main>
 
       {/* Footer */}
-      {!isDocumentView && <Footer isDarkMode={isDarkMode} />}
+      {!isDedicatedConsole && <Footer isDarkMode={isDarkMode} />}
 
       {/* Mobile Navigation */}
-      {!isDocumentView && <MobileNavigation />}
+      {!isDedicatedConsole && <MobileNavigation />}
 
       {/* Exit Intent Popup */}
-      {!isDocumentView && <ExitIntentPopup />}
+      {!isDedicatedConsole && <ExitIntentPopup />}
 
-      {/* AI Chatbot */}
-      {!isDocumentView && <AIChatbot />}
+      {/* Shopping Concierge */}
+      {!isDedicatedConsole && <AIChatbot />}
       {/* Toast Notifications */}
       <ToastContainer
         position="bottom-right"

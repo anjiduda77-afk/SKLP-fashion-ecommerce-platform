@@ -115,7 +115,18 @@ export const getSellerProducts = async (req, res) => {
       { sku: { $regex: search, $options: 'i' } }
     ];
   }
-  if (category) query.category = category;
+  if (category && category !== 'all') {
+    const cats = category.split(',').map(c => c.trim().toLowerCase()).filter(Boolean);
+    const expanded = new Set();
+    cats.forEach(c => {
+      expanded.add(c);
+      expanded.add(c.replace(/\s+/g, '-'));
+      if (c === 't shirts' || c === 'tshirt' || c === 't-shirt') { expanded.add('t-shirts'); expanded.add('t shirts'); }
+      if (c === 'fashion wear' || c === 'fashionwear') { expanded.add('fashion-wear'); expanded.add('fashion wear'); }
+      if (c === 'footwear' || c === 'shoes') { expanded.add('shoes'); expanded.add('footwear'); }
+    });
+    query.category = { $in: Array.from(expanded) };
+  }
   if (status === 'active') query.isActive = true;
   else if (status === 'inactive') query.isActive = false;
 
@@ -547,10 +558,11 @@ export const updateSellerProfile = async (req, res) => {
   const sellerDoc = await Seller.findOne({ userId: req.user.id });
   if (sellerDoc) {
     if (logo) sellerDoc.logo = logo;
-    if (storeName && !sellerDoc.brandLocked) {
-      sellerDoc.shopName = storeName;
-      sellerDoc.brandName = storeName;
-      sellerDoc.brandNameNormalized = storeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const effectiveBrandName = brandName || storeName;
+    if (effectiveBrandName && !sellerDoc.brandLocked) {
+      sellerDoc.shopName = storeName || effectiveBrandName;
+      sellerDoc.brandName = effectiveBrandName;
+      sellerDoc.brandNameNormalized = effectiveBrandName.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
     if (storeDescription) sellerDoc.description = storeDescription;
     await sellerDoc.save();

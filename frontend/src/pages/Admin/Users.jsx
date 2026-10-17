@@ -30,15 +30,15 @@ function UserDetailModal({ user, onClose, onBlock, onChangeRole, onDelete }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className={`w-full max-w-md rounded-3xl border animate-fade-in shadow-2xl ${modalBg}`}>
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
-          <h3 className={`text-lg font-serif font-bold text-luxury-gold`}>Account Details</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+      <div className={`w-full max-w-md rounded-3xl border animate-fade-in shadow-2xl max-h-[85vh] overflow-y-auto ${modalBg}`}>
+        <div className={`flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
+          <h3 className={`text-base sm:text-lg font-serif font-bold text-luxury-gold`}>Account Details</h3>
           <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors text-lg font-bold ${isDarkMode ? 'hover:bg-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}>
             <FiX size={18} />
           </button>
         </div>
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Avatar & Name */}
           <div className="flex items-center gap-4">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
@@ -181,17 +181,17 @@ function CreateUserModal({ onClose, onCreated, isDarkMode }) {
   const inputBg = isDarkMode ? 'bg-luxury-black border-white/10 text-white' : 'bg-gray-50 border-gray-300 text-black'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className={`w-full max-w-lg rounded-3xl border p-6 animate-fade-in shadow-2xl ${modalBg}`}>
-        <div className="flex items-center justify-between mb-5 border-b border-current/10 pb-3">
-          <h3 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+      <div className={`w-full max-w-lg rounded-3xl border p-4 sm:p-6 max-h-[85vh] overflow-y-auto animate-fade-in shadow-2xl ${modalBg}`}>
+        <div className="flex items-center justify-between mb-4 sm:mb-5 border-b border-current/10 pb-3">
+          <h3 className="text-lg sm:text-xl font-serif font-bold text-luxury-gold flex items-center gap-2">
             <FiPlus /> Create New Account
           </h3>
           <button onClick={onClose} className="p-1 hover:text-luxury-gold"><FiX size={20} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">First Name *</label>
               <input
@@ -213,7 +213,7 @@ function CreateUserModal({ onClose, onCreated, isDarkMode }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">Email Address</label>
               <input
@@ -237,7 +237,7 @@ function CreateUserModal({ onClose, onCreated, isDarkMode }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider mb-1 opacity-70">Account Role *</label>
               <select

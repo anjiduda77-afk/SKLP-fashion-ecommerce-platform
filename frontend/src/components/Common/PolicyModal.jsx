@@ -245,7 +245,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                   <FiPhone size={32} className="text-purple-400 shrink-0" />
                   <div>
                     <h3 className="font-bold text-purple-400 uppercase text-xs tracking-wider">24/7 Dedicated Customer Resolution</h3>
-                    <p className="text-xs opacity-80 mt-0.5">Instant AI Assistance, Phone support, & Email ticket response within 2 hours.</p>
+                    <p className="text-xs opacity-80 mt-0.5">Instant Helpdesk Support, Phone assistance, & Email ticket response within 2 hours.</p>
                   </div>
                 </div>
 
@@ -262,7 +262,7 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                         <span className="font-bold">support@stylestreet.in</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="opacity-80">💬 Live AI Chatbot:</span>
+                        <span className="opacity-80">💬 Live Chat Desk:</span>
                         <span className="font-bold text-green-400">Online 24/7</span>
                       </div>
                     </div>

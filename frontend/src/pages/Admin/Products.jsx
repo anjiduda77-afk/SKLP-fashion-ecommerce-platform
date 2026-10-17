@@ -10,7 +10,26 @@ import { uploadService } from '../../services/apiServices'
 import adminService from '../../services/adminService'
 
 const CATEGORIES = ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear']
-const GENDERS = ['men', 'women', 'kids', 'unisex']
+const GENDERS = ['all', 'men', 'women', 'kids', 'unisex']
+
+const CATEGORY_LABELS = {
+  'shirts': 'Shirts',
+  't-shirts': 'T-Shirts (T Shirts)',
+  'jeans': 'Jeans',
+  'sarees': 'Sarees',
+  'hoodies': 'Hoodies',
+  'shoes': 'Shoes (Footwear)',
+  'accessories': 'Accessories',
+  'fashion-wear': 'Fashion Wear'
+}
+
+const GENDER_LABELS = {
+  'all': 'All (Universal)',
+  'men': 'Men',
+  'women': 'Women',
+  'kids': 'Kids',
+  'unisex': 'Unisex'
+}
 
 const EMPTY_FORM = {
   name: '', category: 'shirts', gender: 'men', price: '', originalPrice: '',
@@ -250,35 +269,35 @@ function ProductModal({ product, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
       <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl animate-fade-in ${isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
-          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product ? 'Edit Product' : 'Add New Product'}</h3>
+        <div className={`flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
+          <h3 className={`text-lg sm:text-xl font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product ? 'Edit Product' : 'Add New Product'}</h3>
           <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-luxury-darkGray text-luxury-mediumGray hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'}`}><FiX /></button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           <div>
             <label className={labelCls}>Product Name *</label>
             <input name="name" value={form.name} onChange={handleChange} placeholder="e.g. Silk Kurta Set" className={inputCls} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className={labelCls}>Category *</label>
               <select name="category" value={form.category} onChange={handleChange} className={inputCls}>
-                {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
+                {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c] || c}</option>)}
               </select>
             </div>
             <div>
               <label className={labelCls}>Gender *</label>
               <select name="gender" value={form.gender} onChange={handleChange} className={inputCls}>
-                {GENDERS.map((g) => <option key={g} value={g} className="capitalize">{g}</option>)}
+                {GENDERS.map((g) => <option key={g} value={g}>{GENDER_LABELS[g] || g}</option>)}
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className={labelCls}>Price (₹) *</label>
               <input name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" className={inputCls} />
@@ -292,7 +311,7 @@ function ProductModal({ product, onSave, onClose }) {
               <input name="discount" type="number" value={form.discount} onChange={handleChange} placeholder="0" min="0" max="100" className={inputCls} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className={labelCls}>Stock *</label>
               <input name="stock" type="number" value={form.stock} onChange={handleChange} placeholder="0" className={inputCls} />
@@ -323,7 +342,7 @@ function ProductModal({ product, onSave, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className={`flex gap-3 px-6 py-4 border-t ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
+        <div className={`flex gap-3 px-4 sm:px-6 py-3.5 sm:py-4 border-t ${isDarkMode ? 'border-luxury-darkGray' : 'border-gray-200'}`}>
           <button onClick={onClose} className={`flex-1 py-2.5 border rounded-xl font-semibold text-sm transition-colors ${isDarkMode ? 'border-luxury-darkGray text-luxury-mediumGray hover:text-white hover:border-luxury-mediumGray' : 'border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-500'}`}>Cancel</button>
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 bg-luxury-gold text-luxury-black font-bold rounded-xl hover:bg-luxury-darkGold transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
             {saving ? <span className="w-4 h-4 border-2 border-luxury-black border-t-transparent rounded-full animate-spin" /> : <FiSave size={15} />}
@@ -516,8 +535,8 @@ function AdminProducts() {
 
       {/* Filters + Bulk Actions */}
       <div className={`rounded-xl border p-4 space-y-3 ${cardBg}`}>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-48 relative">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
+          <div className="flex-1 min-w-0 sm:min-w-48 relative">
             <FiSearch size={15} className={`absolute left-3 top-3 ${textSecondary}`} />
             <input
               value={search}
@@ -526,15 +545,17 @@ function AdminProducts() {
               className={`w-full pl-9 py-2 border text-sm rounded-lg ${inputBg}`}
             />
           </div>
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg min-w-32 ${inputBg}`}>
-            <option value="All">All Categories</option>
-            {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`border text-sm px-3 py-2 rounded-lg min-w-28 ${inputBg}`}>
-            <option value="All">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={`flex-1 sm:flex-initial border text-sm px-3 py-2 rounded-lg sm:min-w-32 ${inputBg}`}>
+              <option value="All">All Categories</option>
+              {CATEGORIES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`flex-1 sm:flex-initial border text-sm px-3 py-2 rounded-lg sm:min-w-28 ${inputBg}`}>
+              <option value="All">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
         </div>
 
         {/* Bulk Actions Bar */}
@@ -634,7 +655,7 @@ function AdminProducts() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => { setEditProduct(product); setShowModal(true) }}
                         className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-luxury-gold/10 text-luxury-mediumGray hover:text-luxury-gold' : 'hover:bg-luxury-gold/10 text-gray-400 hover:text-luxury-gold'}`}

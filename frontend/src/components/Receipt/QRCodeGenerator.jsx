@@ -9,6 +9,7 @@ export default function QRCodeGenerator({
   value,
   size = 80,
   level = 'M',
+  caption = 'Scan to Track',
   className = ''
 }) {
   if (!value) return null;
@@ -23,9 +24,11 @@ export default function QRCodeGenerator({
         fgColor="#000000"
         bgColor="#ffffff"
       />
-      <span className="text-[7.5px] uppercase font-mono tracking-wider font-semibold text-black/60 mt-0.5">
-        Scan to Track
-      </span>
+      {caption && (
+        <span className="text-[7.5px] uppercase font-mono tracking-wider font-semibold text-black/60 mt-0.5">
+          {caption}
+        </span>
+      )}
     </div>
   );
 }

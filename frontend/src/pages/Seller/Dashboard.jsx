@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
 import BrandName from '@components/Common/BrandName'
@@ -10,13 +11,32 @@ import {
   FiX, FiSettings, FiAward, FiClock, FiCheckCircle,
   FiCreditCard, FiArrowRight,
   FiRefreshCw, FiExternalLink, FiCheck,
-  FiPrinter, FiChevronDown, FiPackage
+  FiPrinter, FiChevronDown, FiPackage, FiHome
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerService, uploadService } from '@services/apiServices'
 
 const CATEGORIES = ['shirts', 't-shirts', 'jeans', 'sarees', 'hoodies', 'shoes', 'accessories', 'fashion-wear']
-const GENDERS = ['men', 'women', 'kids', 'unisex']
+const GENDERS = ['all', 'men', 'women', 'kids', 'unisex']
+
+const CATEGORY_LABELS = {
+  'shirts': 'Shirts',
+  't-shirts': 'T-Shirts (T Shirts)',
+  'jeans': 'Jeans',
+  'sarees': 'Sarees',
+  'hoodies': 'Hoodies',
+  'shoes': 'Shoes (Footwear)',
+  'accessories': 'Accessories',
+  'fashion-wear': 'Fashion Wear'
+}
+
+const GENDER_LABELS = {
+  'all': 'All (Universal / Everyone)',
+  'men': 'Men',
+  'women': 'Women',
+  'kids': 'Kids',
+  'unisex': 'Unisex'
+}
 
 const EMPTY_FORM = {
   name: '', price: '', originalPrice: '', discount: '', category: 'shirts', 
@@ -758,11 +778,11 @@ function SellerDashboard() {
   const labelCls = `block text-[10px] font-bold uppercase tracking-wider mb-2 ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`
 
   return (
-    <div className="min-h-screen py-10">
+    <div className="min-h-screen py-4 sm:py-6 md:py-10 px-2 sm:px-4 md:px-0">
       <div className="container-custom">
         
         {/* Banner Welcome Panel */}
-        <div className={`rounded-[1.5rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-6 sm:mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm transition-all duration-300
+        <div className={`rounded-[1.25rem] sm:rounded-[2rem] border p-4 sm:p-6 md:p-8 mb-4 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 sm:gap-4 shadow-sm transition-all duration-300
           ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white shadow-dark-glow' : 'bg-white border-luxury-gold/25 text-luxury-darkBlack shadow-hover'}`}
         >
           <div>
@@ -771,13 +791,21 @@ function SellerDashboard() {
               <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest opacity-80">Partner Portal</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-wide">Seller Studio</h1>
-            <p className="text-xs opacity-70 mt-1">
+            <p className="text-xs opacity-75 mt-0.5 sm:mt-1">
               Manage listings, analytics, and dispatch logistics for <strong>{sellerProfile.storeName || user?.firstName || 'Premium House'}</strong>
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <span className={`px-4 py-2 border rounded-full text-xs font-bold uppercase tracking-wider transition-colors
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider hover:bg-luxury-lightGold transition-all shadow-glow touch-target"
+              title="Return to Customer Storefront"
+            >
+              <FiHome size={14} />
+              <span>Store Home</span>
+            </Link>
+            <span className={`px-3 sm:px-4 py-1.5 sm:py-2 border rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors
               ${sellerProfile.gstNumber 
                 ? 'bg-green-500/10 text-green-500 border-green-500/25' 
                 : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/25 animate-pulse'}`}>
@@ -787,7 +815,14 @@ function SellerDashboard() {
         </div>
 
         {/* ── Mobile Horizontal Tab Bar (hidden on lg+) ── */}
-        <div className={`lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-4 px-4`}>
+        <div className={`lg:hidden flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0`}>
+          <Link
+            to="/"
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border text-[11px] sm:text-xs font-bold uppercase tracking-wider bg-luxury-gold/20 text-luxury-gold border-luxury-gold/40 hover:bg-luxury-gold hover:text-black transition-all touch-target"
+          >
+            <FiHome size={13} />
+            <span className="whitespace-nowrap">Store Home</span>
+          </Link>
           {tabItems.map((item) => (
             <button
               key={item.id}
@@ -799,12 +834,12 @@ function SellerDashboard() {
                 }
                 setActiveTab(item.id)
               }}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wider transition-all duration-300 touch-target ${
+              className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 touch-target ${
                 activeTab === item.id
                   ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow'
                   : isDarkMode
-                    ? 'bg-white/5 border-white/10 text-white/70'
-                    : 'bg-white border-black/10 text-slate-700'
+                    ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                    : 'bg-white border-black/10 text-slate-700 hover:bg-gray-50'
               }`}
             >
               {item.icon}
@@ -818,6 +853,14 @@ function SellerDashboard() {
           
           {/* LEFT SIDEBAR: Nav Items (desktop only) */}
           <div className="hidden lg:block space-y-3">
+            <Link
+              to="/"
+              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30 hover:bg-luxury-gold hover:text-black text-xs font-bold uppercase tracking-widest transition-all mb-4"
+              title="Return to Customer Storefront"
+            >
+              <FiHome size={15} />
+              <span>Store Front (Home)</span>
+            </Link>
             {tabItems.map((item) => (
               <button
                 key={item.id}
@@ -851,7 +894,7 @@ function SellerDashboard() {
               <div className="space-y-8">
                 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
                   {[
                     { title: 'Total Revenue', value: `₹${(metrics?.totalRevenue || 0).toLocaleString('en-IN')}`, icon: <FiDollarSign />, color: 'text-green-500' },
                     { title: 'Items Catalog', value: metrics?.totalProducts || 0, icon: <FiShoppingBag />, color: 'text-luxury-gold' },
@@ -860,14 +903,14 @@ function SellerDashboard() {
                   ].map((stat, idx) => (
                     <div 
                       key={idx} 
-                      className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between transition-all duration-300
+                      className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border shadow-sm flex flex-col justify-between transition-all duration-300
                         ${isDarkMode ? 'bg-luxury-charcoal border-white/5 text-white' : 'bg-white border-black/5'}`}
                     >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-[9px] uppercase font-bold tracking-wider opacity-60">{stat.title}</span>
-                        <span className={`${stat.color} text-base`}>{stat.icon}</span>
+                      <div className="flex justify-between items-center mb-2 sm:mb-3">
+                        <span className="text-[9px] uppercase font-bold tracking-wider opacity-60 truncate max-w-[85px] xs:max-w-none">{stat.title}</span>
+                        <span className={`${stat.color} text-sm sm:text-base flex-shrink-0`}>{stat.icon}</span>
                       </div>
-                      <p className="text-xl font-extrabold tracking-wide text-luxury-gold">{stat.value}</p>
+                      <p className="text-base sm:text-xl font-extrabold tracking-wide text-luxury-gold truncate">{stat.value}</p>
                     </div>
                   ))}
                 </div>
@@ -1066,7 +1109,7 @@ function SellerDashboard() {
                     >
                       <option value="">All Categories</option>
                       {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+                        <option key={cat} value={cat}>{CATEGORY_LABELS[cat] || cat.toUpperCase()}</option>
                       ))}
                     </select>
 
@@ -1301,28 +1344,78 @@ function SellerDashboard() {
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
-                      <label className={labelCls}>Category *</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className={labelCls}>Category Classification *</label>
+                        <span className="text-[10px] text-luxury-gold font-bold uppercase tracking-wider">All 8 Types</span>
+                      </div>
                       <select 
                         value={form.category}
                         onChange={(e) => setForm({ ...form, category: e.target.value })}
                         className={inputCls}
                       >
                         {CATEGORIES.map(cat => (
-                          <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+                          <option key={cat} value={cat}>{CATEGORY_LABELS[cat] || cat.toUpperCase()}</option>
                         ))}
                       </select>
+                      {/* Interactive Visual Category Selector */}
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {CATEGORIES.map(cat => {
+                          const isSel = form.category === cat
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setForm(prev => ({ ...prev, category: cat }))}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                                isSel
+                                  ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow font-bold scale-[1.02]'
+                                  : isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white/70 hover:border-luxury-gold/40 hover:text-white'
+                                    : 'bg-black/5 border-black/10 text-black/70 hover:border-luxury-gold/40 hover:text-black'
+                              }`}
+                            >
+                              {CATEGORY_LABELS[cat] || cat}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                     <div>
-                      <label className={labelCls}>Gender Alignment *</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className={labelCls}>Gender Alignment *</label>
+                        <span className="text-[10px] text-luxury-gold font-bold uppercase tracking-wider">All Demographics</span>
+                      </div>
                       <select 
                         value={form.gender}
                         onChange={(e) => setForm({ ...form, gender: e.target.value })}
                         className={inputCls}
                       >
                         {GENDERS.map(g => (
-                          <option key={g} value={g}>{g.toUpperCase()}</option>
+                          <option key={g} value={g}>{GENDER_LABELS[g] || g.toUpperCase()}</option>
                         ))}
                       </select>
+                      {/* Interactive Visual Gender Selector */}
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {GENDERS.map(g => {
+                          const isSel = form.gender === g
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => setForm(prev => ({ ...prev, gender: g }))}
+                              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                                isSel
+                                  ? 'bg-luxury-gold text-black border-luxury-gold shadow-glow font-bold scale-[1.02]'
+                                  : isDarkMode
+                                    ? 'bg-white/5 border-white/10 text-white/70 hover:border-luxury-gold/40 hover:text-white'
+                                    : 'bg-black/5 border-black/10 text-black/70 hover:border-luxury-gold/40 hover:text-black'
+                              }`}
+                            >
+                              {GENDER_LABELS[g] || g}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
 

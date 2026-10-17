@@ -44,7 +44,7 @@ export default function ShippingLabel({
     : new Date().toLocaleDateString('en-IN');
 
   const barcodeValue = pkg.packageId || receipt.orderNumber;
-  const trackingUrl = receipt.trackingQRUrl || `https://stylestreet.in/orders/${receipt.orderNumber}/track`;
+  const trackingUrl = receipt.trackingQRUrl || (typeof window !== 'undefined' ? `${window.location.origin}/verify-receipt?order=${receipt.orderNumber}&invoice=${receipt.invoiceNumber || 'INV-' + receipt.orderNumber}` : `https://stylestreet.in/verify-receipt?order=${receipt.orderNumber}`);
 
   return (
     <div

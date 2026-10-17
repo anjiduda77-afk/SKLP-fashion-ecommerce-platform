@@ -154,7 +154,6 @@ export const calculateDeliveryBreakdownForSeller = async (
 
   const {
     storeLocation,
-    deliverySlabs,
     platformFeePercent,
     deliveryPartnerEnabled,
     maxServiceDistanceKm = 4000,

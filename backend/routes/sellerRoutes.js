@@ -21,6 +21,7 @@ router.use(verifyToken)
 router.get('/check-shop-name', asyncHandler(sellerApplicationController.checkShopNameAvailability))
 router.post('/apply', asyncHandler(sellerApplicationController.submitSellerApplication))
 router.get('/application/status', asyncHandler(sellerApplicationController.getMyApplicationStatus))
+router.get('/application/agreement-pdf', asyncHandler(sellerApplicationController.getSellerAgreementPdf))
 
 // Genuine Multi-Point KYC Verification
 router.get('/kyc/status', asyncHandler(sellerKycController.getMyKycStatus))
@@ -54,6 +55,8 @@ router.post('/offers', asyncHandler(sellerOfferController.createOrUpdateSellerOf
 // Orders & Suborders Fulfillment
 router.get('/orders', asyncHandler(sellerController.getSellerOrders))
 router.get('/orders/:orderId/receipt', asyncHandler(receiptController.getSellerOrderReceipt))
+router.get('/orders/:orderId/packing-slip-pdf', asyncHandler(receiptController.getSellerPackingSlipPdf))
+router.get('/orders/:orderId/invoice-pdf', asyncHandler(receiptController.getSellerTaxInvoicePdf))
 router.put('/orders/:id/dispatch', asyncHandler(sellerController.dispatchOrder))
 
 // Settlement & Payout Ledger

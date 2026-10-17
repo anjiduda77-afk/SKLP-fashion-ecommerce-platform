@@ -1,7 +1,7 @@
 {
   "name": "sklp-frontend",
   "version": "1.0.0",
-  "description": "SKLP - Premium AI-Powered Fashion Ecommerce Frontend",
+  "description": "STYLE STREET - Fashion Ecommerce Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",

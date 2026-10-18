@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar, FiZap, FiShield, FiKey, FiX } from 'react-icons/fi'
+import { FiCheckCircle, FiMapPin, FiTruck, FiAlertCircle, FiPlus, FiStar, FiZap, FiShield, FiKey, FiX, FiCreditCard, FiSmartphone, FiHome, FiLock, FiShoppingBag, FiInfo } from 'react-icons/fi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCart } from '@context/CartContext'
 import { useAuth } from '@context/AuthContext'
@@ -212,7 +212,7 @@ function Checkout() {
       if (res.data.success) {
         setAppliedCoupon(res.data.coupon)
         setDiscountAmount(res.data.discountAmount || 0)
-        toast.success(`Coupon "${couponCode.toUpperCase()}" applied! 🎉`)
+        toast.success(`Coupon "${couponCode.toUpperCase()}" applied!`)
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Invalid or expired coupon code')
@@ -264,7 +264,7 @@ function Checkout() {
       if (paymentMethod === 'cod') {
         orderResult = await createCODOrder()
         if (orderResult?.success) {
-          toast.success('Order placed successfully! 🎉')
+          toast.success('Order placed successfully!')
           handleOrderSuccess(orderResult.order)
         }
       } else if (paymentMethod === 'razorpay') {
@@ -272,13 +272,13 @@ function Checkout() {
       } else if (paymentMethod === 'upi') {
         orderResult = await initUPIPayment()
         if (orderResult?.success) {
-          toast.success('Order placed successfully! 🎉')
+          toast.success('Order placed successfully!')
           handleOrderSuccess(orderResult.order)
         }
       } else if (paymentMethod === 'card') {
         orderResult = await initCardPayment()
         if (orderResult?.success) {
-          toast.success('Order placed successfully! 🎉')
+          toast.success('Order placed successfully!')
           handleOrderSuccess(orderResult.order)
         }
       }
@@ -332,7 +332,7 @@ function Checkout() {
         razorpaySignature: 'mock_signature_sandbox'
       })
       if (verifyRes.data?.success) {
-        toast.success('Payment simulated successfully! Order confirmed. 🎉')
+        toast.success('Payment simulated successfully! Order confirmed.')
         setSandboxModal(null)
         handleOrderSuccess(verifyRes.data.order || order)
       } else {
@@ -406,7 +406,7 @@ function Checkout() {
               razorpaySignature: response.razorpay_signature
             })
             if (verifyRes.data?.success) {
-              toast.success('Payment verified successfully! Order is confirmed. 🎉')
+              toast.success('Payment verified successfully! Order is confirmed.')
               setSandboxModal(null)
               handleOrderSuccess(verifyRes.data.order || order)
             } else {
@@ -755,35 +755,35 @@ function Checkout() {
               {[
                 { 
                   id: 'cod',     
-                  icon: '💵', 
+                  icon: <FiTruck className="text-luxury-gold" size={20} />, 
                   label: 'Cash on Delivery (COD)',         
                   sub: 'Pay in cash or UPI QR upon secure doorstep delivery.',
                   restricted: checkoutItems.some(i => i.isCodAllowed === false)
                 },
                 { 
                   id: 'online',  
-                  icon: '💳', 
+                  icon: <FiCreditCard className="text-luxury-gold" size={20} />, 
                   label: 'Online Payment (Cards & Net Banking)', 
                   sub: 'Visa, MasterCard, RuPay, Corporate Cards & 50+ Banks.',
                   restricted: false
                 },
                 { 
                   id: 'upi',     
-                  icon: '📲', 
+                  icon: <FiSmartphone className="text-luxury-gold" size={20} />, 
                   label: 'UPI (GPay, PhonePe, Paytm, BHIM)',     
                   sub: 'Instant 0-fee payment directly from your bank app.',
                   restricted: false
                 },
                 { 
                   id: 'bankacc', 
-                  icon: '🏦', 
+                  icon: <FiHome className="text-luxury-gold" size={20} />, 
                   label: 'Bank Account Transfer (NEFT / IMPS)', 
                   sub: 'Direct deposit to verified Style Street corporate account.',
                   restricted: false
                 },
                 { 
                   id: 'razorpay',
-                  icon: '⚡', 
+                  icon: <FiShield className="text-luxury-gold" size={20} />, 
                   label: 'Razorpay Instant Gateway',            
                   sub: 'One-click checkout with international cards & wallets.',
                   restricted: false
@@ -806,7 +806,7 @@ function Checkout() {
                         : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/40'
                   }`}
                 >
-                  <span className="text-2xl mr-4">{icon}</span>
+                  <span className="text-xl mr-4 flex items-center justify-center w-8 h-8 rounded-lg bg-luxury-gold/10">{icon}</span>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{label}</p>
@@ -833,7 +833,7 @@ function Checkout() {
                 isDarkMode ? 'bg-luxury-gold/5 border-luxury-gold/20 text-white' : 'bg-amber-50 border-amber-200 text-gray-900'
               }`}>
                 <div className="flex items-center gap-2 font-bold text-luxury-gold text-sm mb-2">
-                  <span>🏦 Style Street Corporate Bank Account Details</span>
+                  <span className="flex items-center gap-2"><FiHome className="text-luxury-gold" /> Style Street Corporate Bank Account Details</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
                   <div>
@@ -861,8 +861,8 @@ function Checkout() {
                     <strong className="text-luxury-gold">stylestreet@hdfcbank</strong>
                   </div>
                 </div>
-                <p className="text-[10px] opacity-75 pt-2 border-t border-current/10">
-                  ℹ️ After transfer, your order will be instantly placed and reserved. Keep your UTR / transaction ID handy.
+                <p className="text-[10px] opacity-75 pt-2 border-t border-current/10 flex items-center gap-1.5">
+                  <FiInfo className="shrink-0 text-luxury-gold" /> After transfer, your order will be instantly placed and reserved. Keep your UTR / transaction ID handy.
                 </p>
               </div>
             )}
@@ -876,7 +876,7 @@ function Checkout() {
 
             {isBuyNowMode && (
               <div className="mb-4 p-2.5 rounded-xl bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5 font-bold"><FiZap /> Buy Now (Single Product)</span>
+                <span className="flex items-center gap-1.5 font-bold"><FiShoppingBag /> Buy Now (Single Product)</span>
                 <Link to="/cart" className="underline hover:text-white text-[11px]">View Full Cart</Link>
               </div>
             )}
@@ -987,8 +987,8 @@ function Checkout() {
             </div>
 
             {checkoutItems.some(i => i.isRestricted) && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                ⚠️ One or more items in your order are restricted from purchase by the merchant. Please return to cart and remove them.
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+                <FiAlertCircle className="shrink-0" /> One or more items in your order are restricted from purchase by the merchant. Please return to cart and remove them.
               </div>
             )}
 
@@ -1027,9 +1027,9 @@ function Checkout() {
 
             {/* Security badges */}
             <div className="mt-5 flex justify-center gap-4 opacity-40">
-              <span className="text-[10px]">🔒 256-bit SSL</span>
-              <span className="text-[10px]">🛡️ Secure Checkout</span>
-              <span className="text-[10px]">✅ PCI Compliant</span>
+              <span className="text-[10px] flex items-center gap-1"><FiLock size={11} /> 256-bit SSL</span>
+              <span className="text-[10px] flex items-center gap-1"><FiShield size={11} /> Secure Checkout</span>
+              <span className="text-[10px] flex items-center gap-1"><FiCheckCircle size={11} /> PCI Compliant</span>
             </div>
           </div>
         </div>

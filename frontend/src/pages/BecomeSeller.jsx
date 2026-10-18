@@ -7,7 +7,7 @@ import {
   FiCheckCircle, FiAlertCircle, FiClock,
   FiBriefcase, FiShoppingBag,
   FiArrowRight, FiArrowLeft, FiCheck, FiUpload,
-  FiTrash2, FiFileText, FiEye, FiDownload, FiInfo, FiEdit3, FiSmartphone
+  FiTrash2, FiFileText, FiEye, FiDownload, FiInfo, FiEdit3, FiSmartphone, FiUser
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
@@ -1419,7 +1419,7 @@ export default function BecomeSeller() {
                   </div>
                 ) : (
                   <div className="w-40 h-48 rounded-2xl border-2 border-dashed border-gray-700 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="text-3xl text-gray-600 mb-2">👤</span>
+                    <FiUser className="text-3xl text-gray-500 mb-2" />
                     <span className={`text-[10px] ${textSecondary}`}>No photo uploaded</span>
                   </div>
                 )}
@@ -1491,7 +1491,7 @@ export default function BecomeSeller() {
                   </div>
                 ) : (
                   <div className="w-64 h-32 rounded-2xl border-2 border-dashed border-gray-700 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="text-2xl text-gray-600 mb-1">✍️</span>
+                    <FiEdit3 className="text-2xl text-gray-500 mb-1" />
                     <span className={`text-[10px] ${textSecondary}`}>No signature uploaded</span>
                   </div>
                 )}

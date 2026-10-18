@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiArrowRight, FiChevronLeft, FiChevronRight, FiStar, FiHeart, 
-  FiShoppingBag, FiTruck, FiShield, FiZap, FiLoader, FiLock
+  FiShoppingBag, FiTruck, FiShield, FiZap, FiLoader, FiLock, FiTrendingUp
 } from 'react-icons/fi'
 import {
   GiSuits, GiDress, GiRunningShoe, GiWatch, GiCrown, GiShirt,
@@ -12,8 +12,7 @@ import {
   GiKimono, GiRolledCloth, GiBoots, GiHighHeel, GiBilledCap, GiBackpack
 } from 'react-icons/gi'
 import {
-  RiRunLine, RiFireLine, RiApps2Line, RiTShirt2Line, RiBearSmileLine,
-  RiMagicLine
+  RiRunLine, RiFireLine, RiApps2Line, RiTShirt2Line, RiBearSmileLine
 } from 'react-icons/ri'
 import {
   FaChild, FaShoppingBag, FaShoePrints
@@ -151,9 +150,9 @@ const subcategoryIcons = {
   'Pure Banarasi Silk': GiRolledCloth,
   'Premium Cotton': GiClothes,
   'Elite Leather': GiSuits,
-  'Designer Drops': RiMagicLine,
+  'Designer Drops': GiClothes,
   'Suits & Blazers': GiSuits,
-  'Weekend Drops': RiMagicLine,
+  'Weekend Drops': FaShoppingBag,
   'Summer wear': GiSunglasses,
   'Streetwear': GiHoodie,
   'Athletic Sneakers': GiRunningShoe,
@@ -210,7 +209,7 @@ function ProductCard({ product, isDarkMode }) {
       thumbnail: productImage,
       image: productImage
     })
-    toast.success(`Added ${product.name} to Cart 🛍️`)
+    toast.success(`Added ${product.name} to Cart`)
   }
 
   const handleWishlistToggle = (e) => {
@@ -595,7 +594,7 @@ function Home() {
                   to="/products" 
                   className="inline-flex items-center gap-1.5 sm:gap-2.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 sm:px-6 sm:py-3 text-[9px] sm:text-xs font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white hover:bg-white/25 transition"
                 >
-                  <FiZap size={12} className="text-luxury-gold" />
+                  <FiShoppingBag size={12} className="text-luxury-gold" />
                   <span>All Products</span>
                 </Link>
               </div>
@@ -651,7 +650,7 @@ function Home() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-10">
             <div>
               <div className="flex items-center gap-2 text-luxury-gold mb-1">
-                <FiZap />
+                <FiTrendingUp />
                 <p className="text-xs uppercase tracking-[0.3em] font-extrabold">Trending Now</p>
               </div>
               <h2 className="text-3xl md:text-4xl font-serif font-black uppercase">

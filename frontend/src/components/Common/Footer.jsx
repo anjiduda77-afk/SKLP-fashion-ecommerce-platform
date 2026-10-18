@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiHelpCircle } from 'react-icons/fi'
+import { FiX, FiHelpCircle, FiPhone, FiMail } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import PolicyModal from './PolicyModal'
 
@@ -132,10 +132,10 @@ function Footer({ isDarkMode }) {
 
               {/* Helpline direct contacts */}
               <div className="mt-8 pt-6 border-t border-current/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-semibold">
-                <div className="flex gap-4">
-                  <span>📞 {t('footer.customerCare', 'Customer Care')}: +91 9948682179</span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <span className="flex items-center gap-1.5"><FiPhone size={13} className="text-luxury-gold" /> {t('footer.customerCare', 'Customer Care')}: +91 9948682179</span>
                   <span className="opacity-50">|</span>
-                  <span>✉️ {t('common.emailUs', 'Email')}: support@stylestreet.in</span>
+                  <span className="flex items-center gap-1.5"><FiMail size={13} className="text-luxury-gold" /> {t('common.emailUs', 'Email')}: support@stylestreet.in</span>
                 </div>
                 <button
                   onClick={() => setShowHelpline(false)}

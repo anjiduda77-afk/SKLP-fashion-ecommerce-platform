@@ -2,6 +2,7 @@ import BarcodeGenerator from './BarcodeGenerator';
 import QRCodeGenerator from './QRCodeGenerator';
 import sklpLogo from '@assets/images/sklp_logo.png';
 import { useBranding, resolveLogoUrl } from '@context/BrandingContext';
+import { FiShield, FiAlertTriangle, FiArrowUp } from 'react-icons/fi';
 
 /**
  * STYLE STREET — Professional Shipping / Packing Label
@@ -120,7 +121,7 @@ export default function ShippingLabel({
         <div className="border-2 border-black rounded p-3 bg-white">
           <div className="flex items-center justify-between border-b border-black/30 pb-1 mb-2">
             <span className="text-[11px] uppercase font-black tracking-wider text-black flex items-center gap-1">
-              📍 SHIP TO (DELIVERY ADDRESS)
+              SHIP TO (DELIVERY ADDRESS)
             </span>
             <span className="text-[9px] font-mono text-black/60 uppercase">Primary Destination</span>
           </div>
@@ -152,7 +153,7 @@ export default function ShippingLabel({
         <div className="border border-black/60 rounded p-3 bg-black/[0.02]">
           <div className="flex items-center justify-between border-b border-black/30 pb-1 mb-2">
             <span className="text-[10px] uppercase font-bold tracking-wider text-black">
-              🏢 SOLD BY / SHIPPED FROM
+              SOLD BY / SHIPPED FROM
             </span>
             <span className="text-[9px] font-mono text-[#B8860B] font-bold">APPROVED BRAND</span>
           </div>
@@ -263,15 +264,15 @@ export default function ShippingLabel({
         {/* Right: Courier Handling Symbols */}
         <div className="shrink-0 flex items-center gap-2 border-t md:border-t-0 md:border-l border-black/20 md:pl-4 pt-2 md:pt-0">
           <div className="border border-black/40 rounded px-2 py-1 text-center text-[8px] font-bold uppercase bg-black/[0.02]">
-            <span className="text-base block">☂️</span>
+            <FiShield className="mx-auto my-0.5 text-black" size={16} />
             KEEP DRY
           </div>
           <div className="border border-black/40 rounded px-2 py-1 text-center text-[8px] font-bold uppercase bg-black/[0.02]">
-            <span className="text-base block">⚠️</span>
+            <FiAlertTriangle className="mx-auto my-0.5 text-black" size={16} />
             HANDLE CARE
           </div>
           <div className="border border-black/40 rounded px-2 py-1 text-center text-[8px] font-bold uppercase bg-black/[0.02]">
-            <span className="text-base block">⬆️</span>
+            <FiArrowUp className="mx-auto my-0.5 text-black" size={16} />
             THIS SIDE UP
           </div>
         </div>

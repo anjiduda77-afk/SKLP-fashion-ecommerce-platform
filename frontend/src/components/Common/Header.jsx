@@ -175,7 +175,7 @@ function Header({ isDarkMode }) {
                     setIsSearchOpen(true)
                   }}
                   className="p-1.5 rounded-xl text-luxury-gold hover:bg-luxury-gold/20 active:scale-95 transition-all flex items-center justify-center shrink-0"
-                  title="Search by Voice 🎙️"
+                  title="Search by Voice"
                   aria-label="Search by Voice"
                 >
                   <FiMic size={16} />
@@ -465,7 +465,7 @@ function Header({ isDarkMode }) {
                     setIsSearchOpen(true)
                   }}
                   className="p-1.5 -mr-1 rounded-full text-luxury-gold hover:bg-luxury-gold/20 active:scale-90 transition-all flex items-center justify-center shrink-0"
-                  title="Search by Voice 🎙️"
+                  title="Search by Voice"
                   aria-label="Search by Voice"
                 >
                   <FiMic className="text-base" />

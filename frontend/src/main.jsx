@@ -56,9 +56,12 @@ class ErrorBoundary extends React.Component {
           textAlign: 'center'
         }}>
           <div style={{
-            fontSize: '3rem',
-            marginBottom: '1rem'
-          }}>✦</div>
+            fontSize: '1.75rem',
+            fontWeight: 800,
+            color: '#d4af37',
+            marginBottom: '1rem',
+            letterSpacing: '0.2em'
+          }}>SS</div>
           <h1 style={{
             fontSize: '1.5rem',
             fontWeight: 700,

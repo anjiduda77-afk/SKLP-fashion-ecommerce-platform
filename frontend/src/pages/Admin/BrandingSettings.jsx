@@ -388,7 +388,7 @@ export default function BrandingSettings() {
 
       {/* ── Live Preview Hint ─────────────────────────────────────────────── */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-sm">
-        <p className="font-bold text-amber-800 mb-1">💡 Live Preview</p>
+        <p className="font-bold text-amber-800 mb-1">Live Preview</p>
         <p className="text-amber-700 text-xs">
           After saving, open any <strong>Order Receipt</strong>, <strong>Shipping Label</strong>, or <strong>Tax Invoice</strong>{' '}
           to see the updated logo and brand information. Changes are reflected immediately without a page reload.

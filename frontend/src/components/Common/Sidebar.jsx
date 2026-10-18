@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { 
   FiChevronDown, FiChevronLeft, FiHeart, FiShoppingBag, FiSettings, 
   FiZap, FiTrendingUp, FiHelpCircle, FiGlobe, FiMoon, FiSun, FiActivity, FiGift,
-  FiGrid, FiPackage, FiUsers, FiBarChart2, FiTruck, FiMapPin, FiClipboard, FiDollarSign, FiPlusSquare, FiExternalLink, FiStar
+  FiGrid, FiPackage, FiUsers, FiBarChart2, FiTruck, FiMapPin, FiClipboard, FiDollarSign, FiPlusSquare, FiExternalLink, FiStar, FiMessageCircle
 } from 'react-icons/fi'
 import { useAuth } from '@context/AuthContext'
 import { useTheme } from '@context/ThemeContext'
@@ -36,7 +36,7 @@ const navSections = [
     title: 'Shopping Zone',
     titleKey: 'sidebar.shoppingZone',
     items: [
-      { label: 'Trending Outfits', labelKey: 'sidebar.trendingProducts', link: '/products?sort=trending', icon: <FiZap className="text-luxury-gold mr-2" /> },
+      { label: 'Trending Outfits', labelKey: 'sidebar.trendingProducts', link: '/products?sort=trending', icon: <FiTrendingUp className="text-luxury-gold mr-2" /> },
       { label: 'Special Offers', labelKey: 'sidebar.specialOffers', link: '/products?offers=true', icon: <FiGift className="text-luxury-gold mr-2" /> },
       { label: 'Recommended For You', labelKey: 'sidebar.recommendedForYou', link: '/products', icon: <FiHeart className="text-luxury-gold mr-2" /> },
       { label: 'New Arrivals', labelKey: 'sidebar.newArrivals', link: '/products?sort=new', icon: <FiStar className="text-luxury-gold mr-2" /> }
@@ -84,7 +84,7 @@ function Sidebar({ isOpen, onClose }) {
 
     if (role === 'admin') {
       return [{
-        title: '⚙️ Admin Management',
+        title: 'Admin Management',
         titleKey: 'sidebar.adminManagement',
         items: [
           { label: 'Admin Dashboard',    labelKey: 'sidebar.adminDashboard',    link: '/admin/dashboard',  icon: <FiGrid className="text-luxury-gold mr-2" /> },
@@ -98,7 +98,7 @@ function Sidebar({ isOpen, onClose }) {
 
     if (role === 'seller') {
       return [{
-        title: '🏪 Seller Hub',
+        title: 'Seller Hub',
         titleKey: 'sidebar.sellerHub',
         items: [
           { label: 'Seller Dashboard',   labelKey: 'sidebar.sellerDashboard', link: '/seller/dashboard', icon: <FiGrid className="text-luxury-gold mr-2" /> },
@@ -112,7 +112,7 @@ function Sidebar({ isOpen, onClose }) {
 
     if (role === 'delivery' || role === 'deliveryPartner') {
       return [{
-        title: '🚚 Delivery Hub',
+        title: 'Delivery Hub',
         titleKey: 'sidebar.deliveryHub',
         items: [
           { label: 'Delivery Dashboard', labelKey: 'sidebar.deliveryDashboard', link: '/delivery/dashboard', icon: <FiTruck className="text-luxury-gold mr-2" /> },
@@ -351,7 +351,7 @@ function Sidebar({ isOpen, onClose }) {
                 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-luxury-offWhite border-luxury-gold/10'}`}
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <FiZap className="text-luxury-gold animate-bounce" />
+                  <FiGift className="text-luxury-gold" />
                   <h3 className="text-sm font-bold uppercase tracking-wider text-luxury-gold">{t('sidebar.loyaltyClub', 'Style Street Rewards Club')}</h3>
                 </div>
                 <p className="text-xs opacity-70 leading-relaxed mb-4">
@@ -375,7 +375,8 @@ function Sidebar({ isOpen, onClose }) {
                 }}
                 className="w-full py-3 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2"
               >
-                💬 Chat Bot
+                <FiMessageCircle size={15} />
+                <span>{t('footer.chatBot', 'Customer Support')}</span>
               </button>
             </div>
 

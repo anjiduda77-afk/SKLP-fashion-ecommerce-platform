@@ -398,7 +398,7 @@ export default function Marketing() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'Total', value: stats.total, color: 'text-white', border: 'border-luxury-darkGray' },
-          { label: '🟢 Live', value: stats.active, color: 'text-green-400', border: 'border-green-500/20' },
+          { label: 'Active', value: stats.active, color: 'text-green-400', border: 'border-green-500/20' },
           { label: 'Scheduled', value: stats.scheduled, color: 'text-blue-400', border: 'border-blue-500/20' },
           { label: 'Paused', value: stats.paused, color: 'text-yellow-400', border: 'border-yellow-500/20' },
           { label: 'Ended', value: stats.expired, color: 'text-white/50', border: 'border-luxury-darkGray' }

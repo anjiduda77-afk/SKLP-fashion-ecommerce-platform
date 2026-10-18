@@ -649,7 +649,7 @@ function SellerDashboard() {
         restrictionReason: reason
       })
       if (res.data?.success) {
-        toast.success(nextStatus ? '🔒 Product restricted from customer checkout' : '✓ Product un-restricted and live for checkout')
+        toast.success(nextStatus ? 'Product restricted from customer checkout' : 'Product active and available for checkout')
         loadProducts()
       }
     } catch (err) {
@@ -831,7 +831,7 @@ function SellerDashboard() {
         >
           <div>
             <div className="flex items-center gap-2 text-luxury-gold mb-1">
-              <FiZap className="animate-pulse" />
+              <FiShoppingBag className="text-luxury-gold" />
               <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest opacity-80">Partner Portal</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-wide">Seller Studio</h1>
@@ -1513,7 +1513,7 @@ function SellerDashboard() {
                     <div>
                       <div className="flex items-center justify-between">
                         <label className={labelCls}>Brand House</label>
-                        <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1">🔒 Official Locked</span>
+                        <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1"><FiLock size={11} /> Verified Brand</span>
                       </div>
                       <div className="relative">
                         <input 
@@ -1522,7 +1522,7 @@ function SellerDashboard() {
                           value={sellerProfile.brandName || sellerProfile.storeName || form.brand || 'Official Brand'}
                           className={`${inputCls} opacity-80 cursor-not-allowed bg-black/40 pr-10`}
                         />
-                        <span className="absolute right-3 top-3 text-sm" title="Brand is locked to your verified merchant account">🔒</span>
+                        <span className="absolute right-3 top-3 text-sm text-luxury-gold" title="Brand is locked to your verified merchant account"><FiLock size={14} /></span>
                       </div>
                       <p className="text-[10px] text-gray-400 mt-1">Products automatically inherit your verified official brand name</p>
                     </div>
@@ -2577,13 +2577,13 @@ function SellerDashboard() {
                       <div>
                         <div className="flex items-center justify-between">
                           <label className={labelCls}>Brand / Label Name *</label>
-                          <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1">🔒 Locked to Merchant</span>
+                          <span className="text-[11px] font-bold text-luxury-gold flex items-center gap-1"><FiLock size={11} /> Verified Merchant</span>
                         </div>
                         <div className="relative">
                           <input 
                             type="text" 
                             disabled
-                            value={sellerProfile.brandName ? `${sellerProfile.brandName} 🔒 Locked` : 'Official Brand 🔒 Locked'}
+                            value={sellerProfile.brandName ? `${sellerProfile.brandName} (Verified)` : 'Official Brand (Verified)'}
                             className={`${inputCls} opacity-75 cursor-not-allowed bg-black/40`}
                           />
                         </div>

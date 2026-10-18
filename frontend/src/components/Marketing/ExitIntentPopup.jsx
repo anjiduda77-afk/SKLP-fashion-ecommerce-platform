@@ -79,7 +79,7 @@ export default function ExitIntentPopup() {
     if (!campaign?.coupon?.couponCode) return;
     navigator.clipboard.writeText(campaign.coupon.couponCode);
     setCopied(true);
-    toast.success(`Discount code ${campaign.coupon.couponCode} copied! 🎉`);
+    toast.success(`Discount code ${campaign.coupon.couponCode} copied!`);
     trackClick(campaign, variant?.variantId);
     setTimeout(() => setCopied(false), 3000);
   };

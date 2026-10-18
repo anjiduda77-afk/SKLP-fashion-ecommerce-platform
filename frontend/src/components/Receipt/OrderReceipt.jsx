@@ -102,7 +102,7 @@ export default function OrderReceipt({
         {/* Shipping Address */}
         <div className="border border-gray-200 rounded-lg p-4 bg-white">
           <h3 className="text-[11px] uppercase font-bold tracking-wider text-gray-500 border-b border-gray-100 pb-1.5 mb-2.5">
-            📦 Shipping Details
+            Shipping Details
           </h3>
           <p className="font-bold text-sm text-black mb-1">{customer.name || 'Valued Customer'}</p>
           <div className="text-gray-700 space-y-0.5 leading-relaxed">
@@ -126,7 +126,7 @@ export default function OrderReceipt({
         {/* Billing / Order Details */}
         <div className="border border-gray-200 rounded-lg p-4 bg-white">
           <h3 className="text-[11px] uppercase font-bold tracking-wider text-gray-500 border-b border-gray-100 pb-1.5 mb-2.5">
-            💳 Billing & Account
+            Billing & Account
           </h3>
           <p className="font-bold text-sm text-black mb-1">{customer.name || 'Valued Customer'}</p>
           <p className="text-gray-600 mb-2">{customer.email || 'Email on file'}</p>

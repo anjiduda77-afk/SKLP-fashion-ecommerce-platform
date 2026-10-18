@@ -179,7 +179,7 @@ function MainAppLayout({ isDarkMode }) {
       {/* Exit Intent Popup */}
       {!isDedicatedConsole && <ExitIntentPopup />}
 
-      {/* Shopping Concierge */}
+      {/* Customer Support Desk */}
       {!isDedicatedConsole && <AIChatbot />}
       {/* Toast Notifications */}
       <ToastContainer

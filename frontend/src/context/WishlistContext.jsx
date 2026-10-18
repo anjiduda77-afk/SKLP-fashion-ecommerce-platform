@@ -72,7 +72,7 @@ export const WishlistProvider = ({ children }) => {
 
     // Optimistic update
     setWishlistItems((prev) => [...prev, product])
-    toast.success(`${product.name} added to wishlist ❤️`)
+    toast.success(`${product.name} added to wishlist`)
 
     if (isAuthenticated) {
       try {

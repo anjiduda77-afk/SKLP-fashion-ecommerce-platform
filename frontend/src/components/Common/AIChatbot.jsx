@@ -20,7 +20,7 @@ function AIChatbot() {
   const [history, setHistory] = useState([
     { 
       from: 'bot', 
-      text: 'Hello! I am your Style Street Shopping Assistant. I can help you find outfits, sarees, blazers, shoes, check sizes, or track your orders. How can I help you today?' 
+      text: 'Hello! Welcome to Style Street Customer Support. We can help you explore outfits, sarees, blazers, shoes, check sizes, and assist with order questions. How may we assist you today?' 
     }
   ])
 
@@ -90,11 +90,11 @@ function AIChatbot() {
             <div className="flex items-center justify-between gap-3 p-3.5 sm:p-5 border-b border-current/10">
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-luxury-gold to-luxury-lightGold flex items-center justify-center text-black font-extrabold shadow-glow">
-                  <FiZap size={15} />
+                  <FiMessageCircle size={15} />
                 </div>
                 <div>
-                  <p className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] text-luxury-gold font-bold">STYLE STREET CONCIERGE</p>
-                  <h3 className="text-xs sm:text-sm font-bold tracking-wide uppercase font-serif">Shopping Assistant</h3>
+                  <p className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] text-luxury-gold font-bold">STYLE STREET SUPPORT</p>
+                  <h3 className="text-xs sm:text-sm font-bold tracking-wide uppercase font-serif">Shopping Help</h3>
                 </div>
               </div>
               <button 
@@ -102,7 +102,7 @@ function AIChatbot() {
                 onClick={() => setOpen(false)} 
                 className={`p-1.5 sm:p-2 rounded-full border transition-all
                   ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-luxury-gold' : 'bg-luxury-offWhite hover:bg-luxury-lightGray'}`}
-                aria-label="Close assistant"
+                aria-label="Close support chat"
               >
                 <FiX size={15} />
               </button>
@@ -121,7 +121,7 @@ function AIChatbot() {
                       ? 'bg-luxury-gold text-black shadow-glow' 
                       : isDarkMode ? 'bg-white/10 text-white' : 'bg-black/10 text-black'}`}
                   >
-                    {entry.from === 'bot' ? <FiZap size={11} /> : <FiUser size={11} />}
+                    {entry.from === 'bot' ? <FiMessageCircle size={11} /> : <FiUser size={11} />}
                   </div>
 
                   {/* Message Bubble */}
@@ -141,7 +141,7 @@ function AIChatbot() {
 
             {/* Recommended Triggers */}
             <div className="px-3.5 sm:px-5 pb-2.5 pt-1">
-              <p className="text-[8px] sm:text-[9px] uppercase tracking-widest text-luxury-gold font-bold mb-1.5">Recommended Prompts</p>
+              <p className="text-[8px] sm:text-[9px] uppercase tracking-widest text-luxury-gold font-bold mb-1.5">Suggested Questions</p>
               <div className="flex flex-wrap gap-1 sm:gap-1.5">
                 {quickPrompts.map((prompt) => (
                   <button
@@ -167,7 +167,7 @@ function AIChatbot() {
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Inquire about style directions..."
+                  placeholder="Ask a question about styles, orders or sizes..."
                   className={`w-full rounded-xl sm:rounded-2xl border px-3 sm:px-4 py-2 sm:py-3 text-xs outline-none focus:ring-1 focus:ring-luxury-gold text-current bg-transparent
                     ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage(message)}
@@ -182,7 +182,7 @@ function AIChatbot() {
                         ? 'bg-white/10 text-luxury-gold hover:bg-white/15 border border-white/10' 
                         : 'bg-black/5 text-luxury-darkBlack hover:bg-luxury-gold/15 border border-black/10'
                   }`}
-                  title={isVoiceListening ? "Listening... Tap to stop" : "Speak to Search 🎙️"}
+                  title={isVoiceListening ? "Listening... Tap to stop" : "Voice search"}
                   aria-label="Voice input"
                 >
                   <FiMic size={15} />
@@ -209,7 +209,7 @@ function AIChatbot() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold via-luxury-darkGold to-luxury-lightGold text-black shadow-glow transition-all active:scale-95"
-        aria-label="Toggle Shopping Concierge"
+        aria-label="Customer Support"
       >
         <FiMessageCircle className="text-xl sm:text-2xl" />
       </motion.button>

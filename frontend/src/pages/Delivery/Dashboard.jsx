@@ -95,7 +95,7 @@ function DeliveryDashboard() {
     try {
       const res = await deliveryService.updateOrderStatus(delId, { status: 'out_for_delivery' })
       if (res.data?.success) {
-        toast.success(`Shipment #${String(delId).slice(-6)} is now Out for Delivery! 🚚`)
+        toast.success(`Shipment #${String(delId).slice(-6)} is now Out for Delivery!`)
         if (res.data.order?.deliveryOTP) {
           toast.info(`Customer Doorstep OTP: ${res.data.order.deliveryOTP}`, { autoClose: 9000 })
         }
@@ -154,14 +154,14 @@ function DeliveryDashboard() {
         otp: otpInput.code 
       })
       if (res.data?.success) {
-        toast.success(`Delivery #${String(activeDel.id).slice(-6)} successfully verified and closed! 🚀`)
+        toast.success(`Delivery #${String(activeDel.id).slice(-6)} successfully verified and closed!`)
       }
     } catch (err) {
       if (otpInput.code !== activeDel.otp && activeDel.otp !== '123456') {
         toast.error('Incorrect door verification code.')
         return
       }
-      toast.success(`Delivery #${String(activeDel.id).slice(-6)} verified successfully! 📦`)
+      toast.success(`Delivery #${String(activeDel.id).slice(-6)} verified successfully!`)
     }
 
     // Move to history
@@ -204,7 +204,7 @@ function DeliveryDashboard() {
         >
           <div>
             <div className="flex items-center gap-2 text-luxury-gold mb-1">
-              <FiZap className="animate-pulse" />
+              <FiTruck className="text-luxury-gold" />
               <span className="inline-flex items-center gap-1.5"><BrandName size="xs" /> <span className="text-[10px] uppercase font-bold tracking-widest text-luxury-gold">Express Delivery Network</span></span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-black uppercase tracking-tight">Courier Agent Portal</h1>
@@ -403,9 +403,10 @@ function DeliveryDashboard() {
                             {d.status === 'Pending Pickup' ? (
                               <button
                                 onClick={() => handleStartTransit(d.id)}
-                                className="flex-1 sm:flex-none px-5 py-3 bg-luxury-gold text-black rounded-xl text-[11px] uppercase tracking-wider font-extrabold shadow-glow active:scale-95 transition touch-target"
+                                className="flex-1 sm:flex-none px-5 py-3 bg-luxury-gold text-black rounded-xl text-[11px] uppercase tracking-wider font-extrabold shadow-glow active:scale-95 transition touch-target flex items-center justify-center gap-1.5"
                               >
-                                🚚 Pick up Shipment
+                                <FiTruck />
+                                <span>Pick up Shipment</span>
                               </button>
                             ) : (
                               <button
@@ -522,7 +523,7 @@ function DeliveryDashboard() {
                     type="submit"
                     className="w-full py-4 bg-luxury-gold text-black rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-glow active:scale-95 transition-all"
                   >
-                    Verify OTP & Complete Delivery 📦
+                    Verify OTP & Complete Delivery
                   </button>
                 </form>
               </div>

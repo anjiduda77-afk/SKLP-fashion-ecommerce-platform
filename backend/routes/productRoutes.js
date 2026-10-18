@@ -13,6 +13,7 @@ router.get('/featured', asyncHandler(productController.getFeaturedProducts))
 router.get('/trending', asyncHandler(productController.getTrendingProducts))
 router.get('/categories', asyncHandler(productController.getCategories))
 router.get('/search', asyncHandler(productController.searchProducts))
+router.get('/recommendations', asyncHandler(productController.getAIRecommendations))
 router.get('/ai/recommendations', asyncHandler(productController.getAIRecommendations))
 router.get('/:productId/offers', asyncHandler(getProductOffers))
 

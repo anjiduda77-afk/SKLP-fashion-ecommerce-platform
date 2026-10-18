@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiX, FiTruck, FiRefreshCw, FiShield, FiAward, 
-  FiPhone, FiCheck, FiStar, FiFileText
+  FiPhone, FiCheck, FiStar, FiFileText, FiMail, FiMessageCircle
 } from 'react-icons/fi'
 
 function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = true }) {
@@ -254,15 +254,15 @@ function PolicyModal({ isOpen, onClose, initialTab = 'shipping', isDarkMode = tr
                     <h4 className="font-bold text-xs uppercase tracking-wider text-luxury-gold mb-3">Instant Customer Channels</h4>
                     <div className="space-y-3 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="opacity-80">📞 Toll-Free Helpline:</span>
+                        <span className="opacity-80 flex items-center gap-1.5"><FiPhone size={13} className="text-luxury-gold" /> Toll-Free Helpline:</span>
                         <span className="font-bold text-luxury-gold">+1 (800) 123-4567</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="opacity-80">✉️ Support Email:</span>
+                        <span className="opacity-80 flex items-center gap-1.5"><FiMail size={13} className="text-luxury-gold" /> Support Email:</span>
                         <span className="font-bold">support@stylestreet.in</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="opacity-80">💬 Live Chat Desk:</span>
+                        <span className="opacity-80 flex items-center gap-1.5"><FiMessageCircle size={13} className="text-luxury-gold" /> Live Chat Desk:</span>
                         <span className="font-bold text-green-400">Online 24/7</span>
                       </div>
                     </div>

@@ -84,8 +84,8 @@ function Products() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  // Smart suggestions dropdown state
-  const [aiSuggestions, setAiSuggestions] = useState([])
+  // Search suggestions dropdown state
+  const [searchSuggestions, setSearchSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
   // Voice search directly in products catalog
@@ -94,7 +94,7 @@ function Products() {
       const clean = text?.trim()
       if (clean) {
         setSearchQuery(clean)
-        toast.success(`Voice Search: "${clean}" 🎙️`)
+        toast.success(`Voice Search: "${clean}"`)
       }
     }
   })
@@ -270,7 +270,7 @@ function Products() {
       if (combinedSuggestions.length === 0) {
         combinedSuggestions.push({ text: `Search for "${val}" in Clothing`, type: 'search', value: val })
       }
-      setAiSuggestions(combinedSuggestions)
+      setSearchSuggestions(combinedSuggestions)
       setShowSuggestions(true)
     } else {
       setShowSuggestions(false)
@@ -512,7 +512,7 @@ function Products() {
               placeholder="Search fashion garments, sarees, velvet wear..."
               value={searchQuery}
               onChange={handleSearchChange}
-              onFocus={() => { if (aiSuggestions.length > 0) setShowSuggestions(true) }}
+              onFocus={() => { if (searchSuggestions.length > 0) setShowSuggestions(true) }}
               className={`bg-transparent border-none p-0 outline-none w-full text-sm focus:ring-0 ${isDarkMode ? 'text-white placeholder-white/40' : 'text-luxury-black placeholder-black/45'}`}
             />
             {searchQuery && (
@@ -535,7 +535,7 @@ function Products() {
                   ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30' 
                   : 'text-luxury-gold hover:bg-luxury-gold/15'
               }`}
-              title={isVoiceListening ? "Listening... Click to stop" : "Search by voice 🎙️"}
+              title={isVoiceListening ? "Listening... Click to stop" : "Search by voice"}
               aria-label="Search by voice"
             >
               <FiMic size={17} />
@@ -552,7 +552,7 @@ function Products() {
                 className={`absolute top-full left-0 right-0 mt-2 z-50 p-2 rounded-xl border shadow-2xl ${isDarkMode ? 'bg-luxury-charcoal border-luxury-mediumGray/50 text-white' : 'bg-white border-gray-100 text-black'}`}
               >
                 <p className="text-[10px] uppercase tracking-[0.2em] text-luxury-gold px-3 py-1 mb-1 font-semibold">Suggested Searches</p>
-                {aiSuggestions.map((sug, idx) => (
+                {searchSuggestions.map((sug, idx) => (
                   <button
                     key={idx}
                     onClick={() => selectSuggestion(sug)}

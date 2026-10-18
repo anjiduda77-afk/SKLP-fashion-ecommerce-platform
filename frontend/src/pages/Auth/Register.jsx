@@ -136,7 +136,7 @@ function Register() {
   // Redirect handler after successful registration
   const handleRedirectAfterLogin = useCallback((userObj) => {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
-    toast.success(`Welcome to STYLE STREET${name ? `, ${name}` : ''}! 🎉`)
+    toast.success(`Welcome to STYLE STREET${name ? `, ${name}` : ''}!`)
 
     if (redirectUrl) {
       navigate(redirectUrl)

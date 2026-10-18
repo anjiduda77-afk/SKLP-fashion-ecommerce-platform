@@ -340,7 +340,7 @@ function ProductDetail() {
 
                 <div className="flex items-center gap-4 text-[11px] opacity-75 pt-1">
                   <span>★ {selectedOffer?.sellerId?.rating || '4.8'} Seller Rating</span>
-                  <span>• 🚚 {selectedOffer?.deliveryDays || 3} Days Delivery</span>
+                  <span className="flex items-center gap-1"><FiTruck className="text-luxury-gold" size={13} /> {selectedOffer?.deliveryDays || 3} Days Delivery</span>
                   <span>• ↺ {selectedOffer?.returnPolicyDays || 7} Days Return</span>
                 </div>
               </div>
@@ -391,7 +391,7 @@ function ProductDetail() {
                       return
                     }
                     addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
-                    toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'Style Street Official Store'}! 🎉`)
+                    toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'Style Street Official Store'}!`)
                   }}
                   className={`flex-grow py-4 px-3 font-extrabold tracking-wider text-[10px] xs:text-xs uppercase transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap touch-target ${
                     product.isRestricted 
@@ -461,7 +461,7 @@ function ProductDetail() {
                     </Link>
                     <div className="flex items-center gap-3 text-xs opacity-75">
                       <span className="text-luxury-gold font-bold">★ {offer.sellerId?.rating || '4.5'}</span>
-                      <span>• 🚚 {offer.deliveryDays || 3} Days Delivery</span>
+                      <span className="flex items-center gap-1"><FiTruck className="text-luxury-gold" size={12} /> {offer.deliveryDays || 3} Days Delivery</span>
                       <span>• ↺ {offer.returnPolicyDays || 7} Days Return</span>
                       {offer.freeDelivery && <span className="text-green-500 font-bold">• Free Delivery</span>}
                     </div>
@@ -477,7 +477,7 @@ function ProductDetail() {
                     <button
                       onClick={() => {
                         addToCart(product, quantity, { size: selectedSize, color: selectedColor }, offer._id)
-                        toast.success(`Added from ${offer.sellerId?.shopName || 'Merchant'}! 🎉`)
+                        toast.success(`Added from ${offer.sellerId?.shopName || 'Merchant'}!`)
                       }}
                       className="px-4 py-2 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-yellow-400 transition-all"
                     >
@@ -596,7 +596,7 @@ function ProductDetail() {
                 return
               }
               addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
-              toast.success('Added to Cart! 🎉')
+              toast.success('Added to Cart!')
             }}
             className={`flex-grow max-w-[200px] py-3.5 px-4 font-extrabold tracking-wider text-xs uppercase active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl shadow-glow touch-target ${
               product.isRestricted 

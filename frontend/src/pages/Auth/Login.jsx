@@ -64,109 +64,22 @@ function spawnRipple(e, btnEl) {
   }
 }
 
-// ── Fashion scene static data ───────────────────────────────────────────────
-const ITEMS = [
-  // Far depth — Men's
-  { key: 'shirt',     icon: '👕', layer: 'far',  left: '6%',  dur: 9,  dly: -3,  sz: 1.8, r1: -12, r2: 15  },
-  { key: 'dresshirt', icon: '👔', layer: 'far',  left: '20%', dur: 11, dly: -8,  sz: 2.0, r1:  8,  r2: -10 },
-  { key: 'jeans',     icon: '👖', layer: 'far',  left: '46%', dur: 12, dly: -5,  sz: 1.9, r1: 10,  r2: -8  },
-  { key: 'watch',     icon: '⌚', layer: 'far',  left: '72%', dur: 10, dly: -2,  sz: 1.5, r1: 20,  r2: -15 },
-  { key: 'handbag',   icon: '👜', layer: 'far',  left: '28%', dur: 8,  dly: -4,  sz: 1.8, r1: -18, r2: 12  },
-  { key: 'ring',      icon: '💍', layer: 'far',  left: '56%', dur: 9,  dly: -6,  sz: 1.4, r1: -10, r2: 15  },
-  { key: 'hat',       icon: '👒', layer: 'far',  left: '82%', dur: 7,  dly: -10, sz: 1.8, r1: -20, r2:  5  },
-  { key: 'gift',      icon: '🎁', layer: 'far',  left: '90%', dur: 9,  dly: -1,  sz: 1.6, r1: -8,  r2: 18  },
-  // Near depth — Women's + General
-  { key: 'jacket',    icon: '🧥', layer: 'near', left: '34%', dur: 8,  dly: -1,  sz: 2.2, r1: -15, r2: 12  },
-  { key: 'sneaker',   icon: '👟', layer: 'near', left: '60%', dur: 7,  dly: -11, sz: 1.7, r1: -8,  r2: 20  },
-  { key: 'sunglass',  icon: '🕶️', layer: 'near', left: '87%', dur: 13, dly: -7,  sz: 1.6, r1: -5,  r2:  8  },
-  { key: 'dress',     icon: '👗', layer: 'near', left: '14%', dur: 10, dly: -9,  sz: 2.1, r1: 12,  r2: -10 },
-  { key: 'heels',     icon: '👠', layer: 'near', left: '42%', dur: 14, dly: -12, sz: 1.7, r1:  5,  r2: -20 },
-  { key: 'scarf',     icon: '🧣', layer: 'near', left: '68%', dur: 11, dly: -3,  sz: 1.9, r1: 15,  r2: -8  },
-  { key: 'shopbag',   icon: '🛍️', layer: 'near', left: '4%',  dur: 12, dly: -14, sz: 2.0, r1:  8,  r2: -12 },
-  { key: 'briefcase', icon: '💼', layer: 'near', left: '52%', dur: 10, dly: -7,  sz: 1.7, r1: 12,  r2: -5  },
-]
-
-const CHARS = [
-  { id: 'f1', icon: '🏃‍♀️', speed: 13, delay: -1,  size: 2.1, bottom: '4%'  },
-  { id: 'm1', icon: '🏃‍♂️', speed: 10, delay: -5,  size: 2.3, bottom: '3%'  },
-  { id: 'f2', icon: '🏃‍♀️', speed: 17, delay: -9,  size: 1.9, bottom: '5%'  },
-  { id: 'm2', icon: '🏃‍♂️', speed: 8,  delay: -3,  size: 2.0, bottom: '2.5%'},
-]
-
-// ── Sub-components (memoised for performance) ───────────────────────────────
-const FallingItem = memo(function FallingItem({ item }) {
-  const ref = useRef(null)
-  return (
-    <div
-      ref={ref}
-      className={`lp-fall-item lp-layer-${item.layer}`}
-      style={{
-        '--fd':  `${item.dur}s`,
-        '--fdy': `${item.dly}s`,
-        '--fsz': `${item.sz}rem`,
-        '--r1':  `${item.r1}deg`,
-        '--r2':  `${item.r2}deg`,
-        left: item.left,
-      }}
-      onMouseEnter={() => ref.current?.classList.add('lp-item-lit')}
-      onMouseLeave={() => ref.current?.classList.remove('lp-item-lit')}
-      aria-hidden="true"
-    >
-      {item.icon}
-    </div>
-  )
-})
-FallingItem.displayName = 'FallingItem'
-
-const RunningChar = memo(function RunningChar({ char }) {
-  return (
-    <div
-      className="lp-char"
-      style={{
-        '--cs': `${char.speed}s`,
-        '--cd': `${char.delay}s`,
-        '--cz': `${char.size}rem`,
-        bottom: char.bottom,
-      }}
-      aria-hidden="true"
-    >
-      {char.icon}
-    </div>
-  )
-})
-RunningChar.displayName = 'RunningChar'
-
 const FashionScene = memo(function FashionScene({ isDarkMode }) {
   return (
-  <div className={`lp-scene ${isDarkMode ? 'lp-scene-dark' : 'lp-scene-light'}`} aria-hidden="true">
-    {/* Ambient gold particles */}
-    {Array.from({ length: 12 }, (_, i) => (
-      <div
-        key={i}
-        className="lp-particle"
-        style={{
-          left: `${i * 8.3 + 1}%`,
-          '--pp': `${3.5 + (i * 0.6) % 4}s`,
-          '--ppd': `${-(i * 0.8)}s`,
-        }}
-      />
-    ))}
-
-    {/* Far-depth products */}
-    {ITEMS.filter(it => it.layer === 'far').map(item => (
-      <FallingItem key={item.key} item={item} />
-    ))}
-
-    {/* Running characters */}
-    <div className="lp-chars-layer">
-      {CHARS.map(char => <RunningChar key={char.id} char={char} />)}
+    <div className={`lp-scene ${isDarkMode ? 'lp-scene-dark' : 'lp-scene-light'}`} aria-hidden="true">
+      {/* Ambient gold luxury particles */}
+      {Array.from({ length: 16 }, (_, i) => (
+        <div
+          key={i}
+          className="lp-particle"
+          style={{
+            left: `${i * 6.2 + 2}%`,
+            '--pp': `${4 + (i * 0.7) % 5}s`,
+            '--ppd': `${-(i * 0.9)}s`,
+          }}
+        />
+      ))}
     </div>
-
-    {/* Near-depth products (above characters) */}
-    {ITEMS.filter(it => it.layer === 'near').map(item => (
-      <FallingItem key={item.key} item={item} />
-    ))}
-  </div>
   )
 })
 FashionScene.displayName = 'FashionScene'
@@ -286,7 +199,7 @@ function Login() {
     const name = userObj?.firstName && userObj.firstName !== 'Customer' ? userObj.firstName : ''
     setLoginSuccess(true)
     setTimeout(() => {
-      toast.success(`Welcome back${name ? `, ${name}` : ''}! 🎉`)
+      toast.success(`Welcome back${name ? `, ${name}` : ''}!`)
       const rawRole = (userObj?.role || '').toLowerCase().replace(/\s+/g, '').trim()
       const role = rawRole === 'deliverypartner' ? 'delivery' : rawRole
 
@@ -363,27 +276,6 @@ function Login() {
         }
       }
       toast.error(msg)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleQuickLogin = async (accEmail, accPass) => {
-    setEmail(accEmail)
-    setPassword(accPass)
-    setLoading(true)
-    try {
-      const res = await authService.login(accEmail, accPass, true)
-      if (res.data?.success && res.data?.token) {
-        const { user: u, token: tk, refreshToken: rt } = res.data
-        login(u, tk, rt)
-        handleRedirectAfterLogin(u)
-      } else {
-        throw new Error(res.data?.message || 'Login failed')
-      }
-    } catch (err) {
-      console.error('Quick login error:', err)
-      toast.error(err.response?.data?.message || err.message || 'Quick login failed')
     } finally {
       setLoading(false)
     }
@@ -499,7 +391,7 @@ function Login() {
       if (res.data?.success && res.data?.token) {
         const { user: u, token: tk, refreshToken: rt, isNewUser } = res.data
         login(u, tk, rt)
-        if (isNewUser) toast.success('Account created! Welcome to STYLE STREET 🎉')
+        if (isNewUser) toast.success('Account created! Welcome to STYLE STREET')
         handleRedirectAfterLogin(u)
       } else {
         throw new Error(res.data?.message || 'OTP verification failed')
@@ -649,71 +541,6 @@ function Login() {
                       Create an account <FiArrowRight size={11} className="inline" aria-hidden="true" />
                     </Link>
                   </p>
-
-                  {/* ── 4 Core Accounts Quick Sign-In ── */}
-                  <div className="mt-4 pt-3 border-t border-white/10 text-left">
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center justify-between ${isDarkMode ? 'text-luxury-gold' : 'text-amber-700'}`}>
-                      <span>⚡ Quick Account Sign-In</span>
-                      <span className="text-[9px] opacity-70 font-normal">All 4 Roles</span>
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => handleQuickLogin('customer@sklp.com', 'CustomerPassword123!')}
-                        className={`p-2 rounded-xl border text-left transition-all ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
-                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
-                        }`}
-                      >
-                        <div className="text-[11px] font-bold flex items-center gap-1">🛍️ Customer</div>
-                        <div className="text-[9px] opacity-60 truncate">customer@sklp.com</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => handleQuickLogin('admin@sklp.com', 'AdminPassword123!')}
-                        className={`p-2 rounded-xl border text-left transition-all ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
-                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
-                        }`}
-                      >
-                        <div className="text-[11px] font-bold flex items-center gap-1">👑 Admin</div>
-                        <div className="text-[9px] opacity-60 truncate">admin@sklp.com</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => handleQuickLogin('seller@sklp.com', 'SellerPassword123!')}
-                        className={`p-2 rounded-xl border text-left transition-all ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
-                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
-                        }`}
-                      >
-                        <div className="text-[11px] font-bold flex items-center gap-1">🏬 Seller</div>
-                        <div className="text-[9px] opacity-60 truncate">seller@sklp.com</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => handleQuickLogin('delivery@sklp.com', 'DeliveryPassword123!')}
-                        className={`p-2 rounded-xl border text-left transition-all ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
-                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
-                        }`}
-                      >
-                        <div className="text-[11px] font-bold flex items-center gap-1">🚚 Delivery</div>
-                        <div className="text-[9px] opacity-60 truncate">delivery@sklp.com</div>
-                      </button>
-                    </div>
-                  </div>
                 </motion.div>
               )}
 

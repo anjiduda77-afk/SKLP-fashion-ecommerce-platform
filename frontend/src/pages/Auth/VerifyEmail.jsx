@@ -35,7 +35,7 @@ function VerifyEmail() {
         const res = await authService.verifyEmail(token)
         if (res.data?.success) {
           setSuccess(true)
-          toast.success(t('auth.emailVerified', 'Email verified successfully! 🎉'))
+          toast.success(t('auth.emailVerified', 'Email verified successfully!'))
           if (refreshUser) {
             refreshUser()
           }
@@ -62,7 +62,7 @@ function VerifyEmail() {
     try {
       const res = await authService.resendVerification(targetEmail)
       if (res.data?.success) {
-        toast.success(t('auth.verificationResent', 'New verification link sent to your email! ✉️'))
+        toast.success(t('auth.verificationResent', 'New verification link sent to your email.'))
       }
     } catch (err) {
       toast.error(err.response?.data?.message || t('errors.serverError', 'Failed to resend verification email.'))

@@ -67,7 +67,7 @@ export default function AnnouncementBar() {
     if (!campaign?.coupon?.couponCode) return;
     navigator.clipboard.writeText(campaign.coupon.couponCode);
     setCopied(true);
-    toast.success(`Coupon code ${campaign.coupon.couponCode} copied! 🎉`);
+    toast.success(`Coupon code ${campaign.coupon.couponCode} copied!`);
     trackClick(campaign, variant?.variantId);
     setTimeout(() => setCopied(false), 3000);
   };

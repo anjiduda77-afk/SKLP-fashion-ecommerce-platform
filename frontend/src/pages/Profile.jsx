@@ -17,7 +17,7 @@ import {
   FiBell, FiCreditCard,
   FiTag, FiTruck, FiCheck, FiShoppingBag, FiHeart, FiArrowRight, FiChevronRight,
   FiMenu, FiHome, FiUploadCloud, FiAward, FiClock,
-  FiHelpCircle, FiRefreshCw, FiExternalLink
+  FiHelpCircle, FiRefreshCw, FiExternalLink, FiMessageCircle
 } from 'react-icons/fi'
 
 
@@ -224,7 +224,7 @@ function PhoneVerificationModal({ onClose, onPhoneUpdated, isDarkMode }) {
       const res = await authService.linkPhoneFirebase(idToken)
       if (res.data?.success && res.data?.user) {
         onPhoneUpdated(res.data.user)
-        toast.success('🎉 Phone number successfully verified and linked to your account!')
+        toast.success('Phone number successfully verified and linked to your account!')
         onClose()
       }
     } catch (err) {
@@ -535,7 +535,7 @@ function Profile() {
     { id: 'payments',      label: t('profile.paymentMethods', 'Payment Methods & UPI'), icon: FiCreditCard, desc: t('profile.savedUpi', 'UPI & wallet') },
     { id: 'display',       label: t('profile.displayRegion', 'Display & Region'),      icon: FiGlobe,      desc: t('profile.visualTheme', 'Theme, language, currency') },
     { id: 'notifications', label: t('profile.notifications', 'Notifications'),         icon: FiBell,       desc: t('profile.notificationAlerts', 'Alerts & updates') },
-    { id: 'help-policies', label: t('footer.helplineInfo', 'Help, Helpline & Policies'), icon: FiHelpCircle, desc: 'Helpline, Assistant & Store Policies' },
+    { id: 'help-policies', label: t('footer.helplineInfo', 'Help, Helpline & Policies'), icon: FiHelpCircle, desc: 'Helpline, Support & Store Policies' },
   ]
 
   const tabFromUrl = searchParams.get('tab')
@@ -604,7 +604,7 @@ function Profile() {
     try {
       const res = await notificationService.sendTestNotification()
       if (res.data?.success) {
-        toast.success('🔔 Test notification dispatched! Check your notification bell and desktop alert.')
+        toast.success('Test notification dispatched! Check your notification bell and desktop alert.')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not send test notification')
@@ -660,7 +660,8 @@ function Profile() {
                 onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
                 className="py-2 px-4 bg-luxury-gold/15 text-luxury-gold hover:bg-luxury-gold hover:text-black border border-luxury-gold/30 rounded-full text-xs font-bold transition-all flex items-center gap-1.5"
               >
-                💬 Help Assistant
+                <FiMessageCircle size={14} className="text-luxury-gold" />
+                <span>Customer Support</span>
               </button>
             </div>
           </div>
@@ -669,7 +670,7 @@ function Profile() {
           <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center text-lg flex-shrink-0">
-                📞
+                <FiPhone size={18} />
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider">Customer Helpline</p>
@@ -1522,14 +1523,14 @@ function Profile() {
                 </div>
               </div>
 
-              {/* 2 Primary Action Cards: Help Assistant & Customer Helpline */}
+              {/* 2 Primary Action Cards: Customer Support & Customer Helpline */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* 1. 💬 Help Assistant */}
+                {/* 1. Customer Support */}
                 <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col justify-between space-y-4 hover:border-luxury-gold/50 transition-all`}>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="w-10 h-10 rounded-xl bg-luxury-gold/15 text-luxury-gold flex items-center justify-center text-xl">
-                        💬
+                        <FiMessageCircle size={18} className="text-luxury-gold" />
                       </div>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">
                         24/7 Help Desk
@@ -1547,17 +1548,17 @@ function Profile() {
                     onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}
                     className="w-full py-3 px-4 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold transition-all flex items-center justify-center gap-2"
                   >
-                    <span>💬 Open Help Assistant</span>
+                    <span className="flex items-center gap-1.5"><FiMessageCircle size={14} /> Open Customer Support</span>
                     <FiArrowRight size={14} />
                   </button>
                 </div>
 
-                {/* 2. 📞 Customer Helpline */}
+                {/* 2. Customer Helpline */}
                 <div className={`p-6 rounded-2xl border ${cardBg} flex flex-col justify-between space-y-4 hover:border-luxury-gold/50 transition-all`}>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="w-10 h-10 rounded-xl bg-luxury-gold/15 text-luxury-gold flex items-center justify-center text-xl">
-                        📞
+                        <FiPhone size={18} className="text-luxury-gold" />
                       </div>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/15 text-green-500 border border-green-500/30">
                         Live Helpline
@@ -1588,14 +1589,14 @@ function Profile() {
                       href="tel:+919948682179"
                       className="flex-1 py-3 px-3 bg-luxury-gold text-luxury-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-glow hover:bg-luxury-darkGold transition-all text-center flex items-center justify-center gap-1.5"
                     >
-                      <span>📞 Call Helpline</span>
+                      <span className="flex items-center gap-1.5"><FiPhone size={14} /> Call Helpline</span>
                     </a>
                     <a
                       href="mailto:support@stylestreet.in"
                       className={`flex-1 py-3 px-3 rounded-xl border text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5 transition-all
                         ${isDarkMode ? 'border-white/20 hover:bg-white/10 text-white' : 'border-black/20 hover:bg-black/5 text-black'}`}
                     >
-                      <span>✉️ Email</span>
+                      <span className="flex items-center gap-1.5"><FiMail size={14} /> Email Support</span>
                     </a>
                   </div>
                 </div>

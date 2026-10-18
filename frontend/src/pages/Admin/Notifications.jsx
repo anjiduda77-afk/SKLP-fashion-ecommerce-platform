@@ -143,11 +143,11 @@ function BroadcastModal({ isOpen, onClose, onSuccess }) {
               onChange={(e) => setType(e.target.value)}
               className={inputCls}
             >
-              <option value="offer">Promotional / Special Offer 🏷️</option>
-              <option value="system">System Announcement 📢</option>
-              <option value="order">Order Update 📦</option>
-              <option value="shipment">Shipping Notification 🚚</option>
-              <option value="account">Account Alert 🛡️</option>
+              <option value="offer">Promotional / Special Offer</option>
+              <option value="system">System Announcement</option>
+              <option value="order">Order Update</option>
+              <option value="shipment">Shipping Notification</option>
+              <option value="account">Account Alert</option>
             </select>
           </div>
 
@@ -530,8 +530,8 @@ export default function AdminNotifications() {
                           <FiCheckCircle size={10} /> In-App
                         </span>
                         {n.channels?.push?.sent && (
-                          <span className="block text-[10px] text-luxury-gold font-medium">
-                            📱 Push Sent
+                          <span className="inline-flex items-center gap-1 text-[10px] text-luxury-gold font-medium">
+                            <FiSmartphone size={10} /> Push Sent
                           </span>
                         )}
                       </div>

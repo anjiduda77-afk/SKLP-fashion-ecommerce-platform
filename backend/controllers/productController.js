@@ -254,6 +254,7 @@ export const getAIRecommendations = async (req, res) => {
   const products = await Product.find({ isActive: true }).limit(10).lean()
   res.status(200).json({ success: true, recommendations: products })
 }
+export const getRecommendations = getAIRecommendations
 
 import mongoose from 'mongoose'
 

@@ -62,7 +62,7 @@ function SearchModal({ isOpen, onClose, startWithVoice = false }) {
       // Automatically execute search after speech recognition finishes
       setTimeout(() => {
         handleSearch(clean)
-        toast.success(`Voice Search: "${clean}" 🎙️`, { autoClose: 2000 })
+        toast.success(`Voice Search: "${clean}"`, { autoClose: 2000 })
       }, 550)
     }
   })
@@ -392,7 +392,7 @@ function SearchModal({ isOpen, onClose, startWithVoice = false }) {
             {/* "Did you mean?" correction banner */}
             {showSuggestions && suggestions?.showCorrection && suggestions?.cleanedQuery && (
               <div className={`flex items-center gap-2 px-4 py-2.5 border-b text-xs ${isDarkMode ? 'bg-luxury-gold/5 border-luxury-gold/20' : 'bg-amber-50 border-amber-100'}`}>
-                <FiZap className="text-luxury-gold shrink-0" size={13} />
+                <FiSearch className="text-luxury-gold shrink-0" size={13} />
                 <span className={isDarkMode ? 'text-white/70' : 'text-gray-600'}>
                   {t('header.didYouMean', 'Did you mean:')}
                 </span>

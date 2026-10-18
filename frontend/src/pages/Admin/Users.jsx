@@ -166,7 +166,7 @@ function CreateUserModal({ onClose, onCreated, isDarkMode }) {
     try {
       const res = await adminService.createUser(form)
       if (res.data?.success) {
-        toast.success(`${form.role.toUpperCase()} account created successfully! 🎉`)
+        toast.success(`${form.role.toUpperCase()} account created successfully!`)
         onCreated(res.data.user)
         onClose()
       }

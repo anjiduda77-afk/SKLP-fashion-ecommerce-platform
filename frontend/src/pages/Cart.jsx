@@ -67,7 +67,7 @@ function Cart() {
       if (allSellersFree && cartItems.length > 0) {
         setDeliveryFee(0)
         setIsFreeDelivery(true)
-        setDeliveryLabel('Free delivery by merchant 🎉')
+        setDeliveryLabel('Free delivery by merchant')
         setCalculatingDelivery(false)
         return
       }
@@ -115,7 +115,7 @@ function Cart() {
         const fee = Number(res.data.deliveryFee) || 0
         setDeliveryFee(fee)
         setIsFreeDelivery(fee === 0)
-        setDeliveryLabel(res.data.deliveryLabel || (fee === 0 ? 'Free delivery 🎉' : `₹${fee}`))
+        setDeliveryLabel(res.data.deliveryLabel || (fee === 0 ? 'Free delivery' : `₹${fee}`))
       }
     } catch (err) {
       // Fallback: 0-6km slab fee is ₹10
@@ -202,7 +202,7 @@ function Cart() {
         price: item.price,
         image: item.image
       })
-      toast.success(`"${item.name}" moved to wishlist ❤️`)
+      toast.success(`"${item.name}" moved to wishlist`)
     } catch (err) {
       toast.error('Could not move item to wishlist')
     }
@@ -315,7 +315,7 @@ function Cart() {
             <p className="text-xs sm:text-sm font-semibold truncate">
               {isFreeDelivery ? (
                 <span className="flex items-center gap-1.5 font-bold text-emerald-400">
-                  <FiCheckCircle /> 🚚 You have qualified for Free Delivery!
+                  <FiCheckCircle /> You have qualified for Free Delivery!
                 </span>
               ) : (
                 <span>
@@ -570,7 +570,7 @@ function Cart() {
                       </button>
                     </div>
 
-                    {/* Right: Primary CTAs [View Details] [⚡ Buy Now] */}
+                    {/* Right: Primary CTAs [View Details] [Buy Now] */}
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <Link
                         to={`/products/${prodId}`}
@@ -582,7 +582,7 @@ function Cart() {
                         onClick={() => handleBuyNow(item)}
                         className="px-4 py-2 bg-luxury-gold text-luxury-black rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 active:scale-95 transition-all flex items-center gap-1 shadow-md"
                       >
-                        <FiZap size={13} /> Buy Now
+                        <FiShoppingBag size={13} /> Buy Now
                       </button>
                     </div>
                   </div>

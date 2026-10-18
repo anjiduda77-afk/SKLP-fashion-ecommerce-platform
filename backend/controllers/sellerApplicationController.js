@@ -481,6 +481,39 @@ export const getAdminSellerApplications = async (req, res) => {
 }
 
 /**
+ * Admin: Get single seller application with full details (photos, signature, documents, KYC, seller)
+ */
+export const getAdminSellerApplicationById = async (req, res) => {
+  const { id } = req.params
+  const application = await SellerApplication.findById(id)
+    .populate('userId', 'firstName lastName email phone isEmailVerified isPhoneVerified createdAt')
+    .populate('reviewedBy', 'firstName lastName email')
+    .populate('approvedBy', 'firstName lastName email')
+    .populate('auditLogs.adminId', 'firstName lastName email')
+    .lean()
+
+  if (!application) {
+    throw new ApiError(404, 'Seller application not found')
+  }
+
+  const SellerKYC = (await import('../models/SellerKYC.js')).default
+  const kyc = await SellerKYC.findOne({
+    $or: [{ applicationId: application._id }, { userId: application.userId?._id || application.userId }]
+  }).lean()
+
+  const seller = await Seller.findOne({
+    $or: [{ userId: application.userId?._id || application.userId }, { shopSlug: slugify(application.shopName) }]
+  }).lean()
+
+  res.status(200).json({
+    success: true,
+    application,
+    kyc: kyc || null,
+    seller: seller || null
+  })
+}
+
+/**
  * Admin: Review Seller Application (Approve, Reject, Request Info, Suspend)
  */
 export const reviewSellerApplication = async (req, res) => {

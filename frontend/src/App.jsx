@@ -44,6 +44,7 @@ const AdminUsers = lazy(() => import('@pages/Admin/Users'))
 const AdminCoupons = lazy(() => import('@pages/Admin/Coupons'))
 const AdminReturns = lazy(() => import('@pages/Admin/Returns'))
 const AdminSellers = lazy(() => import('@pages/Admin/Sellers'))
+const AdminSellerDetails = lazy(() => import('@pages/Admin/SellerDetails'))
 const AdminMarketing = lazy(() => import('@pages/Admin/Marketing'))
 const AdminOrderReceipt = lazy(() => import('@pages/Admin/OrderReceiptPage'))
 const AdminBrandingSettings = lazy(() => import('@pages/Admin/BrandingSettings'))
@@ -156,6 +157,8 @@ function MainAppLayout({ isDarkMode }) {
               <Route path="coupons" element={<AdminCoupons />} />
               <Route path="returns" element={<AdminReturns />} />
               <Route path="sellers" element={<AdminSellers />} />
+              <Route path="sellers/:applicationId" element={<AdminSellerDetails />} />
+              <Route path="seller-applications/:applicationId" element={<AdminSellerDetails />} />
               <Route path="marketing" element={<AdminMarketing />} />
               <Route path="notifications" element={<AdminNotifications />} />
               <Route path="branding" element={<AdminBrandingSettings />} />

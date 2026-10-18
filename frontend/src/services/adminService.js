@@ -41,6 +41,7 @@ export const adminService = {
 
   // Seller Applications (Become a Seller flow)
   getSellerApplications: (params) => apiClient.get('/admin/seller-applications', { params }),
+  getSellerApplicationById: (id) => apiClient.get(`/admin/seller-applications/${id}`),
   reviewSellerApplication: (id, action, notes, reason) =>
     apiClient.put(`/admin/seller-applications/${id}/review`, { action, notes, reason }),
   downloadSellerAgreementPdf: (id) =>

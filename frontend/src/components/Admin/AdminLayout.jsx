@@ -53,7 +53,9 @@ function SidebarContent({ location, user, handleLogout, onClose }) {
       {/* Nav Links */}
       <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
         {navItems.map(({ path, label, icon: Icon }) => {
-          const isActive = location.pathname === path
+          const isActive = path === '/admin/dashboard'
+            ? location.pathname === path
+            : location.pathname.startsWith(path)
           return (
             <Link
               key={path}
@@ -178,7 +180,9 @@ function AdminLayout({ children }) {
         {/* Nav Links */}
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
           {navItems.map(({ path, label, icon: Icon }) => {
-            const isActive = location.pathname === path
+            const isActive = path === '/admin/dashboard'
+              ? location.pathname === path
+              : location.pathname.startsWith(path)
             return (
               <Link
                 key={path}

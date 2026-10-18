@@ -62,6 +62,10 @@ router.put('/seller-applications/:id/kyc/review', asyncHandler(async (req, res) 
   const { reviewKycByAdmin } = await import('../controllers/sellerKycController.js')
   return reviewKycByAdmin(req, res)
 }))
+router.get('/seller-applications/:id', asyncHandler(async (req, res) => {
+  const { getAdminSellerApplicationById } = await import('../controllers/sellerApplicationController.js')
+  return getAdminSellerApplicationById(req, res)
+}))
 
 // Marketplace Revenue & Settlements
 router.get('/marketplace-revenue', asyncHandler(async (req, res) => {

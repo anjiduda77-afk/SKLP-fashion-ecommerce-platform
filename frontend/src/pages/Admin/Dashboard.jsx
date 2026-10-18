@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTheme } from '@context/ThemeContext'
 import {
   FiTrendingUp, FiShoppingBag, FiUsers, FiPackage,
-  FiArrowUp, FiArrowDown, FiClock
+  FiArrowUp, FiArrowDown, FiClock, FiBriefcase
 } from 'react-icons/fi'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -206,6 +206,28 @@ function AdminDashboard() {
             <p className={`text-sm ${textSecondary}`}>{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Seller Onboarding Management Banner */}
+      <div className={`rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 ${cardBg}`}>
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 font-bold flex-shrink-0">
+            <FiBriefcase size={22} />
+          </div>
+          <div>
+            <h4 className={`text-sm sm:text-base font-bold ${textPrimary}`}>Seller Application & Onboarding Management</h4>
+            <p className={`text-xs ${textSecondary} mt-0.5`}>
+              Inspect pending merchant requests, verify boutique store photographs, review recorded signatures, and activate approved sellers.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/admin/sellers"
+          className="px-4 py-2 bg-luxury-gold text-black font-bold text-xs rounded-xl hover:bg-luxury-lightGold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-glow flex-shrink-0"
+        >
+          <span>Manage Seller Applications</span>
+          <FiArrowUp size={12} className="rotate-45" />
+        </Link>
       </div>
 
       {/* Charts Row */}

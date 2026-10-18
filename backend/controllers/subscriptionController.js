@@ -13,10 +13,11 @@ export const SELLER_PLANS = [
     badge: 'Starter',
     maxListings: 50,
     commissionRate: 5,
+    maxCommissionPerUnit: 21,
     features: [
       'Zero monthly subscription fee for 30 days',
       'Up to 50 active couture listings & offers',
-      'Standard 5% marketplace commission',
+      '5% platform commission (capped at max ₹21 per unit)',
       'Basic analytics & order dashboard',
       'Fast customer email support',
       'Direct 7-day settlement ledger'
@@ -31,10 +32,11 @@ export const SELLER_PLANS = [
     badge: 'Essential',
     maxListings: 50,
     commissionRate: 5,
+    maxCommissionPerUnit: 21,
     features: [
       '₹99/month for boutique & emerging designers',
       'Up to 50 active product listings',
-      'Standard 5% order commission',
+      '5% order commission (max ₹21/unit; min[price × 0.05, ₹21])',
       'Weekly automated settlement payouts',
       'Mobile seller dashboard access',
       'Real-time order tracking & courier dispatch'
@@ -50,13 +52,14 @@ export const SELLER_PLANS = [
     popular: true,
     maxListings: 250,
     commissionRate: 4.5,
+    maxCommissionPerUnit: 21,
     features: [
       '₹299/month for growing fashion brands',
       'Up to 250 active product listings',
       'Priority Buy-Box & offer recommendation boost',
       'Detailed customer demographic & sales analytics',
       '7-day priority settlement payouts',
-      'Reduced 4.5% marketplace commission'
+      'Reduced 4.5% marketplace commission (max ₹21 per unit)'
     ]
   },
   {
@@ -68,12 +71,13 @@ export const SELLER_PLANS = [
     badge: 'Enterprise',
     maxListings: 10000,
     commissionRate: 4,
+    maxCommissionPerUnit: 21,
     features: [
       '₹599/month for high-volume enterprise stores',
       'Unlimited product & variant listings',
       'Dedicated account manager & brand promotion',
       'Express 48-hour settlement payout window',
-      'Lowest 4.0% platform commission',
+      'Lowest 4.0% platform commission (max ₹21 per unit)',
       'Bulk CSV inventory upload & API access'
     ]
   }

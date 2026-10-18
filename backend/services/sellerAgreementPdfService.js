@@ -191,7 +191,7 @@ export async function generateSellerAgreementPdf(application, kyc, res) {
 
   y += 24;
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor(darkCharcoal).text('Platform Commission:', col1X, y);
-  doc.font('Helvetica').fontSize(7.5).fillColor('#374151').text('5% of net product order value (Standard apparel fee)', col1X + 115, y);
+  doc.font('Helvetica').fontSize(7.5).fillColor('#374151').text('5% of eligible product price (max ₹21/unit; min[price × 0.05, ₹21])', col1X + 115, y);
 
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor(darkCharcoal).text('Settlement Window:', col2X, y);
   doc.font('Helvetica').fontSize(7.5).fillColor('#374151').text('7 days post confirmed customer delivery', col2X + 105, y);

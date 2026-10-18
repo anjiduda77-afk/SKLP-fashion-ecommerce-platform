@@ -1117,7 +1117,7 @@ function SellerDashboard() {
                          sellerProfile.currentPlan === 'pro' ? 'Pro Seller Boost' : 
                          sellerProfile.currentPlan === 'basic' ? 'Basic Seller' : '30-Day Free Trial'}
                       </p>
-                      <p className="text-[9px] opacity-60 mt-1">5% Standard Platform Commission</p>
+                      <p className="text-[9px] opacity-60 mt-1">5% Platform Commission (max ₹21/unit)</p>
                     </div>
                   </div>
                 </div>
@@ -2107,7 +2107,7 @@ function SellerDashboard() {
                           <th className="py-3 px-4">Settlement ID</th>
                           <th className="py-3 px-4">Order Details</th>
                           <th className="py-3 px-4">Gross Sale</th>
-                          <th className="py-3 px-4">Commission (5%)</th>
+                          <th className="py-3 px-4">Commission (5%, max ₹21/unit)</th>
                           <th className="py-3 px-4">Net Payout</th>
                           <th className="py-3 px-4">Hold / Maturity</th>
                           <th className="py-3 px-4 text-center">Status</th>
@@ -2158,7 +2158,7 @@ function SellerDashboard() {
                                 </td>
                                 <td className="py-4 px-4 font-semibold text-red-400">
                                   -₹{(s.platformCommission || 0).toLocaleString('en-IN')}
-                                  <span className="text-[9px] opacity-60 block">({s.commissionRate || 5}%)</span>
+                                  <span className="text-[9px] opacity-60 block">({s.commissionRate || 5}% • max ₹{s.maxCommissionPerUnit || 21}/unit)</span>
                                 </td>
                                 <td className="py-4 px-4 font-extrabold text-sm text-green-500">
                                   ₹{(s.sellerPayout || 0).toLocaleString('en-IN')}
@@ -2391,7 +2391,7 @@ function SellerDashboard() {
                           </div>
 
                           <p className="text-[10px] font-bold uppercase tracking-wider text-luxury-gold/90 mb-4 pb-3 border-b border-current/10">
-                            Commission: {plan.commissionRate}% per sale
+                            Commission: {plan.commissionRate}% (capped at max ₹21/unit)
                           </p>
 
                           {/* Features list */}

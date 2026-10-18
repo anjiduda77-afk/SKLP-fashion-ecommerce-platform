@@ -163,7 +163,29 @@ export default function SellerTermsModal({ isOpen, onClose, isDarkMode, onAccept
           <section className="space-y-1.5">
             <h3 className="font-bold text-sm text-amber-500">16. PLATFORM FEES & COMMISSION</h3>
             <p className={textSecondary}>
-              STYLE STREET charges a transparent, flat platform fee of <strong>5%</strong> on successfully fulfilled orders. New approved merchants receive a <strong>30-Day Free Trial</strong> with zero subscription charge. Applicable fee schedules are visible in the merchant dashboard.
+              STYLE STREET charges a transparent platform commission calculated strictly on the eligible product price of successfully fulfilled merchandise:
+            </p>
+            <ul className={`list-disc list-inside space-y-1 pl-1 text-xs ${textSecondary}`}>
+              <li><strong>Commission Rate:</strong> 5% of the net eligible product price (after product discounts and disclosed customer discounts).</li>
+              <li><strong>Maximum Cap:</strong> Capped at a maximum of <strong>₹21 per eligible product unit</strong>.</li>
+              <li><strong>Official Formula:</strong> <code className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono text-[11px]">commission = min(eligible_product_price × 0.05, 21)</code> per unit.</li>
+              <li><strong>Multiple Quantities:</strong> For orders with multiple units, commission is calculated separately for each eligible unit and summed. The ₹21 cap applies per unit, never incorrectly capping the entire order or multi-unit line item.</li>
+              <li>
+                <strong>Illustrative Examples:</strong>
+                <ul className="list-circle list-inside pl-4 mt-0.5 space-y-0.5 text-[11px]">
+                  <li>₹100 product unit → <strong>₹5 commission</strong></li>
+                  <li>₹200 product unit → <strong>₹10 commission</strong></li>
+                  <li>₹400 product unit → <strong>₹20 commission</strong></li>
+                  <li>₹420 product unit → <strong>₹21 commission</strong> (5% threshold)</li>
+                  <li>₹500 product unit → <strong>₹21 commission</strong> (capped at ₹21)</li>
+                  <li>₹1,000 product unit → <strong>₹21 commission</strong> (capped at ₹21)</li>
+                  <li>₹1,000 product × 3 units → <strong>₹63 commission</strong> (3 × ₹21)</li>
+                </ul>
+              </li>
+              <li><strong>Cancellations & Returns:</strong> When an order or unit is cancelled or refunded, the corresponding platform commission is reversed proportionally.</li>
+            </ul>
+            <p className={`text-xs mt-1 ${textSecondary}`}>
+              New approved merchants receive a <strong>30-Day Free Trial</strong> with zero recurring subscription charges.
             </p>
           </section>
 

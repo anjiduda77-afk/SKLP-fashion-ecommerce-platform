@@ -167,6 +167,48 @@ function OrderDetail({ order, onClose, onStatusChange }) {
             </div>
           </div>
 
+          {/* Seller Suborders & Commission Breakdown */}
+          {order.sellerSuborders && order.sellerSuborders.length > 0 && (
+            <div className={`rounded-xl border p-4 space-y-3 ${innerBg}`}>
+              <h4 className={`text-xs uppercase tracking-wider font-semibold ${textSecondary}`}>
+                Seller Suborders & Commission
+              </h4>
+              <div className="space-y-2.5">
+                {order.sellerSuborders.map((sub, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border text-xs space-y-1.5 ${
+                      isDarkMode ? 'bg-luxury-black/40 border-luxury-darkGray/60' : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-luxury-gold">{sub.shopNameSnapshot || 'Seller'}</span>
+                      <span className="font-mono text-[10px] opacity-60">{sub.suborderId}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className={textSecondary}>Suborder Subtotal:</span>
+                      <span className="font-semibold text-white">₹{(sub.subtotal || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className={textSecondary}>
+                        Platform Commission ({sub.commissionRate || 5}%, max ₹{sub.maxCommissionPerUnit || 21}/unit):
+                      </span>
+                      <span className="font-bold text-amber-400">
+                        ₹{(sub.platformCommission || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] pt-1 border-t border-current/10">
+                      <span className="font-bold text-green-400">Net Seller Payout:</span>
+                      <span className="font-extrabold text-green-400">
+                        ₹{(sub.sellerPayout || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Update Status */}
           {order.status !== 'cancelled' && order.status !== 'delivered' && (
             <div className={`rounded-xl border p-4 ${innerBg}`}>

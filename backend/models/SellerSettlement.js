@@ -36,6 +36,11 @@ const sellerSettlementSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  maxCommissionPerUnit: {
+    type: Number,
+    default: 21, // ₹21 cap per eligible unit
+    min: 0
+  },
   platformCommission: {
     type: Number,
     required: true,

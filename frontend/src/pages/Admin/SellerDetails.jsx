@@ -781,7 +781,7 @@ export default function AdminSellerDetails() {
               {/* Commercial Terms Notice */}
               <div className={`p-4 rounded-xl border text-xs space-y-1.5 ${subBoxBg}`}>
                 <span className="text-amber-500 font-bold block text-[11px] uppercase tracking-wider">Commercial Terms</span>
-                <p className="text-gray-300">Platform Commission: <strong>5% net order value</strong></p>
+                <p className="text-gray-300">Platform Commission: <strong>5% of eligible product price (max ₹21/unit)</strong></p>
                 <p className="text-gray-300">Settlement SLA: <strong>7 days post confirmed delivery</strong></p>
                 <p className="text-gray-300">Trial Period: <strong>30-Day Free Trial upon approval</strong></p>
               </div>

@@ -79,6 +79,9 @@ const orderSchema = new mongoose.Schema({
       quantity: Number,
       price: Number,
       finalPrice: Number,
+      eligibleUnitPrice: Number,
+      commissionPerUnit: Number,
+      itemCommission: Number,
       variant: Object,
       image: String
     }],
@@ -89,6 +92,10 @@ const orderSchema = new mongoose.Schema({
     commissionRate: {
       type: Number,
       default: 5
+    },
+    maxCommissionPerUnit: {
+      type: Number,
+      default: 21
     },
     platformCommission: {
       type: Number,

@@ -5,6 +5,7 @@ import Coupon from '../models/Coupon.js'
 import User from '../models/User.js'
 import SellerSettlement from '../models/SellerSettlement.js'
 import { ApiError } from '../middleware/errorHandler.js'
+import { calculateSuborderCommission } from '../utils/commissionUtils.js'
 
 const calculateOrderTotals = async (cartItems, coupon) => {
   const { default: Seller } = await import('../models/Seller.js')
@@ -318,6 +319,13 @@ export const createOrder = async (req, res) => {
     sellerGroups[sId].items.push(item)
   }
 
+  // ── Allocate proportional coupon discount shares to items ─────────────────
+  for (const it of items) {
+    it.couponDiscountShare = (subtotal > 0 && couponDiscount > 0)
+      ? parseFloat(((it.finalPrice / subtotal) * couponDiscount).toFixed(2))
+      : 0
+  }
+
   const sellerSuborders = []
   let subIndex = 1
 
@@ -346,8 +354,10 @@ export const createOrder = async (req, res) => {
 
     const subSubtotal = group.items.reduce((sum, it) => sum + it.finalPrice, 0)
     const commissionRate = sellerDoc?.commissionRate ?? 5
-    const platformCommission = parseFloat(((subSubtotal * commissionRate) / 100).toFixed(2))
-    const sellerPayout = parseFloat((subSubtotal - platformCommission).toFixed(2))
+    // Official Commission Rule: 5% of eligible product price, max ₹21 per unit [min(price * 0.05, 21)]
+    const commissionBreakdown = calculateSuborderCommission(group.items, commissionRate, 21)
+    const platformCommission = commissionBreakdown.platformCommission
+    const sellerPayout = commissionBreakdown.sellerPayout
 
     const sellerLocation = sellerDoc?.pickupAddress?.lat && sellerDoc?.pickupAddress?.lng
       ? sellerDoc.pickupAddress
@@ -373,18 +383,22 @@ export const createOrder = async (req, res) => {
       suborderId: `SUB_${orderNumber}_${subIndex++}`,
       sellerId: resolvedSellerId,
       shopNameSnapshot: group.shopNameSnapshot,
-      items: group.items.map(it => ({
+      items: commissionBreakdown.items.map(it => ({
         productId: it.productId,
-        productName: it.name,
+        productName: it.productName || it.name,
         brand: it.brand,
         quantity: it.quantity,
         price: it.price,
         finalPrice: it.finalPrice,
+        eligibleUnitPrice: it.eligibleUnitPrice,
+        commissionPerUnit: it.commissionPerUnit,
+        itemCommission: it.itemCommission,
         variant: it.variant,
         image: it.image
       })),
       subtotal: subSubtotal,
       commissionRate,
+      maxCommissionPerUnit: 21,
       platformCommission,
       sellerPayout,
       status: 'pending',
@@ -482,6 +496,7 @@ export const createOrder = async (req, res) => {
       orderNumber: order.orderNumber,
       eligibleAmount: sub.subtotal,
       commissionRate: sub.commissionRate,
+      maxCommissionPerUnit: sub.maxCommissionPerUnit || 21,
       platformCommission: sub.platformCommission,
       sellerPayout: sub.sellerPayout,
       status: 'PENDING',

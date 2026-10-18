@@ -532,7 +532,7 @@ export default function BecomeSeller() {
             Welcome to STYLE STREET Merchant Network
           </h2>
           <p className={`text-xs sm:text-sm max-w-lg mx-auto ${textSecondary}`}>
-            Your store <strong className="text-amber-500 font-bold">{app.shopName || appStatus.seller?.shopName}</strong> is verified and approved. Your <span className="text-green-500 font-bold">30-Day Free Trial</span> is active with standard 5% platform commission.
+            Your store <strong className="text-amber-500 font-bold">{app.shopName || appStatus.seller?.shopName}</strong> is verified and approved. Your <span className="text-green-500 font-bold">30-Day Free Trial</span> is active with standard 5% platform commission (max ₹21 per unit).
           </p>
 
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 max-w-md mx-auto text-left text-xs space-y-2">
@@ -718,7 +718,7 @@ export default function BecomeSeller() {
           Seller Onboarding & Merchant Application
         </h1>
         <p className={`text-xs sm:text-sm max-w-xl mx-auto ${textSecondary}`}>
-          Complete the professional seller registration to retail on STYLE STREET. Enjoy a <strong className="text-amber-500">30-day Free Trial</strong> and transparent 5% platform commission.
+          Complete the professional seller registration to retail on STYLE STREET. Enjoy a <strong className="text-amber-500">30-day Free Trial</strong> and transparent 5% platform commission (capped at max ₹21 per unit).
         </p>
       </div>
 
@@ -1547,8 +1547,8 @@ export default function BecomeSeller() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30">
                   <span className="text-[10px] uppercase font-bold text-amber-500">Platform Commission</span>
-                  <p className="text-xl font-bold text-white mt-1">5% Flat</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Applied to eligible net merchandise sales</p>
+                  <p className="text-xl font-bold text-white mt-1">5% (Max ₹21/Unit)</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">min(Price × 0.05, ₹21) per eligible unit</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/30">
                   <span className="text-[10px] uppercase font-bold text-green-500">Free Trial</span>

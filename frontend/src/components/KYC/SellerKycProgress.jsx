@@ -77,7 +77,7 @@ export default function SellerKycProgress({ isDarkMode, formData, setFormData, o
     const e164 = `+91${digits}`
 
     try {
-      if (!auth) throw new Error('Firebase authentication is not initialized')
+      if (!auth) throw new Error('Secure phone verification service is initializing. Please try again.')
 
       if (!recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'kyc-recaptcha-container', {
@@ -121,7 +121,7 @@ export default function SellerKycProgress({ isDarkMode, formData, setFormData, o
 
       const res = await kycService.verifyPhone(idToken, formData.phone)
       if (res.data?.success) {
-        toast.success('Mobile number verified successfully via Firebase!')
+        toast.success('Mobile number verified successfully!')
         setPhoneStep(1)
         fetchKyc()
       } else {
@@ -354,7 +354,7 @@ export default function SellerKycProgress({ isDarkMode, formData, setFormData, o
               </div>
               <div>
                 <h4 className={`text-xs font-bold ${textPrimary}`}>1. Phone Verification</h4>
-                <p className={`text-[10px] ${textSecondary}`}>Real Firebase SMS OTP</p>
+                <p className={`text-[10px] ${textSecondary}`}>Instant Secure SMS OTP</p>
               </div>
             </div>
             {renderBadge(phoneStatus, kycData?.phone?.phoneMasked)}

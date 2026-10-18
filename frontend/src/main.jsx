@@ -13,6 +13,15 @@ const googleClientId = (rawGoogleId && rawGoogleId.includes('.apps.googleusercon
   ? rawGoogleId
   : null
 
+// Global safety guard: catch unhandled promise rejections and suppress raw tech leak traces
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event?.reason?.message && /Firebase|Mongo|Vercel|Render|jwt/i.test(event.reason.message)) {
+      event.preventDefault()
+    }
+  })
+}
+
 // ─── Error Boundary ─────────────────────────────────────────────────────────
 // Catches React render/lifecycle errors and shows a recovery screen
 // instead of a completely blank white page

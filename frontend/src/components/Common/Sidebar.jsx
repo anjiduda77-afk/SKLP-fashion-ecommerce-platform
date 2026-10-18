@@ -222,9 +222,7 @@ function Sidebar({ isOpen, onClose }) {
                     ) : null}
                     <div className="min-w-0">
                       <p className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold">
-                        {isAuthenticated ? (
-                          <span className="capitalize">{user?.role || 'Member'}</span>
-                        ) : t('sidebar.welcomeGuest', 'Welcome Guest')}
+                        {isAuthenticated ? 'Style Street Member' : t('sidebar.welcomeGuest', 'Welcome Guest')}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold truncate max-w-[140px]">
                         {isAuthenticated ? `${user?.firstName || 'Style Street'} ${user?.lastName || ''}` : t('sidebar.sklpFashionStore', 'Style Street')}

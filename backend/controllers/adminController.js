@@ -6,7 +6,7 @@ import Banner from '../models/Banner.js';
 import Notification from '../models/Notification.js';
 import Review from '../models/Review.js';
 import SellerSettlement from '../models/SellerSettlement.js';
-import { ApiError } from '../middleware/errorHandler.js';
+import { ApiError, sanitizeClientErrorMessage } from '../middleware/errorHandler.js';
 import { uploadMultipleImages } from '../config/cloudinary.js';
 import {
   broadcastNotification,
@@ -871,7 +871,7 @@ export const getNotifications = async (req, res) => {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
 
-  const [notifications, total, unreadCount] = await Promise.all([
+  const [rawNotifications, total, unreadCount] = await Promise.all([
     Notification.find(query)
       .populate('userId', 'firstName lastName email role phone')
       .sort({ createdAt: -1 })
@@ -881,6 +881,12 @@ export const getNotifications = async (req, res) => {
     Notification.countDocuments(query),
     Notification.countDocuments({ ...query, isRead: false })
   ]);
+
+  const notifications = (rawNotifications || []).map(n => ({
+    ...n,
+    title: sanitizeClientErrorMessage(n.title, 200),
+    message: sanitizeClientErrorMessage(n.message, 200)
+  }));
 
   res.status(200).json({
     success: true,

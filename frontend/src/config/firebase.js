@@ -48,7 +48,6 @@ if (FIREBASE_CONFIGURED) {
       prompt: 'select_account'
     })
   } catch (err) {
-    console.error('[SKLP Firebase] Auth initialization error:', err.message)
     app = null
     auth = null
     googleProvider = null
@@ -56,7 +55,7 @@ if (FIREBASE_CONFIGURED) {
 }
 
 /**
- * Initialize Firebase Cloud Messaging safely (only in supporting browser environments)
+ * Initialize Web Push safely (only in supporting browser environments)
  */
 export const getFirebaseMessaging = async () => {
   if (!app) return null
@@ -69,14 +68,14 @@ export const getFirebaseMessaging = async () => {
       return messaging
     }
   } catch (err) {
-    console.warn('[SKLP Firebase] Messaging not supported in this environment:', err.message)
+    // messaging unavailable in current client environment
   }
   return null
 }
 
 /**
- * Request Notification Permission and return FCM Device Token
- * @param {string} vapidKey Optional VAPID key (public key pair from Firebase Console)
+ * Request Notification Permission and return Device Token
+ * @param {string} vapidKey Optional VAPID key
  * @returns {Promise<string|null>}
  */
 export const requestFcmToken = async (vapidKey) => {
@@ -87,13 +86,11 @@ export const requestFcmToken = async (vapidKey) => {
   try {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') {
-      console.log('[SKLP FCM] Notification permission not granted:', permission)
       return null
     }
 
     const msgInstance = await getFirebaseMessaging()
     if (!msgInstance) {
-      console.warn('[SKLP FCM] Messaging instance could not be initialized')
       return null
     }
 
@@ -103,7 +100,7 @@ export const requestFcmToken = async (vapidKey) => {
       try {
         swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
       } catch (swErr) {
-        console.warn('[SKLP FCM] SW registration note:', swErr.message)
+        // service worker registration handled gracefully
       }
     }
 
@@ -114,14 +111,11 @@ export const requestFcmToken = async (vapidKey) => {
 
     const currentToken = await getToken(msgInstance, tokenOptions)
     if (currentToken) {
-      console.log('[SKLP FCM] Device token obtained successfully')
       return currentToken
     } else {
-      console.warn('[SKLP FCM] No registration token available')
       return null
     }
   } catch (err) {
-    console.warn('[SKLP FCM] Error retrieving device token:', err.message)
     return null
   }
 }
@@ -138,12 +132,11 @@ export const onForegroundMessage = (callback) => {
   getFirebaseMessaging().then((msg) => {
     if (msg) {
       unsubscribe = onMessage(msg, (payload) => {
-        console.log('[SKLP FCM] Foreground notification received:', payload)
         callback(payload)
       })
     }
   }).catch((err) => {
-    console.warn('[SKLP FCM] Foreground listener note:', err.message)
+    // foreground listener catch
   })
 
   return () => unsubscribe()

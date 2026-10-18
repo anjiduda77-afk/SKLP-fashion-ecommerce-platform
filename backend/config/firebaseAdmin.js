@@ -93,7 +93,7 @@ async function getGoogleOAuthCertificates() {
  */
 export const verifyFirebaseIdToken = async (idToken) => {
   if (!idToken || typeof idToken !== 'string') {
-    throw new Error('Firebase / Google authentication token is required')
+    throw new Error('Authentication credential is required')
   }
 
   // Dev / Testing bypass for simulated test tokens in non-production
@@ -258,7 +258,7 @@ export const verifyFirebaseIdToken = async (idToken) => {
     }
   }
 
-  throw new Error('Authentication token could not be verified by Google or Firebase')
+  throw new Error('Authentication session could not be verified')
 }
 
 /**
@@ -284,8 +284,7 @@ export const sendPushNotification = async ({ tokens, title, body, imageUrl, data
   }
 
   if (!admin.apps.length) {
-    console.warn('[FCM PUSH] Firebase Admin not initialized, push notification skipped')
-    return { success: false, reason: 'Firebase Admin not initialized' }
+    return { success: false, reason: 'Push notification service is currently unavailable' }
   }
 
   try {
@@ -310,8 +309,7 @@ export const sendPushNotification = async ({ tokens, title, body, imageUrl, data
         }
       }
       const response = await admin.messaging().send(message)
-      console.log(`[FCM PUSH] Message sent successfully to single token: ${response}`)
-      return { success: true, messageId: response }
+      return { success: true }
     } else {
       const message = {
         tokens: validTokens,
@@ -328,7 +326,6 @@ export const sendPushNotification = async ({ tokens, title, body, imageUrl, data
         }
       }
       const response = await admin.messaging().sendEachForMulticast(message)
-      console.log(`[FCM PUSH] Multicast sent: ${response.successCount} succeeded, ${response.failureCount} failed`)
       return { 
         success: response.successCount > 0, 
         successCount: response.successCount, 
@@ -336,8 +333,7 @@ export const sendPushNotification = async ({ tokens, title, body, imageUrl, data
       }
     }
   } catch (err) {
-    console.warn('[FCM PUSH] Push notification send error:', err.message)
-    return { success: false, error: err.message }
+    return { success: false, reason: 'Push notification could not be delivered' }
   }
 }
 

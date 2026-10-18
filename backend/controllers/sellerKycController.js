@@ -115,7 +115,7 @@ export const verifyPhoneKyc = async (req, res) => {
   const { idToken, phoneNumber } = req.body;
 
   if (!idToken || !phoneNumber) {
-    throw new ApiError(400, 'Firebase ID Token and Phone Number are required.');
+    throw new ApiError(400, 'Verification credential and phone number are required.');
   }
 
   const kyc = await getOrCreateSellerKyc(userId);

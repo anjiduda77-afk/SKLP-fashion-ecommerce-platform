@@ -65,6 +65,17 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Sanitize technical leak words from error response messages before they reach UI/toasts
+    if (error?.response?.data?.message && typeof error.response.data.message === 'string') {
+      error.response.data.message = error.response.data.message
+        .replace(/Firebase:?\s*/gi, 'Authentication ')
+        .replace(/Mongo(DB)?(ServerError)?:?\s*/gi, 'Database ')
+        .replace(/Vercel:?\s*/gi, 'Network ')
+        .replace(/Render:?\s*/gi, 'Server ')
+        .replace(/E11000 duplicate key error collection/gi, 'Duplicate record found')
+        .trim();
+    }
+
     const originalRequest = error.config
 
     // Handle 401 Unauthorized - attempt token refresh

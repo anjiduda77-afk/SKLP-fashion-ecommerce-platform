@@ -1,10 +1,11 @@
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import { sendPushNotification } from '../config/firebaseAdmin.js';
+import { sanitizeClientErrorMessage } from '../middleware/errorHandler.js';
 
 /**
  * Enterprise Centralized Notification Service
- * Supports MongoDB in-app notifications and Firebase Cloud Messaging (FCM) Web Push.
+ * Supports in-app notifications and real-time Web Push.
  */
 
 /**
@@ -29,14 +30,15 @@ export const notifyUser = async ({
   relatedEntity = null
 }) => {
   if (!userId || !title || !message) {
-    console.warn('[NOTIFICATION SERVICE] Missing required fields for notifyUser:', { userId, title });
     return null;
   }
 
-  // Find user to get active FCM tokens
+  const cleanTitle = sanitizeClientErrorMessage(title, 200).trim();
+  const cleanMessage = sanitizeClientErrorMessage(message, 200).trim();
+
+  // Find user to get active push tokens
   const user = await User.findById(userId).select('fcmTokens role firstName email').lean();
   if (!user) {
-    console.warn(`[NOTIFICATION SERVICE] User ${userId} not found for notification`);
     return null;
   }
 
@@ -48,8 +50,8 @@ export const notifyUser = async ({
   const notification = await Notification.create({
     userId: user._id,
     type: sanitizeNotificationType(type),
-    title: title.trim(),
-    message: message.trim(),
+    title: cleanTitle,
+    message: cleanMessage,
     image: imageUrl || undefined,
     actionUrl: actionUrl || undefined,
     relatedEntity: relatedEntity?.entityType && relatedEntity?.entityId ? {
@@ -145,6 +147,8 @@ export const broadcastNotification = async ({
   }
 
   const sanitizedType = sanitizeNotificationType(type);
+  const cleanTitle = sanitizeClientErrorMessage(title, 200).trim();
+  const cleanMessage = sanitizeClientErrorMessage(message, 200).trim();
   const now = new Date();
 
   // 1. Batch insert in-app notifications in chunks of 500 to prevent connection pool starvation
@@ -156,8 +160,8 @@ export const broadcastNotification = async ({
     const notificationsToInsert = userChunk.map(u => ({
       userId: u._id,
       type: sanitizedType,
-      title: title.trim(),
-      message: message.trim(),
+      title: cleanTitle,
+      message: cleanMessage,
       image: imageUrl || undefined,
       actionUrl: actionUrl || undefined,
       relatedEntity: relatedEntity?.entityType && relatedEntity?.entityId ? {

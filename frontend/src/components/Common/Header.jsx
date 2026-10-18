@@ -18,6 +18,17 @@ import Sidebar from '@components/Common/Sidebar'
 import SearchModal from '@components/Search/SearchModal'
 import sklpLogo from '@assets/images/sklp_logo.png'
 import BrandName from '@components/Common/BrandName'
+const sanitizeUiText = (str) => {
+  if (!str || typeof str !== 'string') return ''
+  return str
+    .replace(/Firebase(?:\s*Cloud\s*Messaging)?/gi, 'Security')
+    .replace(/\bFCM\b/gi, 'Push')
+    .replace(/Vercel/gi, 'Network')
+    .replace(/Render(?:\.com)?/gi, 'Service')
+    .replace(/MongoDB|Mongoose|E11000/gi, 'System')
+    .replace(/[A-Z]:\\[^"'\n\r]+|\/(?:home|app|var|usr|etc)\/[^"'\n\r]+/g, '')
+    .trim()
+}
 
 function Header({ isDarkMode }) {
   const { t } = useTranslation()
@@ -294,10 +305,10 @@ function Header({ isDarkMode }) {
                                 }`}
                               >
                                 <div className="flex items-center justify-between mb-1">
-                                  <p className="font-bold text-xs text-amber-500">{n.title}</p>
+                                  <p className="font-bold text-xs text-amber-500">{sanitizeUiText(n.title)}</p>
                                   <span className="text-[9px] opacity-50 font-mono">{new Date(n.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <p className="text-[11px] opacity-80 line-clamp-2 leading-relaxed">{n.message}</p>
+                                <p className="text-[11px] opacity-80 line-clamp-2 leading-relaxed">{sanitizeUiText(n.message)}</p>
                               </div>
                             ))
                           ) : (
@@ -377,42 +388,22 @@ function Header({ isDarkMode }) {
 
               {/* Authentication States - Desktop & Tablet Only (Mobile has Account in bottom nav & sidebar) */}
               {isAuthenticated ? (
-                <div className="desktop-only-header-item hidden sm:flex items-center gap-1.5 sm:gap-2">
-                  {user?.role && user.role !== 'customer' && (
-                    <Link
-                      to={
-                        user.role === 'admin'
-                          ? '/admin/dashboard'
-                          : user.role === 'seller'
-                          ? '/seller/dashboard'
-                          : '/delivery/dashboard'
-                      }
-                      className="hidden lg:inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 bg-luxury-gold text-black border-luxury-gold hover:bg-yellow-400 hover:shadow-glow"
-                    >
-                      <FiZap size={14} className="animate-pulse" />
-                      <span>
-                        {user.role === 'admin'
-                          ? t('header.adminPanel', 'Admin')
-                          : user.role === 'seller'
-                          ? t('header.sellerHub', 'Seller')
-                          : t('header.deliveryHub', 'Delivery')}
-                      </span>
-                    </Link>
-                  )}
+                <div className="desktop-only-header-item hidden sm:flex items-center">
                   <Link
                     to="/profile"
-                    className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 touch-target overflow-hidden shadow-sm hover:scale-105
                       ${isDarkMode 
-                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-luxury-gold/50' 
-                        : 'bg-white border-luxury-gold/30 text-black hover:bg-luxury-offWhite'
+                        ? 'border-luxury-gold/60 bg-white/5 hover:border-luxury-gold hover:shadow-glow' 
+                        : 'border-luxury-gold/60 bg-white hover:border-luxury-gold hover:shadow-md'
                       }`}
                     title="Account Profile"
+                    aria-label="Account Profile"
                   >
                     {userDp ? (
                       <img
                         src={userDp}
-                        alt={user?.firstName || 'User DP'}
-                        className="w-7 h-7 rounded-full object-cover border border-luxury-gold shadow-sm shrink-0"
+                        alt="Profile DP"
+                        className="w-full h-full object-cover rounded-full"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                           const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback')
@@ -420,10 +411,9 @@ function Header({ isDarkMode }) {
                         }}
                       />
                     ) : null}
-                    <div className={`avatar-fallback ${userDp ? 'hidden' : 'flex'} items-center justify-center`}>
-                      <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
+                    <div className={`avatar-fallback ${userDp ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}>
+                      <FiUser size={18} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
                     </div>
-                    <span className="hidden xl:inline-block truncate max-w-[100px]">{user?.firstName || t('header.profile', 'Profile')}</span>
                   </Link>
                 </div>
               ) : (

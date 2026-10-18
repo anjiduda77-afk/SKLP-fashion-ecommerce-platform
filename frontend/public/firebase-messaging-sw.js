@@ -19,13 +19,11 @@ let messaging = null;
 try {
   messaging = firebase.messaging();
 } catch (e) {
-  console.warn('[FCM SW] Messaging init note:', e.message);
+  // Service worker messaging unavailable
 }
 
 if (messaging) {
   messaging.onBackgroundMessage((payload) => {
-    console.log('[FCM SW] Received background message:', payload);
-
     const notificationTitle = payload.notification?.title || payload.data?.title || 'STYLE STREET Luxury Fashion';
     const notificationOptions = {
       body: payload.notification?.body || payload.data?.body || 'You have a new update from STYLE STREET.',

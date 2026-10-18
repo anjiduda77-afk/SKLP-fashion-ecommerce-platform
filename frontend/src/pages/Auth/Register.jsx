@@ -38,19 +38,19 @@ const getFirebaseGoogleErrorMessage = (error) => {
     case 'auth/popup-blocked':
       return 'Popup was blocked by your browser. Redirecting to Google Sign-In...'
     case 'auth/unauthorized-domain':
-      return 'Domain not authorized in Firebase Console. Please add this domain under Firebase Authentication settings.'
+      return 'Google Sign-In is currently unavailable on this domain. Please contact support or register with your email.'
     case 'auth/cancelled-popup-request':
       return 'Previous signup request was cancelled.'
     case 'auth/network-request-failed':
       return 'Network connection error. Please check your internet connection.'
     case 'auth/operation-not-allowed':
-      return 'Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google). Please enable it.'
+      return 'Google Sign-In is temporarily unavailable. Please register with email.'
     case 'auth/user-disabled':
       return 'This account has been disabled. Please contact support.'
     case 'auth/account-exists-with-different-credential':
       return 'An account already exists with this email using a different sign-in method.'
     default:
-      return error.message || 'Unable to sign up with Google. Please try again.'
+      return 'Unable to complete sign-up with Google. Please try again.'
   }
 }
 
@@ -309,7 +309,7 @@ function Register() {
     if (googleLoading || loading) return
 
     if (!FIREBASE_CONFIGURED || !auth || !googleProvider) {
-      toast.error('Google Sign-In is not configured. Please check Firebase configuration.')
+      toast.error('Google Sign-In is currently unavailable. Please sign up using email or mobile.')
       return
     }
 
@@ -591,7 +591,7 @@ function Register() {
           {/* Security Badge */}
           <div className="flex items-center justify-center gap-1.5 pt-4 text-[11px] font-medium opacity-50">
             <FiShield size={12} className="text-amber-500" />
-            <span>{t('profile.sessionEncrypted', '256-bit SSL Encrypted & Google Firebase Secured')}</span>
+            <span>{t('profile.sessionEncrypted', '256-bit SSL Encrypted · Enterprise Bank-Grade Security')}</span>
           </div>
         </div>
       </motion.div>

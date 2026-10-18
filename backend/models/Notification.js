@@ -71,6 +71,36 @@ const notificationSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+const sanitizeField = (val) => {
+  if (!val || typeof val !== 'string') return val;
+  return val
+    .replace(/Firebase(?:\s*Admin|\s*Cloud\s*Messaging)?/gi, 'Authentication')
+    .replace(/\bFCM\b/gi, 'Push')
+    .replace(/Mongo(?:DB)?(?:ServerError)?:?\s*/gi, 'Database ')
+    .replace(/Mongoose:?\s*/gi, 'Database ')
+    .replace(/Vercel(?:\.app)?:?\s*/gi, 'Web Server ')
+    .replace(/Render(?:\.com)?:?\s*/gi, 'Application Server ')
+    .replace(/onrender\.com/gi, 'server')
+    .replace(/([a-zA-Z]:\\|\/(?:home|var|etc|tmp|app|usr)\/)/g, '')
+    .trim();
+};
+
+notificationSchema.pre('save', function (next) {
+  if (this.title) this.title = sanitizeField(this.title);
+  if (this.message) this.message = sanitizeField(this.message);
+  next();
+});
+
+notificationSchema.pre('insertMany', function (next, docs) {
+  if (Array.isArray(docs)) {
+    docs.forEach(doc => {
+      if (doc.title) doc.title = sanitizeField(doc.title);
+      if (doc.message) doc.message = sanitizeField(doc.message);
+    });
+  }
+  next();
+});
+
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, isRead: 1 });
 

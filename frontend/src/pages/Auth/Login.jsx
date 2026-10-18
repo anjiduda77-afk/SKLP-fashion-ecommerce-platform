@@ -30,19 +30,19 @@ const getFirebaseGoogleErrorMessage = (error) => {
     case 'auth/popup-blocked':
       return 'Popup was blocked by your browser. Redirecting to Google Sign-In...'
     case 'auth/unauthorized-domain':
-      return 'Domain not authorized in Firebase Console. Please add this domain under Firebase Authentication settings.'
+      return 'Google Sign-In is currently unavailable on this domain. Please contact support or sign in with your email.'
     case 'auth/cancelled-popup-request':
       return 'Previous sign-in request was cancelled.'
     case 'auth/network-request-failed':
       return 'Network connection error. Please check your internet connection.'
     case 'auth/operation-not-allowed':
-      return 'Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google). Please enable it.'
+      return 'Google Sign-In is temporarily unavailable. Please sign in with email.'
     case 'auth/user-disabled':
       return 'This account has been disabled. Please contact support.'
     case 'auth/account-exists-with-different-credential':
       return 'An account already exists with this email using a different sign-in method.'
     default:
-      return error.message || 'Unable to sign in with Google. Please try again.'
+      return 'Unable to complete sign-in with Google. Please try again.'
   }
 }
 
@@ -996,7 +996,7 @@ function Login() {
           {/* Security footer */}
           <div className={`lp-security ${isDarkMode ? 'text-white/25' : 'text-gray-400'}`}>
             <FiShield size={10} className="text-amber-400/60" aria-hidden="true" />
-            <span>256-bit SSL · Google Firebase Secured</span>
+            <span>256-bit SSL · Enterprise Bank-Grade Security</span>
           </div>
         </div>
       </div>

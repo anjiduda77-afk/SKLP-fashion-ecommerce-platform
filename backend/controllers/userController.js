@@ -7,7 +7,7 @@ import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import Notification from '../models/Notification.js';
 import { sendPushNotification } from '../config/firebaseAdmin.js';
-import { ApiError } from '../middleware/errorHandler.js';
+import { ApiError, sanitizeClientErrorMessage } from '../middleware/errorHandler.js';
 import NodeCache from 'node-cache';
 
 // In-memory cache for recently viewed products, expires in 24 hours
@@ -732,11 +732,11 @@ export const getRecentlyViewed = async (req, res) => {
   });
 };
 
-// Register or refresh FCM Device Token for Web Push
+// Register or refresh Device Token for Web Push
 export const registerFcmToken = async (req, res) => {
   const { token } = req.body;
   if (!token || typeof token !== 'string' || token.trim().length < 10) {
-    throw new ApiError(400, 'Valid FCM device token is required');
+    throw new ApiError(400, 'Valid device notification token is required');
   }
 
   await User.findByIdAndUpdate(req.user.id, {
@@ -755,7 +755,7 @@ export const getUserNotifications = async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 20;
   const skip = (page - 1) * limit;
 
-  const [notifications, total, unreadCount] = await Promise.all([
+  const [rawNotifications, total, unreadCount] = await Promise.all([
     Notification.find({ userId: req.user.id })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -764,6 +764,12 @@ export const getUserNotifications = async (req, res) => {
     Notification.countDocuments({ userId: req.user.id }),
     Notification.countDocuments({ userId: req.user.id, isRead: false })
   ]);
+
+  const notifications = (rawNotifications || []).map(n => ({
+    ...n,
+    title: sanitizeClientErrorMessage(n.title, 200),
+    message: sanitizeClientErrorMessage(n.message, 200)
+  }));
 
   res.status(200).json({
     success: true,
@@ -794,7 +800,11 @@ export const markNotificationRead = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Notification marked as read',
-    notification
+    notification: {
+      ...notification.toObject(),
+      title: sanitizeClientErrorMessage(notification.title, 200),
+      message: sanitizeClientErrorMessage(notification.message, 200)
+    }
   });
 };
 
@@ -811,7 +821,7 @@ export const markAllNotificationsRead = async (req, res) => {
   });
 };
 
-// Send Test Notification (In-App + FCM Push)
+// Send Test Notification (In-App + Push)
 export const sendTestNotification = async (req, res) => {
   const user = await User.findById(req.user.id);
   if (!user) throw new ApiError(404, 'User not found');
@@ -836,7 +846,7 @@ export const sendTestNotification = async (req, res) => {
     }
   });
 
-  // 2. Dispatch FCM Push if device tokens registered
+  // 2. Dispatch Push if device tokens registered
   let pushResult = null;
   if (user.fcmTokens && user.fcmTokens.length > 0) {
     pushResult = await sendPushNotification({
@@ -853,8 +863,12 @@ export const sendTestNotification = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Test notification sent successfully',
-    notification,
-    pushResult
+    notification: {
+      ...notification.toObject(),
+      title: sanitizeClientErrorMessage(notification.title, 200),
+      message: sanitizeClientErrorMessage(notification.message, 200)
+    },
+    pushDelivered: Boolean(pushResult?.success)
   });
 };
 

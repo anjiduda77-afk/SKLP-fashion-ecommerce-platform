@@ -138,7 +138,7 @@ function AddressModal({ address, onSave, onClose, isDarkMode, t }) {
   )
 }
 
-function FirebasePhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
+function PhoneVerificationModal({ onClose, onPhoneUpdated, isDarkMode }) {
   const [phoneDigits, setPhoneDigits] = useState('')
   const [step, setStep] = useState(1) // 1 = Enter Phone, 2 = Enter OTP
   const [otpCode, setOtpCode] = useState('')
@@ -170,7 +170,7 @@ function FirebasePhoneModal({ onClose, onPhoneUpdated, isDarkMode }) {
 
     try {
       if (!auth) {
-        throw new Error('Firebase authentication is initializing. Please try again.')
+        throw new Error('Secure verification is initializing. Please try again.')
       }
 
       // Initialize Invisible reCAPTCHA verifier
@@ -959,7 +959,6 @@ function Profile() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <h1 className={`text-lg sm:text-2xl font-serif font-bold truncate ${isDarkMode ? 'text-white' : 'text-black'}`}>{user?.firstName} {user?.lastName}</h1>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase bg-luxury-gold/15 text-luxury-gold border border-luxury-gold/30">{user?.role || 'Customer'}</span>
                     {user?.isEmailVerified && <span className="flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20"><FiCheckCircle size={9} /> Verified</span>}
                   </div>
                   <div className={`flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-mono mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
@@ -1423,7 +1422,7 @@ function Profile() {
           {activeTab === 'payments' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-fade-in">
               <div className={`lg:col-span-2 p-6 rounded-2xl border ${cardBg} space-y-6`}>
-                <div><h2 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2"><FiCreditCard /> Saved UPI IDs (Express Checkout)</h2><p className="text-xs opacity-65 mt-1">Link your Virtual Payment Address (VPA) for 1-click Razorpay verification.</p></div>
+                <div><h2 className="text-xl font-serif font-bold text-luxury-gold flex items-center gap-2"><FiCreditCard /> Saved UPI IDs (Express Checkout)</h2><p className="text-xs opacity-65 mt-1">Link your Virtual Payment Address (VPA) for 1-click secure checkout verification.</p></div>
                 <form onSubmit={handleAddUpi} className="flex gap-2">
                   <input type="text" value={upiForm.upiId} onChange={(e) => setUpiForm((p) => ({ ...p, upiId: e.target.value }))} placeholder="e.g. yourname@okhdfcbank" className={`flex-1 p-3 text-xs rounded-xl border outline-none font-semibold ${inputBg}`} required />
                   <button type="submit" disabled={newUpiLoading || !upiForm.upiId} className="px-5 py-3 bg-luxury-gold text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:bg-luxury-darkGold disabled:opacity-50 shadow-glow">{newUpiLoading ? 'Saving...' : 'Add UPI ID'}</button>
@@ -1730,7 +1729,7 @@ function Profile() {
       />
 
       {showAddressModal && <AddressModal address={editingAddress} onSave={handleSaveAddress} onClose={() => { setShowAddressModal(false); setEditingAddress(null) }} isDarkMode={isDarkMode} t={t} />}
-      {showPhoneModal && <FirebasePhoneModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
+      {showPhoneModal && <PhoneVerificationModal onClose={() => setShowPhoneModal(false)} onPhoneUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
       {showBackupEmailModal && <BackupEmailModal onClose={() => setShowBackupEmailModal(false)} onBackupUpdated={(updatedUser) => updateUser(updatedUser)} isDarkMode={isDarkMode} />}
       {showAvatarModal && (
         <AvatarModal

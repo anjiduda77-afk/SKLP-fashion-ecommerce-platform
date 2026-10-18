@@ -98,7 +98,7 @@ function BroadcastModal({ isOpen, onClose, onSuccess }) {
             </div>
             <div>
               <h2 className="font-serif font-bold text-lg leading-tight">Broadcast Notification</h2>
-              <p className="text-xs text-luxury-gold font-medium">In-App Alert + Instant FCM Mobile Push</p>
+              <p className="text-xs text-luxury-gold font-medium">In-App Alert + Instant Push Alerts</p>
             </div>
           </div>
           <button
@@ -380,7 +380,7 @@ export default function AdminNotifications() {
             <FiSmartphone className="text-emerald-500" />
           </div>
           <p className="text-2xl font-bold font-serif text-emerald-400 mt-2">{stats.pushReadyUsers}</p>
-          <span className="text-[10px] text-emerald-500 font-medium">Active FCM web tokens</span>
+          <span className="text-[10px] text-emerald-500 font-medium">Active push subscribers</span>
         </div>
 
         <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-luxury-charcoal border-luxury-darkGray' : 'bg-white border-gray-200'}`}>
@@ -392,7 +392,7 @@ export default function AdminNotifications() {
             </span>
           </div>
           <p className="text-lg font-bold font-serif text-emerald-400 mt-2">Active</p>
-          <span className="text-[10px] text-luxury-mediumGray">FCM Multicast Enabled</span>
+          <span className="text-[10px] text-luxury-mediumGray">Instant Delivery Enabled</span>
         </div>
       </div>
 

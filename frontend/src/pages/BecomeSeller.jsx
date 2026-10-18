@@ -171,7 +171,7 @@ export default function BecomeSeller() {
     const e164 = `+91${digits}`
 
     try {
-      if (!auth) throw new Error('Firebase authentication is not initialized.')
+      if (!auth) throw new Error('Secure phone verification service is initializing. Please try again.')
 
       if (!recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'seller-phone-recaptcha-container', {
@@ -215,7 +215,7 @@ export default function BecomeSeller() {
 
       const res = await kycService.verifyPhone(idToken, formData.phone)
       if (res.data?.success) {
-        toast.success('Mobile number verified successfully via Firebase!')
+        toast.success('Mobile number verified successfully!')
         setPhoneVerified(true)
         setPhoneStep(1)
       } else {
@@ -830,13 +830,13 @@ export default function BecomeSeller() {
                   <div className="flex items-center gap-2">
                     <FiSmartphone className="text-amber-500" size={16} />
                     <div>
-                      <span className="text-xs font-bold text-white">Firebase Mobile Phone OTP Verification</span>
+                      <span className="text-xs font-bold text-white">Secure Mobile Phone OTP Verification</span>
                       <p className={`text-[11px] ${textSecondary}`}>Verified identity confirmation for merchant onboarding.</p>
                     </div>
                   </div>
                   {phoneVerified ? (
                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/30 flex items-center gap-1.5">
-                      <FiCheckCircle size={13} /> Verified via Firebase
+                      <FiCheckCircle size={13} /> Verified & Secured
                     </span>
                   ) : phoneStep === 1 ? (
                     <button

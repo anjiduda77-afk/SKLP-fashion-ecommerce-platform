@@ -422,24 +422,24 @@ export const firebaseLogin = async (req, res) => {
     if (req.body.googleId || req.body.google_id) {
       return googleLogin(req, res)
     }
-    console.warn('[AUTH] Missing Firebase ID Token in request')
-    throw new ApiError(400, 'Firebase ID Token is required')
+    console.warn('[AUTH] Missing authentication token in request')
+    throw new ApiError(400, 'Authentication credential is required')
   }
 
   let decodedToken
   try {
     decodedToken = await verifyFirebaseIdToken(idToken)
-    console.log('[AUTH] Firebase token verified successfully')
+    console.log('[AUTH] Identity token verified successfully')
   } catch (err) {
-    console.warn('[AUTH] Firebase Token Verification failed:', err.message)
-    throw new ApiError(401, 'Invalid or expired Firebase authentication token')
+    console.warn('[AUTH] Token Verification failed:', err.message)
+    throw new ApiError(401, 'Invalid or expired authentication session. Please try again.')
   }
 
   const { uid, email, name, picture, phone_number } = decodedToken
 
   if (!email && !uid && !phone_number) {
-    console.warn('[AUTH] Verified identity or UID missing from Firebase token')
-    throw new ApiError(400, 'Verified identity or UID missing from Firebase token')
+    console.warn('[AUTH] Verified identity or UID missing from token')
+    throw new ApiError(400, 'Identity verification failed. Please try again.')
   }
 
   const searchEmail = email ? email.toLowerCase().trim() : null
@@ -452,9 +452,6 @@ export const firebaseLogin = async (req, res) => {
     console.log(`[AUTH] Verified email received: ${searchEmail ? `${searchEmail.slice(0, 3)}***@${searchEmail.split('@')[1]}` : ''}`)
   }
 
-  console.log(`[MONGODB] Connected database name: ${User.db?.name || 'sklp_db'}`)
-  console.log(`[MONGODB] User collection: ${User.collection.name}`)
-
   // Resolve user: search by firebaseUid OR email OR verified phone
   const query = []
   if (uid) query.push({ firebaseUid: uid })
@@ -462,7 +459,7 @@ export const firebaseLogin = async (req, res) => {
   if (cleanPhone) query.push({ phone: cleanPhone })
 
   if (query.length === 0) {
-    throw new ApiError(400, 'No searchable identity in verified Firebase token')
+    throw new ApiError(400, 'Account identity could not be verified. Please try again.')
   }
 
   console.log('[MONGODB] Searching for user')
@@ -910,20 +907,20 @@ export const linkPhoneFirebase = async (req, res) => {
 
   const { idToken } = req.body
   if (!idToken) {
-    throw new ApiError(400, 'Firebase ID token is required for phone verification')
+    throw new ApiError(400, 'Verification credential is required for phone verification')
   }
 
   let decodedToken
   try {
     decodedToken = await verifyFirebaseIdToken(idToken)
   } catch (err) {
-    console.warn('[AUTH] Firebase Token Verification failed in linkPhoneFirebase:', err.message)
-    throw new ApiError(401, 'Invalid or expired Firebase authentication token')
+    console.warn('[AUTH] Token Verification failed in linkPhone:', err.message)
+    throw new ApiError(401, 'Invalid or expired verification session. Please try again.')
   }
 
   const rawPhone = decodedToken.phone_number
   if (!rawPhone) {
-    throw new ApiError(400, 'No verified phone number found in Firebase token. Please complete SMS verification.')
+    throw new ApiError(400, 'No verified mobile number found. Please complete SMS verification.')
   }
 
   const e164 = normalizeE164Phone(rawPhone)

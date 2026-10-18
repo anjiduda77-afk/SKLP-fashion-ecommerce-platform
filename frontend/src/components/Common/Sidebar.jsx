@@ -66,6 +66,12 @@ const ROLE_DASHBOARD = {
 
 function Sidebar({ isOpen, onClose }) {
   const { isAuthenticated, user, logout } = useAuth()
+  const rawAvatar = user?.photoURL || (typeof user?.avatar === 'string' ? user?.avatar : user?.avatar?.url) || null
+  const userDp = rawAvatar 
+    ? (rawAvatar.startsWith('http://') || rawAvatar.startsWith('https://') || rawAvatar.startsWith('data:') || rawAvatar.startsWith('/api/')
+        ? rawAvatar
+        : (user?._id || user?.id ? `/api/users/${user._id || user.id}/avatar` : rawAvatar))
+    : null
   const { isDarkMode, toggleTheme, language, changeLanguage } = useTheme()
   const { wishlistCount } = useWishlist()
   const { t } = useTranslation()
@@ -205,24 +211,34 @@ function Sidebar({ isOpen, onClose }) {
                 }`}
               >
                 <div className="flex items-center justify-between gap-4 mb-4">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold">
-                      {isAuthenticated ? (
-                        <span className="capitalize">{user?.role || 'Member'}</span>
-                      ) : t('sidebar.welcomeGuest', 'Welcome Guest')}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold truncate max-w-[150px]">
-                      {isAuthenticated ? `${user?.firstName || 'Style Street'} ${user?.lastName || ''}` : t('sidebar.sklpFashionStore', 'Style Street')}
-                    </p>
-                    {isAuthenticated && user?.role && ROLE_DASHBOARD[user.role] && (
-                      <Link
-                        to={ROLE_DASHBOARD[user.role]}
-                        onClick={onClose}
-                        className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-luxury-gold uppercase tracking-widest hover:underline"
-                      >
-                        <FiExternalLink size={10} /> {t('sidebar.goToDashboard', 'Go to Dashboard')}
-                      </Link>
-                    )}
+                  <div className="flex items-center gap-3 min-w-0">
+                    {isAuthenticated && userDp ? (
+                      <img
+                        src={userDp}
+                        alt="User DP"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-luxury-gold shadow-glow shrink-0"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-luxury-gold font-bold">
+                        {isAuthenticated ? (
+                          <span className="capitalize">{user?.role || 'Member'}</span>
+                        ) : t('sidebar.welcomeGuest', 'Welcome Guest')}
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold truncate max-w-[140px]">
+                        {isAuthenticated ? `${user?.firstName || 'Style Street'} ${user?.lastName || ''}` : t('sidebar.sklpFashionStore', 'Style Street')}
+                      </p>
+                      {isAuthenticated && user?.role && ROLE_DASHBOARD[user.role] && (
+                        <Link
+                          to={ROLE_DASHBOARD[user.role]}
+                          onClick={onClose}
+                          className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-luxury-gold uppercase tracking-widest hover:underline"
+                        >
+                          <FiExternalLink size={10} /> {t('sidebar.goToDashboard', 'Go to Dashboard')}
+                        </Link>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Action icons: Theme & Language */}

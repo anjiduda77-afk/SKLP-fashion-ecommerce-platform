@@ -15,7 +15,13 @@ function MobileNavigation() {
   const { isDarkMode } = useTheme()
   const { itemCount } = useCart()
   const { wishlistCount } = useWishlist()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+  const rawAvatar = user?.photoURL || (typeof user?.avatar === 'string' ? user?.avatar : user?.avatar?.url) || null
+  const userDp = rawAvatar 
+    ? (rawAvatar.startsWith('http://') || rawAvatar.startsWith('https://') || rawAvatar.startsWith('data:') || rawAvatar.startsWith('/api/')
+        ? rawAvatar
+        : (user?._id || user?.id ? `/api/users/${user._id || user.id}/avatar` : rawAvatar))
+    : null
   const { selectedShop, openShopModal } = useShop()
   const location = useLocation()
   
@@ -82,7 +88,19 @@ function MobileNavigation() {
     {
       label: t('common.profile', 'Account'),
       path: isAuthenticated ? '/profile' : '/login',
-      icon: <FiUser size={20} />,
+      icon: isAuthenticated && userDp ? (
+        <img
+          src={userDp}
+          alt="User DP"
+          className="w-5 h-5 rounded-full object-cover border border-luxury-gold shrink-0 shadow-sm"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'block';
+          }}
+        />
+      ) : (
+        <FiUser size={20} />
+      ),
       badge: 0,
       isAction: false
     }

@@ -35,6 +35,14 @@ function Header({ isDarkMode }) {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Resolve user display picture (handles remote URLs, base64 data URIs, and local file backend endpoints)
+  const rawAvatar = user?.photoURL || (typeof user?.avatar === 'string' ? user?.avatar : user?.avatar?.url) || null
+  const userDp = rawAvatar 
+    ? (rawAvatar.startsWith('http://') || rawAvatar.startsWith('https://') || rawAvatar.startsWith('data:') || rawAvatar.startsWith('/api/')
+        ? rawAvatar
+        : (user?._id || user?.id ? `/api/users/${user._id || user.id}/avatar` : rawAvatar))
+    : null
+
   // Track scrolling to toggle sticky header floating shadow
   useEffect(() => {
     const handleScroll = () => {
@@ -129,49 +137,8 @@ function Header({ isDarkMode }) {
               </Link>
             </div>
 
-            {/* DESKTOP DIRECT NAVIGATION LINKS */}
-            <nav className="hidden xl:flex items-center gap-5 shrink-0 px-4">
-              <Link
-                to="/"
-                className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-luxury-gold ${
-                  location.pathname === '/' ? 'text-luxury-gold' : isDarkMode ? 'text-white/80' : 'text-slate-800'
-                }`}
-              >
-                Home
-              </Link>
-              <Link
-                to="/products"
-                className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-luxury-gold ${
-                  location.pathname === '/products' ? 'text-luxury-gold' : isDarkMode ? 'text-white/80' : 'text-slate-800'
-                }`}
-              >
-                Collections
-              </Link>
-              <Link
-                to="/products?sort=trending"
-                className="text-xs font-bold uppercase tracking-wider transition-colors text-white/80 hover:text-luxury-gold dark:text-white/80"
-              >
-                Trending
-              </Link>
-              <Link
-                to="/products?offers=true"
-                className="text-xs font-bold uppercase tracking-wider transition-colors text-luxury-gold hover:text-luxury-lightGold flex items-center gap-1"
-              >
-                <FiZap size={13} className="animate-pulse" />
-                Offers
-              </Link>
-              {(!isAuthenticated || user?.role === 'customer') && (
-                <Link
-                  to="/become-a-seller"
-                  className="text-xs font-bold uppercase tracking-wider transition-colors opacity-70 hover:opacity-100 hover:text-luxury-gold"
-                >
-                  Sell on SKLP
-                </Link>
-              )}
-            </nav>
-
-            {/* MIDDLE: Desktop-Only Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl items-center relative mx-2">
+            {/* MIDDLE: Desktop-Only Search Bar (expanded layout without top nav text links) */}
+            <div className="hidden md:flex flex-1 max-w-lg lg:max-w-xl xl:max-w-2xl 2xl:max-w-3xl items-center relative mx-3 lg:mx-6">
               <div
                 onClick={() => {
                   setStartWithVoice(false)
@@ -434,15 +401,29 @@ function Header({ isDarkMode }) {
                   )}
                   <Link
                     to="/profile"
-                    className={`w-9 h-9 sm:w-10 sm:h-10 sm:px-3 sm:w-auto rounded-xl sm:rounded-2xl border flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
+                    className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl sm:rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 touch-target
                       ${isDarkMode 
-                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' 
+                        ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-luxury-gold/50' 
                         : 'bg-white border-luxury-gold/30 text-black hover:bg-luxury-offWhite'
                       }`}
                     title="Account Profile"
                   >
-                    <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
-                    <span className="hidden xl:inline-block">{t('header.profile', 'Profile')}</span>
+                    {userDp ? (
+                      <img
+                        src={userDp}
+                        alt={user?.firstName || 'User DP'}
+                        className="w-7 h-7 rounded-full object-cover border border-luxury-gold shadow-sm shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback')
+                          if (fallback) fallback.classList.remove('hidden')
+                        }}
+                      />
+                    ) : null}
+                    <div className={`avatar-fallback ${userDp ? 'hidden' : 'flex'} items-center justify-center`}>
+                      <FiUser size={16} className={isDarkMode ? 'text-luxury-gold' : 'text-luxury-darkBlack'} />
+                    </div>
+                    <span className="hidden xl:inline-block truncate max-w-[100px]">{user?.firstName || t('header.profile', 'Profile')}</span>
                   </Link>
                 </div>
               ) : (

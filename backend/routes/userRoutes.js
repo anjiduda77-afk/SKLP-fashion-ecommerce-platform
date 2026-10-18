@@ -5,6 +5,9 @@ import * as userController from '../controllers/userController.js'
 
 const router = express.Router()
 
+// Public endpoint to serve user avatar (for <img> elements)
+router.get('/:userId/avatar', asyncHandler(userController.getUserAvatar))
+
 router.get('/me', verifyToken, asyncHandler(userController.getProfile))
 router.get('/profile', verifyToken, asyncHandler(userController.getProfile))
 router.put('/profile', verifyToken, asyncHandler(userController.updateProfile))

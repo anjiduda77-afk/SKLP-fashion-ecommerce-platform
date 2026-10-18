@@ -615,7 +615,12 @@ function Profile() {
 
   useEffect(() => {
     if (user) {
-      setProfileForm({ firstName: user.firstName || '', lastName: user.lastName || '', bio: user.bio || '', gender: user.gender || 'unisex', avatar: user.avatar?.url || '' })
+      const rawAv = user.photoURL || user.avatar?.url || ''
+      const resolvedAvatar = rawAv && !rawAv.startsWith('http://') && !rawAv.startsWith('https://') && !rawAv.startsWith('data:') && !rawAv.startsWith('/api/')
+        ? (user._id || user.id ? `/api/users/${user._id || user.id}/avatar` : rawAv)
+        : rawAv
+
+      setProfileForm({ firstName: user.firstName || '', lastName: user.lastName || '', bio: user.bio || '', gender: user.gender || 'unisex', avatar: resolvedAvatar })
       if (user.preferences) setPreferences((prev) => ({ ...prev, ...user.preferences, notifications: { ...prev.notifications, ...(user.preferences.notifications || {}) } }))
       if (user.fashionPreferences) setFashionPreferences((prev) => ({ ...prev, ...user.fashionPreferences }))
     }

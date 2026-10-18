@@ -13,6 +13,14 @@ const userSchema = new mongoose.Schema({
     default: 'User',
     trim: true
   },
+  avatar: {
+    url: { type: String, default: null },
+    publicId: { type: String, default: null }
+  },
+  photoURL: {
+    type: String,
+    default: null
+  },
   email: {
     type: String,
     lowercase: true,
@@ -459,5 +467,35 @@ userSchema.index({ referralCode: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ 'sellerProfile.isVerified': 1 });
+
+// Transform user document for API output: clean sensitive fields & resolve local avatar paths
+const transformUser = (doc, ret) => {
+  delete ret.password;
+  delete ret.refreshTokens;
+  delete ret.passwordResetToken;
+  delete ret.passwordResetExpiry;
+  delete ret.emailVerificationToken;
+  delete ret.emailVerificationExpiry;
+  delete ret.phoneVerificationToken;
+  delete ret.phoneVerificationExpiry;
+  delete ret.phoneLoginOtpToken;
+  delete ret.phoneLoginOtpExpiry;
+
+  const rawAvatar = ret.avatar?.url || ret.photoURL;
+  if (rawAvatar) {
+    if (rawAvatar.startsWith('http://') || rawAvatar.startsWith('https://') || rawAvatar.startsWith('data:') || rawAvatar.startsWith('/api/')) {
+      ret.photoURL = rawAvatar;
+    } else {
+      ret.photoURL = `/api/users/${ret._id}/avatar`;
+      if (ret.avatar) {
+        ret.avatar.url = `/api/users/${ret._id}/avatar`;
+      }
+    }
+  }
+  return ret;
+};
+
+userSchema.set('toJSON', { transform: transformUser });
+userSchema.set('toObject', { transform: transformUser });
 
 export default mongoose.model('User', userSchema);

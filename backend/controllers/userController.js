@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Wishlist from '../models/Wishlist.js';
@@ -64,8 +66,13 @@ export const updateProfile = async (req, res) => {
   if (avatar !== undefined) {
     if (typeof avatar === 'string') {
       user.avatar = { url: avatar, publicId: null };
-    } else {
+      user.photoURL = avatar;
+    } else if (avatar && typeof avatar === 'object') {
       user.avatar = avatar;
+      user.photoURL = avatar.url || null;
+    } else {
+      user.avatar = { url: null, publicId: null };
+      user.photoURL = null;
     }
   }
 
@@ -850,4 +857,48 @@ export const sendTestNotification = async (req, res) => {
     pushResult
   });
 };
+
+// Serve user avatar image (handles remote URLs, base64 data URIs, and local disk paths)
+export const getUserAvatar = async (req, res) => {
+  const { userId } = req.params;
+  if (!userId || !mongoose.isValidObjectId(userId)) {
+    return res.status(400).send('Invalid user ID');
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).send('User not found');
+  }
+
+  const rawUrl = user.avatar?.url || user.photoURL;
+  if (!rawUrl) {
+    return res.status(404).send('No avatar configured');
+  }
+
+  // Remote HTTP/HTTPS URL
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    return res.redirect(rawUrl);
+  }
+
+  // Base64 Data URL
+  if (rawUrl.startsWith('data:image/')) {
+    const parts = rawUrl.split(';base64,');
+    const mime = parts[0].replace('data:', '');
+    res.setHeader('Content-Type', mime);
+    return res.send(Buffer.from(parts[1], 'base64'));
+  }
+
+  // Local file path (Windows or Unix)
+  try {
+    const resolvedPath = path.resolve(rawUrl);
+    if (fs.existsSync(resolvedPath)) {
+      return res.sendFile(resolvedPath);
+    }
+  } catch (err) {
+    console.error('[AVATAR] Error serving local file:', err.message);
+  }
+
+  return res.status(404).send('Avatar file not found on disk');
+};
+
 

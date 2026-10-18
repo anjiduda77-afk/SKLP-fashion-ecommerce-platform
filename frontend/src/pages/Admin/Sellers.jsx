@@ -411,19 +411,19 @@ function AdminSellers() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className={`border-b ${isDarkMode ? 'border-gray-800 bg-black/40 text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-500'}`}>
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Shop / Applicant</th>
-                  <th className="py-3 px-4 font-semibold">Brand</th>
-                  <th className="py-3 px-4 font-semibold">Owner Contact</th>
-                  <th className="py-3 px-4 font-semibold">Business Type</th>
-                  <th className="py-3 px-4 font-semibold">Shop Photos</th>
-                  <th className="py-3 px-4 font-semibold">Submission Date</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-4 font-semibold">Compliance Remarks</th>
-                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Shop / Applicant</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Brand</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Owner Contact</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Business Type</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Shop Photos</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Submission Date</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Status</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px]">Compliance Remarks</th>
+                  <th className="py-2.5 px-3 font-semibold text-[11px] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDarkMode ? 'divide-gray-800/60' : 'divide-gray-100'}`}>
@@ -443,51 +443,51 @@ function AdminSellers() {
                       onClick={() => navigate(`/admin/sellers/${app._id}`, { state: { tab: activeTab } })}
                     >
                       {/* Shop / Applicant */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 font-bold text-sm flex-shrink-0">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 font-bold text-xs flex-shrink-0">
                             {(app.shopName || 'S').charAt(0).toUpperCase()}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className={`font-bold ${tp}`}>{app.shopName}</span>
+                              <span className={`font-bold text-xs truncate max-w-[130px] xl:max-w-[180px] block ${tp}`}>{app.shopName}</span>
                               {app.applicationReference && (
-                                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded border border-gray-800 bg-gray-900 text-gray-400">
+                                <span className="font-mono text-[9px] px-1 py-0.2 rounded border border-gray-800 bg-gray-900 text-gray-400 shrink-0">
                                   {app.applicationReference}
                                 </span>
                               )}
                             </div>
-                            <p className={`text-[11px] ${ts}`}>{app.ownerName || app.applicantName}</p>
+                            <p className={`text-[11px] truncate max-w-[130px] xl:max-w-[180px] ${ts}`}>{app.ownerName || app.applicantName}</p>
                           </div>
                         </div>
                       </td>
 
                       {/* Brand */}
-                      <td className="py-3 px-4">
-                        <span className="font-semibold text-amber-500">{app.brandName || app.shopName}</span>
+                      <td className="py-2.5 px-3">
+                        <span className="font-semibold text-xs text-amber-500 truncate max-w-[120px] block">{app.brandName || app.shopName}</span>
                         {app.brandNameNormalized && (
-                          <span className="block text-[10px] font-mono text-gray-500">
+                          <span className="block text-[10px] font-mono text-gray-500 truncate max-w-[120px]">
                             @{app.brandNameNormalized}
                           </span>
                         )}
                       </td>
 
                       {/* Contact */}
-                      <td className="py-3 px-4">
-                        <p className="text-gray-300 font-medium">{app.phone || 'N/A'}</p>
-                        <p className={`text-[11px] ${ts}`}>{app.email}</p>
+                      <td className="py-2.5 px-3">
+                        <p className="text-gray-300 font-medium text-xs font-mono">{app.phone || 'N/A'}</p>
+                        <p className={`text-[11px] truncate max-w-[130px] block ${ts}`} title={app.email}>{app.email}</p>
                       </td>
 
                       {/* Business Type */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3">
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold border border-gray-700 bg-gray-800/60 text-gray-300 uppercase">
                           {app.businessType || 'individual'}
                         </span>
                       </td>
 
                       {/* Shop Photos */}
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border inline-flex items-center gap-1 ${
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
                           isPhotoComplete
                             ? 'bg-green-500/10 text-green-400 border-green-500/25'
                             : 'bg-orange-500/10 text-orange-400 border-orange-500/25'
@@ -497,8 +497,8 @@ function AdminSellers() {
                       </td>
 
                       {/* Submission Date */}
-                      <td className="py-3 px-4">
-                        <span className="text-gray-300">
+                      <td className="py-2.5 px-3">
+                        <span className="text-gray-300 text-xs">
                           {new Date(app.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                         <span className={`block text-[10px] ${ts}`}>
@@ -507,16 +507,16 @@ function AdminSellers() {
                       </td>
 
                       {/* Current Status */}
-                      <td className="py-3 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border inline-flex items-center gap-1.5 ${sCfg.badgeCls}`}>
-                          <SIcon size={12} /> {sCfg.label}
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${sCfg.badgeCls}`}>
+                          <SIcon size={11} /> {sCfg.label}
                         </span>
                       </td>
 
                       {/* Compliance Remarks / Correction Reason */}
-                      <td className="py-3 px-4 max-w-xs truncate" title={remarkText || 'No remarks recorded'}>
+                      <td className="py-2.5 px-3 max-w-[110px] xl:max-w-[150px] truncate" title={remarkText || 'No remarks recorded'}>
                         {remarkText ? (
-                          <span className="text-orange-400 font-medium truncate block max-w-[200px]">
+                          <span className="text-orange-400 font-medium truncate block text-[11px]">
                             {remarkText}
                           </span>
                         ) : (
@@ -525,54 +525,55 @@ function AdminSellers() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-3 text-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => navigate(`/admin/sellers/${app._id}`, { state: { tab: activeTab } })}
-                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-xl flex items-center gap-1 transition-all shadow-sm"
+                            className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg flex items-center gap-1 transition-all shadow-sm"
+                            title="View full application details dossier"
                           >
-                            <FiEye size={12} /> View Application
+                            <FiEye size={12} /> <span>View</span>
                           </button>
 
                           <button
                             onClick={e => handleDownloadAgreement(e, app)}
                             disabled={downloadingId === app._id}
-                            className={`p-1.5 border rounded-xl text-gray-400 hover:text-white transition-colors ${
+                            className={`p-1.5 border rounded-lg text-gray-400 hover:text-white transition-colors ${
                               isDarkMode ? 'border-gray-800 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'
                             }`}
                             title="Download Seller Agreement PDF"
                           >
-                            <FiDownload size={14} className={downloadingId === app._id ? 'animate-bounce text-amber-500' : ''} />
+                            <FiDownload size={13} className={downloadingId === app._id ? 'animate-bounce text-amber-500' : ''} />
                           </button>
 
                           {/* Quick Workflow Buttons */}
                           {app.status !== 'APPROVED' && (
                             <button
                               onClick={() => setActionModal({ app, actionType: 'APPROVE' })}
-                              className="p-1.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-colors"
+                              className="p-1.5 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-colors"
                               title="Quick Approve"
                             >
-                              <FiCheckCircle size={14} />
+                              <FiCheckCircle size={13} />
                             </button>
                           )}
 
                           {!['APPROVED', 'REJECTED'].includes(app.status) && (
                             <button
                               onClick={() => setActionModal({ app, actionType: 'NEEDS_CORRECTION' })}
-                              className="p-1.5 rounded-xl border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition-colors"
+                              className="p-1.5 rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition-colors"
                               title="Request Correction"
                             >
-                              <FiAlertCircle size={14} />
+                              <FiAlertCircle size={13} />
                             </button>
                           )}
 
                           {app.status !== 'REJECTED' && (
                             <button
                               onClick={() => setActionModal({ app, actionType: 'REJECT' })}
-                              className="p-1.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+                              className="p-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
                               title="Reject Application"
                             >
-                              <FiXCircle size={14} />
+                              <FiXCircle size={13} />
                             </button>
                           )}
                         </div>

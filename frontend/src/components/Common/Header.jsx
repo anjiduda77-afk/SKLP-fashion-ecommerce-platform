@@ -102,7 +102,7 @@ function Header({ isDarkMode }) {
           {/* TOP ROW: Brand, Shop, Theme, Lang, Cart, Wishlist, Profile */}
           <div className="flex items-center justify-between gap-2 md:gap-4">
             {/* LEFT: Hamburger & Brand logo */}
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
               {/* Professional Animated Hamburger */}
               <button
                 onClick={() => setIsSidebarOpen(true)}
@@ -119,7 +119,7 @@ function Header({ isDarkMode }) {
               </button>
 
               {/* Premium Logo */}
-              <Link to="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0">
+              <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
                 <img 
                   src={sklpLogo} 
                   alt="Style Street Logo" 
@@ -130,7 +130,7 @@ function Header({ isDarkMode }) {
             </div>
 
             {/* DESKTOP DIRECT NAVIGATION LINKS */}
-            <nav className="hidden xl:flex items-center gap-5 shrink-0 px-2">
+            <nav className="hidden xl:flex items-center gap-5 shrink-0 px-4">
               <Link
                 to="/"
                 className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-luxury-gold ${

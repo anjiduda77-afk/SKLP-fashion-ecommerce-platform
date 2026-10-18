@@ -30,7 +30,7 @@ export default function BrandName({
 
   return (
     <Component
-      className={`brand-name font-brand font-black uppercase inline-flex items-center select-none ${sizeClasses} ${className}`}
+      className={`brand-name font-brand font-black uppercase inline-flex items-center select-none shrink-0 whitespace-nowrap ${sizeClasses} ${className}`}
       aria-label="STYLE STREET"
     >
       <span className="brand-word-style">STYLE</span>

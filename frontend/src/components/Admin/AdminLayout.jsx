@@ -147,7 +147,7 @@ function AdminLayout({ children }) {
       {/* ─── DESKTOP SIDEBAR (hidden on mobile) ─── */}
       <aside
         className={`hidden lg:flex flex-col transition-all duration-300 ${
-          sidebarCollapsed ? 'w-16' : 'w-64'
+          sidebarCollapsed ? 'w-16' : 'w-60 xl:w-64'
         } bg-luxury-charcoal border-r border-luxury-darkGray flex-shrink-0`}
       >
         {/* Sidebar Header */}
@@ -249,7 +249,7 @@ function AdminLayout({ children }) {
               <FiMenu size={20} />
             </button>
             <h2 className="text-base sm:text-lg font-semibold text-white capitalize truncate">
-              {navItems.find(n => n.path === location.pathname)?.label || 'Admin Panel'}
+              {navItems.find(n => n.path === '/admin/dashboard' ? location.pathname === n.path : location.pathname.startsWith(n.path))?.label || 'Admin Panel'}
             </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -297,8 +297,10 @@ function AdminLayout({ children }) {
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-luxury-black p-3 sm:p-6 w-full max-w-full">
-          {children || <Outlet />}
+        <main className="flex-1 overflow-y-auto bg-luxury-black p-3 sm:p-5 lg:p-6 w-full max-w-full">
+          <div className="w-full max-w-[1680px] mx-auto">
+            {children || <Outlet />}
+          </div>
         </main>
       </div>
     </div>

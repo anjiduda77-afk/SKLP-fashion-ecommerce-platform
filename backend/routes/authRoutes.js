@@ -39,6 +39,8 @@ router.post('/backup-email/remove', verifyToken, asyncHandler(authController.rem
 // Phone OTP Login (passwordless) — public, rate-limited
 router.post('/phone/send-otp', authRateLimiter, asyncHandler(authController.sendPhoneLoginOTP))
 router.post('/phone/verify-otp', authRateLimiter, asyncHandler(authController.verifyPhoneLoginOTP))
+router.post('/send-otp', authRateLimiter, asyncHandler(authController.sendPhoneLoginOTP))
+router.post('/verify-otp', authRateLimiter, asyncHandler(authController.verifyPhoneLoginOTP))
 
 export default router
 

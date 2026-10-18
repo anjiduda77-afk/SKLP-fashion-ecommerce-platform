@@ -100,10 +100,17 @@ export const createOrder = async (req, res) => {
   if (user.status === 'suspended' || user.status === 'blocked') throw new ApiError(403, 'Account suspended or blocked. Cannot place orders.')
   if (user.status === 'deleted') throw new ApiError(403, 'Account deleted')
 
-  // Validate shipping address
-  if (!shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.postalCode) {
+  // Validate shipping address (normalize postalCode vs pincode)
+  const normPostalCode = shippingAddress?.postalCode || shippingAddress?.pincode || shippingAddress?.zipCode
+  const normStreet = shippingAddress?.street || shippingAddress?.address || shippingAddress?.line1
+  const normCity = shippingAddress?.city
+  if (!normStreet || !normCity || !normPostalCode) {
     throw new ApiError(400, 'Invalid shipping address — street, city and postal code are required.')
   }
+  shippingAddress.postalCode = normPostalCode
+  shippingAddress.pincode = normPostalCode
+  shippingAddress.street = normStreet
+  shippingAddress.city = normCity
 
   // Validate payment method
   const validMethods = ['cod', 'razorpay', 'upi', 'card', 'phonePe', 'phonepe']

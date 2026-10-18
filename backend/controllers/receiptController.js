@@ -617,21 +617,22 @@ export const getCustomerTaxInvoicePdf = async (req, res) => {
  * @access  Public (QR Code Scanners & Tax Auditors)
  */
 export const verifyOrderDocument = async (req, res) => {
-  const { order: orderQuery, invoice: invoiceQuery } = req.query;
-  if (!orderQuery && !invoiceQuery) {
-    throw new ApiError(400, 'Please provide an order number or invoice number to verify');
+  const orderParam = req.query.order || req.query.orderId;
+  const invoiceParam = req.query.invoice || req.query.invoiceNumber;
+  if (!orderParam && !invoiceParam) {
+    throw new ApiError(400, 'Please provide an order number, order ID, or invoice number to verify');
   }
 
   const filter = {};
-  if (orderQuery) {
-    if (mongoose.Types.ObjectId.isValid(orderQuery)) {
-      filter.$or = [{ _id: orderQuery }, { orderNumber: orderQuery }];
+  if (orderParam) {
+    if (mongoose.Types.ObjectId.isValid(orderParam)) {
+      filter.$or = [{ _id: orderParam }, { orderNumber: orderParam }];
     } else {
-      filter.orderNumber = orderQuery;
+      filter.orderNumber = orderParam;
     }
   }
-  if (invoiceQuery) {
-    filter.invoiceNumber = invoiceQuery;
+  if (invoiceParam) {
+    filter.invoiceNumber = invoiceParam;
   }
 
   const order = await Order.findOne(filter)

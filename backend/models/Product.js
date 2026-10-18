@@ -318,7 +318,7 @@ productSchema.pre('save', async function(next) {
 });
 
 // Index for search and filtering
-productSchema.index({ name: 'text', description: 'text', brand: 'text', tags: 'text' });
+productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ category: 1, gender: 1 });
 productSchema.index({ price: 1, discount: 1 });
 productSchema.index({ rating: -1, reviewCount: -1 });

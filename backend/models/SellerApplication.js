@@ -325,6 +325,6 @@ sellerApplicationSchema.pre('save', function(next) {
 
 sellerApplicationSchema.index({ status: 1, riskLevel: 1 });
 sellerApplicationSchema.index({ email: 1, phone: 1 });
-sellerApplicationSchema.index({ brandNameNormalized: 1 }, { sparse: true });
+sellerApplicationSchema.index({ brandNameNormalized: 1 });
 
 export default mongoose.model('SellerApplication', sellerApplicationSchema)

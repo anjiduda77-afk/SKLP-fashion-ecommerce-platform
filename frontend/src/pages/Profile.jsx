@@ -892,7 +892,7 @@ function Profile() {
 
   return (
     <div className={`flex min-h-screen ${isDarkMode ? 'bg-luxury-black' : 'bg-gray-100'}`}>
-      <aside className={`hidden lg:flex flex-col w-64 xl:w-72 min-h-screen sticky top-0 h-screen flex-shrink-0 border-r ${sidebarBg}`}>
+      <aside className={`hidden lg:flex flex-col w-64 xl:w-72 sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto flex-shrink-0 border-r ${sidebarBg}`}>
         <SidebarInner />
       </aside>
       {sidebarOpen && (

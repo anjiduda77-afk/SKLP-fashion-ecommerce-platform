@@ -4,9 +4,7 @@ const orderSchema = new mongoose.Schema({
   // Order Information
   orderNumber: {
     type: String,
-    unique: true,
-    sparse: true,
-    index: true
+    unique: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -450,12 +450,12 @@ userSchema.statics.validatePasswordStrength = function (password) {
 // Indexes for performance and unique contact channels
 userSchema.index({ email: 1 }, { sparse: true, unique: true });
 userSchema.index({ phone: 1 }, { sparse: true, unique: true });
-userSchema.index({ googleId: 1 }, { sparse: true });
+userSchema.index({ googleId: 1 });
 userSchema.index({ firebaseUid: 1 }, { sparse: true, unique: true });
 userSchema.index({ customUserId: 1 }, { sparse: true, unique: true });
 userSchema.index({ phoneE164: 1 }, { sparse: true });
 userSchema.index({ backupEmailNormalized: 1 }, { sparse: true });
-userSchema.index({ referralCode: 1 }, { sparse: true });
+userSchema.index({ referralCode: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ 'sellerProfile.isVerified': 1 });

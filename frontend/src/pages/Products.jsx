@@ -345,7 +345,7 @@ function Products() {
     : products
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4 md:px-8 py-6 sm:py-12 min-h-screen">
+    <div className="container-custom py-6 sm:py-12 min-h-screen">
       {/* Header Banner */}
       <div className="relative rounded-2xl overflow-hidden py-4 sm:py-16 px-4 sm:px-8 mb-4 sm:mb-12 bg-luxury-charcoal border border-luxury-gold/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-yellow-500/10 via-transparent to-transparent pointer-events-none" />
@@ -609,7 +609,7 @@ function Products() {
 
       <div className="flex gap-6 xl:gap-8 relative">
         {/* ============ DESKTOP SIDEBAR FILTERS ============ */}
-        <aside className={`hidden lg:block w-72 flex-shrink-0 card p-6 rounded-2xl ${isDarkMode ? 'bg-luxury-charcoal' : 'bg-white'} border border-luxury-gold/10 self-start`}>
+        <aside className={`hidden lg:block w-72 flex-shrink-0 card p-6 rounded-2xl ${isDarkMode ? 'bg-luxury-charcoal' : 'bg-white'} border border-luxury-gold/10 self-start sticky top-[85px] max-h-[calc(100vh-105px)] overflow-y-auto`}>
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <h3 className="text-lg font-serif font-bold tracking-wider">REFINE BY</h3>
           </div>

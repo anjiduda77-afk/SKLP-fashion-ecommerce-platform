@@ -19,6 +19,7 @@ router.get('/dashboard', asyncHandler(deliveryController.getDashboard))
  * Orders Management
  */
 router.get('/orders', asyncHandler(deliveryController.getAssignedOrders))
+router.get('/assigned-orders', asyncHandler(deliveryController.getAssignedOrders))
 router.put('/orders/:orderId/status', asyncHandler(deliveryController.updateOrderStatus))
 router.post('/orders/:orderId/location', asyncHandler(deliveryController.updateDeliveryLocation))
 

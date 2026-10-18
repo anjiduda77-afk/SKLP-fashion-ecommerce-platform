@@ -368,6 +368,27 @@ function Login() {
     }
   }
 
+  const handleQuickLogin = async (accEmail, accPass) => {
+    setEmail(accEmail)
+    setPassword(accPass)
+    setLoading(true)
+    try {
+      const res = await authService.login(accEmail, accPass, true)
+      if (res.data?.success && res.data?.token) {
+        const { user: u, token: tk, refreshToken: rt } = res.data
+        login(u, tk, rt)
+        handleRedirectAfterLogin(u)
+      } else {
+        throw new Error(res.data?.message || 'Login failed')
+      }
+    } catch (err) {
+      console.error('Quick login error:', err)
+      toast.error(err.response?.data?.message || err.message || 'Quick login failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // ── Google login (unchanged logic) ────────────────────────────────────
   const handleGoogleLogin = async (e) => {
     if (googleLoading || loading) return
@@ -628,6 +649,71 @@ function Login() {
                       Create an account <FiArrowRight size={11} className="inline" aria-hidden="true" />
                     </Link>
                   </p>
+
+                  {/* ── 4 Core Accounts Quick Sign-In ── */}
+                  <div className="mt-4 pt-3 border-t border-white/10 text-left">
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center justify-between ${isDarkMode ? 'text-luxury-gold' : 'text-amber-700'}`}>
+                      <span>⚡ Quick Account Sign-In</span>
+                      <span className="text-[9px] opacity-70 font-normal">All 4 Roles</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleQuickLogin('customer@sklp.com', 'CustomerPassword123!')}
+                        className={`p-2 rounded-xl border text-left transition-all ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
+                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold flex items-center gap-1">🛍️ Customer</div>
+                        <div className="text-[9px] opacity-60 truncate">customer@sklp.com</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleQuickLogin('admin@sklp.com', 'AdminPassword123!')}
+                        className={`p-2 rounded-xl border text-left transition-all ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
+                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold flex items-center gap-1">👑 Admin</div>
+                        <div className="text-[9px] opacity-60 truncate">admin@sklp.com</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleQuickLogin('seller@sklp.com', 'SellerPassword123!')}
+                        className={`p-2 rounded-xl border text-left transition-all ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
+                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold flex items-center gap-1">🏬 Seller</div>
+                        <div className="text-[9px] opacity-60 truncate">seller@sklp.com</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleQuickLogin('delivery@sklp.com', 'DeliveryPassword123!')}
+                        className={`p-2 rounded-xl border text-left transition-all ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 hover:border-luxury-gold hover:bg-white/10 text-white'
+                            : 'bg-white border-gray-200 hover:border-luxury-gold text-slate-800'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold flex items-center gap-1">🚚 Delivery</div>
+                        <div className="text-[9px] opacity-60 truncate">delivery@sklp.com</div>
+                      </button>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 

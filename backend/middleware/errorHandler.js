@@ -78,7 +78,9 @@ export const handleValidationError = (error) => {
 
 // Mongoose duplicate key error handler
 export const handleDuplicateKeyError = (error) => {
-  const field = Object.keys(error.keyPattern)[0];
+  const field = (error.keyPattern && Object.keys(error.keyPattern)[0]) ||
+                (error.keyValue && Object.keys(error.keyValue)[0]) ||
+                'Field';
   const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
   return new ApiError(409, message);
 };

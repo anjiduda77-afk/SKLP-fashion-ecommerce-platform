@@ -76,12 +76,27 @@ async function runAudit() {
       role: 'customer'
     });
 
-    if (regRes.data?.success && regRes.data?.token) {
-      customerToken = regRes.data.token;
-      customerRefreshToken = regRes.data.refreshToken;
-      record('Customer Register & JWT Generation', true, `User ID: ${regRes.data.user?._id}, Role: ${regRes.data.user?.role}`);
+    if (regRes.data?.success) {
+      if (regRes.data?.token) {
+        customerToken = regRes.data.token;
+        customerRefreshToken = regRes.data.refreshToken;
+        record('Customer Register & JWT Generation', true, `User ID: ${regRes.data.user?._id}, Role: ${regRes.data.user?.role}`);
+      } else {
+        // Registration succeeded with email verification requirement; obtain session token for downstream checks
+        const loginRes = await axios.post(`${BASE_URL}/auth/login`, {
+          email: 'customer@sklp.com',
+          password: 'CustomerPassword123!'
+        });
+        if (loginRes.data?.success && loginRes.data?.token) {
+          customerToken = loginRes.data.token;
+          customerRefreshToken = loginRes.data.refreshToken;
+          record('Customer Register & JWT Generation', true, `User registered (${regRes.data.message}) & JWT issued`);
+        } else {
+          record('Customer Register & JWT Generation', false, loginRes.data?.message || 'Login failed');
+        }
+      }
     } else {
-      record('Customer Register & JWT Generation', false, regRes.data?.message || 'No token returned');
+      record('Customer Register & JWT Generation', false, regRes.data?.message || 'No success returned');
     }
   } catch (err) {
     record('Customer Register & JWT Generation', false, err.response?.data?.message || err.message);

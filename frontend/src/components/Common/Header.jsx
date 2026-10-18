@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { 
@@ -33,6 +33,7 @@ function Header({ isDarkMode }) {
   const { isAuthenticated, user } = useAuth()
   const { selectedShop, openShopModal } = useShop()
   const navigate = useNavigate()
+  const location = useLocation()
 
   // Track scrolling to toggle sticky header floating shadow
   useEffect(() => {
@@ -128,8 +129,49 @@ function Header({ isDarkMode }) {
               </Link>
             </div>
 
+            {/* DESKTOP DIRECT NAVIGATION LINKS */}
+            <nav className="hidden xl:flex items-center gap-5 shrink-0 px-2">
+              <Link
+                to="/"
+                className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-luxury-gold ${
+                  location.pathname === '/' ? 'text-luxury-gold' : isDarkMode ? 'text-white/80' : 'text-slate-800'
+                }`}
+              >
+                Home
+              </Link>
+              <Link
+                to="/products"
+                className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-luxury-gold ${
+                  location.pathname === '/products' ? 'text-luxury-gold' : isDarkMode ? 'text-white/80' : 'text-slate-800'
+                }`}
+              >
+                Collections
+              </Link>
+              <Link
+                to="/products?sort=trending"
+                className="text-xs font-bold uppercase tracking-wider transition-colors text-white/80 hover:text-luxury-gold dark:text-white/80"
+              >
+                Trending
+              </Link>
+              <Link
+                to="/products?offers=true"
+                className="text-xs font-bold uppercase tracking-wider transition-colors text-luxury-gold hover:text-luxury-lightGold flex items-center gap-1"
+              >
+                <FiZap size={13} className="animate-pulse" />
+                Offers
+              </Link>
+              {(!isAuthenticated || user?.role === 'customer') && (
+                <Link
+                  to="/become-a-seller"
+                  className="text-xs font-bold uppercase tracking-wider transition-colors opacity-70 hover:opacity-100 hover:text-luxury-gold"
+                >
+                  Sell on SKLP
+                </Link>
+              )}
+            </nav>
+
             {/* MIDDLE: Desktop-Only Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-md lg:max-w-lg items-center relative mx-2">
+            <div className="hidden md:flex flex-1 max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl items-center relative mx-2">
               <div
                 onClick={() => {
                   setStartWithVoice(false)

@@ -100,12 +100,19 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
+      const token = localStorage.getItem('token')
       const refreshToken = localStorage.getItem('refreshToken')
       if (!refreshToken) {
         isRefreshing = false
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+        if (token) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          if (typeof window !== 'undefined' && 
+              !window.location.pathname.startsWith('/login') && 
+              !window.location.pathname.startsWith('/register')) {
+            window.location.href = '/login'
+          }
+        }
         return Promise.reject(error)
       }
 
@@ -133,7 +140,11 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        window.location.href = '/login'
+        if (typeof window !== 'undefined' && 
+            !window.location.pathname.startsWith('/login') && 
+            !window.location.pathname.startsWith('/register')) {
+          window.location.href = '/login'
+        }
         return Promise.reject(refreshError)
       }
     }

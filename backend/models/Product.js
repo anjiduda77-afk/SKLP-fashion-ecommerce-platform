@@ -174,11 +174,38 @@ const productSchema = new mongoose.Schema({
   warrantyPeriod: String,
   exchangePolicy: String,
 
-  // Status and Publishing
+  // Status, Restrictions, and Publishing
   isActive: {
     type: Boolean,
     default: true,
     index: true
+  },
+  isRestricted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  restrictionReason: {
+    type: String,
+    default: ''
+  },
+  allowedPaymentMethods: {
+    type: [String],
+    default: ['all'] // ['all'] or combination of ['cod', 'online', 'upi', 'bankacc']
+  },
+  isCodAllowed: {
+    type: Boolean,
+    default: true
+  },
+  deliveryType: {
+    type: String,
+    enum: ['free', 'paid'],
+    default: 'free'
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   isFeatured: {
     type: Boolean,

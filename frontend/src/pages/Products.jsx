@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiGrid, FiList, FiSearch, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiCheckCircle, FiMic } from 'react-icons/fi'
+import { FiGrid, FiList, FiSearch, FiSliders, FiHeart, FiShoppingBag, FiStar, FiX, FiCheckCircle, FiMic, FiLock } from 'react-icons/fi'
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
@@ -845,7 +845,11 @@ function Products() {
                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                       />
                     </Link>
-                    {p.discount > 0 && (
+                    {p.isRestricted ? (
+                      <span className="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-600/90 text-white text-[9px] sm:text-xs font-bold rounded-full flex items-center gap-1 z-10 shadow-md">
+                        <FiLock size={10} /> Restricted
+                      </span>
+                    ) : p.discount > 0 && (
                       <span className="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-3 sm:py-1 bg-luxury-gold text-luxury-black text-[9px] sm:text-xs font-bold rounded-full">
                         -{p.discount}%
                       </span>
@@ -890,18 +894,50 @@ function Products() {
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-1.5 sm:gap-3 mb-2 sm:mb-4">
+                      <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-2">
                         <span className="text-sm sm:text-xl font-bold text-luxury-gold font-mono">₹{p.price.toLocaleString()}</span>
                         {p.originalPrice && (
                           <span className="text-[10px] sm:text-xs line-through opacity-40 font-mono">₹{p.originalPrice.toLocaleString()}</span>
                         )}
                       </div>
+                      <div className="flex flex-wrap gap-1 mb-2.5">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          p.deliveryType === 'paid' && p.deliveryFee > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        }`}>
+                          {p.deliveryType === 'paid' && p.deliveryFee > 0 ? `+₹${p.deliveryFee} Del` : 'Free Del'}
+                        </span>
+                        {p.isCodAllowed === false && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            Prepaid Only
+                          </span>
+                        )}
+                      </div>
                       <div className="flex gap-1.5 sm:gap-2">
                         <button
-                          onClick={() => { addToCart(p, 1); toast.success('Added to Cart!') }}
-                          className="flex-grow flex items-center justify-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 px-2 bg-luxury-gold text-luxury-black font-extrabold text-[10px] sm:text-xs uppercase tracking-wider hover:bg-yellow-400 active:scale-95 transition-all whitespace-nowrap rounded-xl touch-target shadow-sm"
+                          disabled={p.isRestricted}
+                          onClick={() => { 
+                            if (p.isRestricted) {
+                              toast.error(p.restrictionReason || 'This product is currently restricted by merchant')
+                              return
+                            }
+                            addToCart(p, 1); 
+                            toast.success('Added to Cart!') 
+                          }}
+                          className={`flex-grow flex items-center justify-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 px-2 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider transition-all whitespace-nowrap rounded-xl touch-target shadow-sm ${
+                            p.isRestricted 
+                              ? 'bg-gray-700/80 text-gray-400 cursor-not-allowed border border-gray-600/30' 
+                              : 'bg-luxury-gold text-luxury-black hover:bg-yellow-400 active:scale-95'
+                          }`}
                         >
-                          <FiShoppingBag size={13} className="shrink-0" /> <span>Add to Cart</span>
+                          {p.isRestricted ? (
+                            <>
+                              <FiLock size={12} className="shrink-0" /> <span>Restricted</span>
+                            </>
+                          ) : (
+                            <>
+                              <FiShoppingBag size={13} className="shrink-0" /> <span>Add to Cart</span>
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => toggleWishlist(p)}

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   FiArrowRight, FiChevronLeft, FiChevronRight, FiStar, FiHeart, 
-  FiShoppingBag, FiTruck, FiShield, FiZap, FiLoader 
+  FiShoppingBag, FiTruck, FiShield, FiZap, FiLoader, FiLock
 } from 'react-icons/fi'
 import {
   GiSuits, GiDress, GiRunningShoe, GiWatch, GiCrown, GiShirt,
@@ -199,6 +199,10 @@ function ProductCard({ product, isDarkMode }) {
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    if (product.isRestricted) {
+      toast.error(product.restrictionReason || 'This product is currently restricted by merchant')
+      return
+    }
     addToCart({
       ...product,
       _id: productId,
@@ -278,8 +282,15 @@ function ProductCard({ product, isDarkMode }) {
             </button>
           </div>
 
+          {/* Restricted Badge */}
+          {product.isRestricted && (
+            <span className="absolute top-2 left-2 sm:top-3.5 sm:left-3.5 rounded-full bg-red-600/95 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 text-[8px] sm:text-[9px] font-black text-white shadow-lg flex items-center gap-1 z-10">
+              <FiLock size={10} /> Restricted
+            </span>
+          )}
+
           {/* Discount badge */}
-          {product.discount > 0 && (
+          {!product.isRestricted && product.discount > 0 && (
             <span className="absolute top-2 left-2 sm:top-3.5 sm:left-3.5 rounded-full bg-luxury-gold px-1.5 py-0.5 sm:px-3 sm:py-1 text-[8px] sm:text-[10px] font-black text-black shadow-glow">
               -{product.discount}%
             </span>
@@ -340,15 +351,27 @@ function ProductCard({ product, isDarkMode }) {
 
             {/* Quick Add Bottom Row */}
             <button 
+              disabled={product.isRestricted}
               onClick={handleAddToCart}
-              className={`w-full py-2.5 sm:py-3 rounded-xl text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold transition-all duration-300 border flex items-center justify-center gap-1.5 touch-target
-                ${isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-white hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm' 
-                  : 'bg-luxury-offWhite border-luxury-gold/30 text-luxury-darkBlack hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm'
-                }`}
+              className={`w-full py-2.5 sm:py-3 rounded-xl text-[9px] sm:text-[10px] uppercase tracking-wider font-extrabold transition-all duration-300 border flex items-center justify-center gap-1.5 touch-target ${
+                product.isRestricted
+                  ? 'bg-gray-800/80 border-gray-700 text-gray-400 cursor-not-allowed'
+                  : isDarkMode 
+                    ? 'bg-white/5 border-white/10 text-white hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm' 
+                    : 'bg-luxury-offWhite border-luxury-gold/30 text-luxury-darkBlack hover:bg-luxury-gold hover:text-black hover:border-luxury-gold shadow-sm'
+              }`}
             >
-              <FiShoppingBag size={13} className="shrink-0" />
-              <span>Add to Cart</span>
+              {product.isRestricted ? (
+                <>
+                  <FiLock size={12} className="shrink-0" />
+                  <span>Restricted</span>
+                </>
+              ) : (
+                <>
+                  <FiShoppingBag size={13} className="shrink-0" />
+                  <span>Add to Cart</span>
+                </>
+              )}
             </button>
           </div>
 

@@ -11,7 +11,8 @@ import {
   FiX, FiSettings, FiAward, FiClock, FiCheckCircle,
   FiCreditCard, FiArrowRight,
   FiRefreshCw, FiExternalLink, FiCheck,
-  FiPrinter, FiChevronDown, FiPackage, FiHome
+  FiPrinter, FiChevronDown, FiPackage, FiHome,
+  FiLock, FiUnlock, FiShield
 } from 'react-icons/fi'
 import { toast } from 'react-toastify'
 import { sellerService, uploadService } from '@services/apiServices'
@@ -41,7 +42,13 @@ const GENDER_LABELS = {
 const EMPTY_FORM = {
   name: '', price: '', originalPrice: '', discount: '', category: 'shirts', 
   gender: 'men', stock: '', lowStockThreshold: 10, brand: '', tags: '', 
-  shortDescription: '', description: ''
+  shortDescription: '', description: '',
+  deliveryType: 'free',
+  deliveryFee: 0,
+  isCodAllowed: true,
+  allowedPaymentMethods: ['all'],
+  isRestricted: false,
+  restrictionReason: ''
 }
 
 // ── Image Upload Zone Component ──────────────────────────────────────────────
@@ -565,7 +572,13 @@ function SellerDashboard() {
         stock: Number(form.stock),
         lowStockThreshold: Number(form.lowStockThreshold),
         tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-        images
+        images,
+        deliveryType: form.deliveryType || 'free',
+        deliveryFee: form.deliveryType === 'paid' ? Number(form.deliveryFee || 0) : 0,
+        isCodAllowed: form.isCodAllowed !== false,
+        allowedPaymentMethods: form.allowedPaymentMethods && form.allowedPaymentMethods.length > 0 ? form.allowedPaymentMethods : ['all'],
+        isRestricted: Boolean(form.isRestricted),
+        restrictionReason: form.restrictionReason || ''
       }
 
       let res
@@ -607,10 +620,41 @@ function SellerDashboard() {
       brand: prod.brand || '',
       tags: (prod.tags || []).join(', '),
       shortDescription: prod.shortDescription || '',
-      description: prod.description || ''
+      description: prod.description || '',
+      deliveryType: prod.deliveryType || 'free',
+      deliveryFee: prod.deliveryFee || 0,
+      isCodAllowed: prod.isCodAllowed !== false,
+      allowedPaymentMethods: prod.allowedPaymentMethods || ['all'],
+      isRestricted: Boolean(prod.isRestricted),
+      restrictionReason: prod.restrictionReason || ''
     })
     setImages(prod.images || [])
     setActiveTab('upload')
+  }
+
+  const handleToggleProductRestriction = async (prod) => {
+    const nextStatus = !prod.isRestricted
+    let reason = ''
+    if (nextStatus) {
+      const inputReason = window.prompt(
+        'Enter reason for restricting this product (optional notice for customers):',
+        prod.restrictionReason || 'Temporarily restricted from checkout by merchant'
+      )
+      if (inputReason === null) return // cancelled by user
+      reason = inputReason
+    }
+    try {
+      const res = await sellerService.toggleProductRestriction(prod._id, {
+        isRestricted: nextStatus,
+        restrictionReason: reason
+      })
+      if (res.data?.success) {
+        toast.success(nextStatus ? '🔒 Product restricted from customer checkout' : '✓ Product un-restricted and live for checkout')
+        loadProducts()
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to toggle product restriction')
+    }
   }
 
   const handleDeleteProduct = async (id) => {
@@ -1150,9 +1194,10 @@ function SellerDashboard() {
                           <th className="pb-3">Couture</th>
                           <th className="pb-3">SKU</th>
                           <th className="pb-3">Category</th>
-                          <th className="pb-3">Price</th>
+                          <th className="pb-3">Price & Shipping</th>
                           <th className="pb-3">Stock</th>
                           <th className="pb-3">Moderation</th>
+                          <th className="pb-3">Restriction</th>
                           <th className="pb-3 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -1184,6 +1229,22 @@ function SellerDashboard() {
                               {p.originalPrice && p.originalPrice > p.price && (
                                 <div className="text-[10px] line-through opacity-55">₹{p.originalPrice.toLocaleString('en-IN')}</div>
                               )}
+                              <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-normal">
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                  p.deliveryType === 'paid' && p.deliveryFee > 0 
+                                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                }`}>
+                                  {p.deliveryType === 'paid' && p.deliveryFee > 0 ? `+₹${p.deliveryFee} Del` : 'Free Del'}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                  p.isCodAllowed === false 
+                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
+                                    : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                }`}>
+                                  {p.isCodAllowed === false ? 'Prepaid Only' : 'COD Active'}
+                                </span>
+                              </div>
                             </td>
                             <td className="py-4">
                               <span className={`font-mono ${p.stock <= p.lowStockThreshold ? 'text-red-500 font-bold' : ''}`}>
@@ -1200,8 +1261,37 @@ function SellerDashboard() {
                                 {p.moderationStatus || 'pending'}
                               </span>
                             </td>
+                            <td className="py-4">
+                              {p.isRestricted ? (
+                                <div className="space-y-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase font-black tracking-widest bg-red-500/15 text-red-400 border border-red-500/30">
+                                    <FiLock size={9} /> Restricted
+                                  </span>
+                                  {p.restrictionReason && (
+                                    <p className="text-[9px] opacity-60 truncate max-w-[120px]" title={p.restrictionReason}>
+                                      {p.restrictionReason}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] uppercase font-black tracking-widest bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  <FiCheck size={9} /> Live
+                                </span>
+                              )}
+                            </td>
                             <td className="py-4 text-right">
                               <div className="flex gap-1.5 justify-end">
+                                <button 
+                                  onClick={() => handleToggleProductRestriction(p)}
+                                  className={`p-2 rounded-lg transition-all ${
+                                    p.isRestricted 
+                                      ? 'text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20' 
+                                      : 'text-amber-400 hover:bg-amber-500/10 border border-amber-500/20'
+                                  }`}
+                                  title={p.isRestricted ? "Unlock: Allow customer purchases again" : "Lock / Restrict: Block customer purchases"}
+                                >
+                                  {p.isRestricted ? <FiUnlock size={13} /> : <FiLock size={13} />}
+                                </button>
                                 <button 
                                   onClick={() => handleEditProduct(p)}
                                   className={`p-2 rounded-lg hover:text-luxury-gold hover:bg-luxury-gold/10 transition-all`}
@@ -1480,6 +1570,181 @@ function SellerDashboard() {
                       rows={5}
                       className={inputCls}
                     />
+                  </div>
+
+                  {/* ── Delivery Charges Management ── */}
+                  <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center gap-2 mb-3 text-luxury-gold">
+                      <FiTruck size={15} />
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Delivery Charges & Logistics</h4>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        form.deliveryType === 'free' 
+                          ? 'border-emerald-500/60 bg-emerald-500/10' 
+                          : isDarkMode ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="deliveryType"
+                          value="free"
+                          checked={form.deliveryType === 'free'}
+                          onChange={() => setForm({ ...form, deliveryType: 'free', deliveryFee: 0 })}
+                          className="mt-0.5 text-luxury-gold focus:ring-luxury-gold"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-emerald-400">Free Delivery</p>
+                          <p className="text-[10px] opacity-70 mt-0.5">Complimentary shipping covered by merchant (Zero fee for customer).</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        form.deliveryType === 'paid' 
+                          ? 'border-amber-500/60 bg-amber-500/10' 
+                          : isDarkMode ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="deliveryType"
+                          value="paid"
+                          checked={form.deliveryType === 'paid'}
+                          onChange={() => setForm({ ...form, deliveryType: 'paid', deliveryFee: form.deliveryFee || 49 })}
+                          className="mt-0.5 text-luxury-gold focus:ring-luxury-gold"
+                        />
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-amber-400">Custom Delivery Fee</p>
+                          <p className="text-[10px] opacity-70 mt-0.5">Add flat delivery charges for this product.</p>
+                          {form.deliveryType === 'paid' && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs font-bold text-luxury-gold">₹</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={form.deliveryFee}
+                                onChange={(e) => setForm({ ...form, deliveryFee: Number(e.target.value) })}
+                                placeholder="49"
+                                className={`text-xs px-2.5 py-1.5 rounded-lg border w-24 outline-none ${
+                                  isDarkMode ? 'border-white/20 bg-luxury-black text-white' : 'border-slate-300 bg-white'
+                                }`}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* ── Payment Types & Methods Allowed ── */}
+                  <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center gap-2 mb-3 text-luxury-gold">
+                      <FiCreditCard size={15} />
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Payment Options Accepted</h4>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {/* COD Toggle */}
+                      <label className="flex items-center justify-between p-3 rounded-xl border border-current/10 cursor-pointer">
+                        <div>
+                          <p className="text-xs font-bold">Cash on Delivery (COD)</p>
+                          <p className="text-[10px] opacity-65">Allow buyers to pay in cash upon doorstep delivery.</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={form.isCodAllowed}
+                          onChange={(e) => setForm({ ...form, isCodAllowed: e.target.checked })}
+                          className="w-4 h-4 text-luxury-gold focus:ring-luxury-gold rounded"
+                        />
+                      </label>
+
+                      {/* Payment Methods Multi-select */}
+                      <div className="p-3 rounded-xl border border-current/10">
+                        <p className="text-xs font-bold mb-1">Allowed Payment Gateways & Transfers</p>
+                        <p className="text-[10px] opacity-65 mb-2.5">Select supported payment channels or leave as "All" for universal acceptance.</p>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {[
+                            { id: 'all', label: 'All Methods' },
+                            { id: 'online', label: 'Online (Cards)' },
+                            { id: 'upi', label: 'UPI / QR' },
+                            { id: 'bankacc', label: 'Bank Transfer' }
+                          ].map((method) => {
+                            const current = form.allowedPaymentMethods || ['all']
+                            const isChecked = current.includes('all') || current.includes(method.id)
+                            return (
+                              <button
+                                key={method.id}
+                                type="button"
+                                onClick={() => {
+                                  if (method.id === 'all') {
+                                    setForm({ ...form, allowedPaymentMethods: ['all'] })
+                                  } else {
+                                    let updated = current.filter(m => m !== 'all')
+                                    if (updated.includes(method.id)) {
+                                      updated = updated.filter(m => m !== method.id)
+                                    } else {
+                                      updated.push(method.id)
+                                    }
+                                    if (updated.length === 0) updated = ['all']
+                                    setForm({ ...form, allowedPaymentMethods: updated })
+                                  }
+                                }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all text-center ${
+                                  isChecked
+                                    ? 'bg-luxury-gold text-black border-luxury-gold font-extrabold shadow-glow'
+                                    : isDarkMode ? 'border-white/10 bg-black/20 text-white/70' : 'border-slate-200 bg-white text-slate-700'
+                                }`}
+                              >
+                                {method.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Product Restriction Control (Seller Locking) ── */}
+                  <div className={`p-4 sm:p-5 rounded-2xl border ${
+                    form.isRestricted 
+                      ? 'border-red-500/40 bg-red-500/5' 
+                      : isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {form.isRestricted ? <FiLock size={15} className="text-red-400" /> : <FiShield size={15} className="text-luxury-gold" />}
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider">Product Checkout Restriction</h4>
+                          <p className="text-[10px] opacity-65">
+                            {form.isRestricted 
+                              ? 'This product will be locked from customer orders on the storefront.'
+                              : 'Keep this product open and available for immediate ordering.'}
+                          </p>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={form.isRestricted}
+                        onChange={(e) => setForm({ ...form, isRestricted: e.target.checked })}
+                        className="w-4 h-4 text-red-500 focus:ring-red-500 rounded"
+                      />
+                    </div>
+
+                    {form.isRestricted && (
+                      <div className="mt-3 pt-3 border-t border-red-500/20">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-red-400">
+                          Notice to Customer (Reason for Restriction)
+                        </label>
+                        <input
+                          type="text"
+                          value={form.restrictionReason}
+                          onChange={(e) => setForm({ ...form, restrictionReason: e.target.value })}
+                          placeholder="e.g. Temporarily held for private couture showcase."
+                          className={`text-xs p-2.5 rounded-xl border w-full outline-none ${
+                            isDarkMode ? 'border-red-500/30 bg-black/40 text-white' : 'border-red-200 bg-white'
+                          }`}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <button 

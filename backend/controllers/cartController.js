@@ -9,7 +9,7 @@ import { ApiError } from '../middleware/errorHandler.js'
 export const CART_POPULATE_OPTIONS = [
   {
     path: 'items.productId',
-    select: 'name price discountedPrice originalPrice discount isActive stock reservedStock sku category brand shortDescription description images thumbnail variants attributes returnPolicy warrantyPeriod sellerId'
+    select: 'name price discountedPrice originalPrice discount isActive isRestricted restrictionReason isCodAllowed allowedPaymentMethods deliveryType deliveryFee stock reservedStock sku category brand shortDescription description images thumbnail variants attributes returnPolicy warrantyPeriod sellerId'
   },
   {
     path: 'items.sellerId',
@@ -112,6 +112,10 @@ export const addItemToCart = async (req, res) => {
 
   if (product.isActive === false) {
     throw new ApiError(400, 'This product is currently inactive')
+  }
+
+  if (product.isRestricted) {
+    throw new ApiError(400, product.restrictionReason || 'This product is temporarily restricted from checkout by the merchant')
   }
 
   const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999

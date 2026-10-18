@@ -56,6 +56,7 @@ export const sellerService = {
   getProducts: (params) => apiClient.get('/seller/products', { params }),
   createProduct: (data) => apiClient.post('/seller/products', data),
   updateProduct: (id, data) => apiClient.put(`/seller/products/${id}`, data),
+  toggleProductRestriction: (id, data) => apiClient.patch(`/seller/products/${id}/toggle-restriction`, data),
   deleteProduct: (id) => apiClient.delete(`/seller/products/${id}`),
   getOrders: (params) => apiClient.get('/seller/orders', { params }),
   getOrderReceipt: (orderId) => apiClient.get(`/seller/orders/${orderId}/receipt`),

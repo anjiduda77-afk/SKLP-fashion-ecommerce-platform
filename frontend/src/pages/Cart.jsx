@@ -15,7 +15,8 @@ import {
   FiEye,
   FiZap,
   FiCheckCircle,
-  FiX
+  FiX,
+  FiLock
 } from 'react-icons/fi'
 import { useCart } from '@context/CartContext'
 import { useWishlist } from '@context/WishlistContext'
@@ -255,6 +256,7 @@ function Cart() {
 
   // Final calculated total
   const finalGrandTotal = Math.max(0, parseFloat((cartTotal - discountAmount + deliveryFee).toFixed(2)))
+  const restrictedItems = cartItems.filter(item => item.productId?.isRestricted || item.isRestricted)
 
   // ── Empty Cart View ────────────────────────────────────────────────────────
   if (cartItems.length === 0) {
@@ -408,6 +410,12 @@ function Cart() {
                               <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                                 {item.shortDescription}
                               </p>
+                            )}
+                            {Boolean(item.productId?.isRestricted || item.isRestricted) && (
+                              <div className="mt-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-1.5 font-medium">
+                                <FiLock size={13} className="shrink-0" />
+                                <span>Restricted by Seller: {item.productId?.restrictionReason || item.restrictionReason || 'Not currently available for purchase.'}</span>
+                              </div>
                             )}
                           </div>
                           <button
@@ -699,12 +707,32 @@ function Cart() {
               </span>
             </div>
 
-            <Link
-              to="/checkout"
-              className="w-full py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all text-center flex items-center justify-center gap-2 rounded-xl shadow-xl"
-            >
-              PROCEED TO CHECKOUT <FiArrowRight size={16} />
-            </Link>
+            {restrictedItems.length > 0 && (
+              <div className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs mb-4">
+                <p className="font-bold flex items-center gap-1.5">
+                  <FiLock className="shrink-0" /> {restrictedItems.length} restricted item(s) in cart
+                </p>
+                <p className="text-[11px] opacity-80 mt-1">
+                  Please remove restricted items from your cart before proceeding to checkout.
+                </p>
+              </div>
+            )}
+
+            {restrictedItems.length > 0 ? (
+              <button
+                disabled
+                className="w-full py-4 bg-gray-700/60 text-gray-400 font-bold tracking-widest text-xs uppercase text-center rounded-xl cursor-not-allowed border border-gray-600/30 flex items-center justify-center gap-2"
+              >
+                <FiLock size={14} /> REMOVE RESTRICTED ITEMS TO PROCEED
+              </button>
+            ) : (
+              <Link
+                to="/checkout"
+                className="w-full py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all text-center flex items-center justify-center gap-2 rounded-xl shadow-xl"
+              >
+                PROCEED TO CHECKOUT <FiArrowRight size={16} />
+              </Link>
+            )}
 
             {/* Note: In accordance with Section 2, the promotional security/returns strip below PROCEED TO CHECKOUT is completely removed */}
           </div>

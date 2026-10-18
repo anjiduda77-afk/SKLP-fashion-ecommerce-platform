@@ -45,10 +45,14 @@ const sendViaFast2SMS = async (rawPhone, otp) => {
       return { success: true, provider: 'Fast2SMS', requestId: response.data.request_id };
     }
 
-    const errorMsg = response.data?.message?.[0] || response.data?.message || 'Fast2SMS OTP route dispatch failed';
+    const errorMsg = Array.isArray(response.data?.message)
+      ? response.data.message.join(', ')
+      : (typeof response.data?.message === 'string' ? response.data.message : 'Fast2SMS OTP route dispatch failed');
     throw new Error(errorMsg);
   } catch (err) {
-    const detail = err.response?.data?.message?.[0] || err.response?.data?.message || err.message;
+    const detail = Array.isArray(err.response?.data?.message)
+      ? err.response.data.message.join(', ')
+      : (typeof err.response?.data?.message === 'string' ? err.response.data.message : err.message);
     console.error(`[OTP SERVICE] Fast2SMS dispatch failed: ${detail}`);
     throw new Error(detail);
   }

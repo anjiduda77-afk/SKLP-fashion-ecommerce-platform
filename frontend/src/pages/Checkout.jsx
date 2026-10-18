@@ -740,24 +740,67 @@ function Checkout() {
             </div>
           </div>
 
-          {/* 3. Payment Method */}
+            {/* 3. Payment Method */}
           <div className={`p-5 sm:p-8 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100 shadow-sm'}`}>
-            <h2 className="text-xl font-serif font-bold mb-6 text-luxury-gold tracking-wide uppercase">
-              3. Payment Method
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-serif font-bold text-luxury-gold tracking-wide uppercase">
+                3. Payment Method
+              </h2>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-luxury-gold bg-luxury-gold/10 px-2.5 py-1 rounded-full border border-luxury-gold/30">
+                100% Encrypted & Safe
+              </span>
+            </div>
+
             <div className="space-y-3">
               {[
-                { id: 'cod',     icon: '💵', label: 'Cash on Delivery (COD)',         sub: 'Pay with cash upon secure package delivery.' },
-                { id: 'card',    icon: '💳', label: 'Credit / Debit Card',             sub: 'Visa, Mastercard, RuPay via secure gateway.' },
-                { id: 'upi',     icon: '📲', label: 'UPI (GPay, PhonePe, Paytm)',     sub: 'Instant payment via your preferred UPI app.' },
-                { id: 'razorpay',icon: '⚡', label: 'Razorpay',                        sub: 'Secure all-in-one payment via Razorpay.' }
-              ].map(({ id, icon, label, sub }) => (
+                { 
+                  id: 'cod',     
+                  icon: '💵', 
+                  label: 'Cash on Delivery (COD)',         
+                  sub: 'Pay in cash or UPI QR upon secure doorstep delivery.',
+                  restricted: checkoutItems.some(i => i.isCodAllowed === false)
+                },
+                { 
+                  id: 'online',  
+                  icon: '💳', 
+                  label: 'Online Payment (Cards & Net Banking)', 
+                  sub: 'Visa, MasterCard, RuPay, Corporate Cards & 50+ Banks.',
+                  restricted: false
+                },
+                { 
+                  id: 'upi',     
+                  icon: '📲', 
+                  label: 'UPI (GPay, PhonePe, Paytm, BHIM)',     
+                  sub: 'Instant 0-fee payment directly from your bank app.',
+                  restricted: false
+                },
+                { 
+                  id: 'bankacc', 
+                  icon: '🏦', 
+                  label: 'Bank Account Transfer (NEFT / IMPS)', 
+                  sub: 'Direct deposit to verified Style Street corporate account.',
+                  restricted: false
+                },
+                { 
+                  id: 'razorpay',
+                  icon: '⚡', 
+                  label: 'Razorpay Instant Gateway',            
+                  sub: 'One-click checkout with international cards & wallets.',
+                  restricted: false
+                }
+              ].map(({ id, icon, label, sub, restricted }) => (
                 <div
                   key={id}
-                  onClick={() => setPaymentMethod(id)}
-                  className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200 ${
-                    paymentMethod === id
-                      ? 'border-luxury-gold bg-luxury-gold/10'
+                  onClick={() => {
+                    if (!restricted) setPaymentMethod(id)
+                  }}
+                  className={`flex items-center p-4 border-2 rounded-2xl transition-all duration-200 ${
+                    restricted 
+                      ? 'opacity-40 cursor-not-allowed border-dashed border-red-500/30 bg-red-500/5' 
+                      : 'cursor-pointer'
+                  } ${
+                    paymentMethod === id && !restricted
+                      ? 'border-luxury-gold bg-luxury-gold/10 shadow-sm'
                       : isDarkMode
                         ? 'border-white/10 bg-white/5 hover:border-luxury-gold/40'
                         : 'border-gray-200 bg-gray-50 hover:border-luxury-gold/40'
@@ -765,7 +808,14 @@ function Checkout() {
                 >
                   <span className="text-2xl mr-4">{icon}</span>
                   <div className="flex-1">
-                    <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{label}</p>
+                      {restricted && (
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold uppercase tracking-wider">
+                          Restricted by Seller
+                        </span>
+                      )}
+                    </div>
                     <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>{sub}</p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
@@ -776,6 +826,46 @@ function Checkout() {
                 </div>
               ))}
             </div>
+
+            {/* Direct Bank Account Transfer Panel */}
+            {paymentMethod === 'bankacc' && (
+              <div className={`mt-4 p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${
+                isDarkMode ? 'bg-luxury-gold/5 border-luxury-gold/20 text-white' : 'bg-amber-50 border-amber-200 text-gray-900'
+              }`}>
+                <div className="flex items-center gap-2 font-bold text-luxury-gold text-sm mb-2">
+                  <span>🏦 Style Street Corporate Bank Account Details</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+                  <div>
+                    <span className="opacity-60 block">Beneficiary Name:</span>
+                    <strong className="text-luxury-gold font-sans">STYLE STREET LUXURY FASHION PVT LTD</strong>
+                  </div>
+                  <div>
+                    <span className="opacity-60 block">Bank Name:</span>
+                    <strong>HDFC Bank Ltd.</strong>
+                  </div>
+                  <div>
+                    <span className="opacity-60 block">Account Number:</span>
+                    <strong className="tracking-widest">50200084729103</strong>
+                  </div>
+                  <div>
+                    <span className="opacity-60 block">IFSC Code:</span>
+                    <strong className="tracking-widest">HDFC0001234</strong>
+                  </div>
+                  <div>
+                    <span className="opacity-60 block">Branch:</span>
+                    <span>Jubilee Hills, Hyderabad</span>
+                  </div>
+                  <div>
+                    <span className="opacity-60 block">Official UPI ID:</span>
+                    <strong className="text-luxury-gold">stylestreet@hdfcbank</strong>
+                  </div>
+                </div>
+                <p className="text-[10px] opacity-75 pt-2 border-t border-current/10">
+                  ℹ️ After transfer, your order will be instantly placed and reserved. Keep your UTR / transaction ID handy.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -896,16 +986,27 @@ function Checkout() {
               </span>
             </div>
 
+            {checkoutItems.some(i => i.isRestricted) && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                ⚠️ One or more items in your order are restricted from purchase by the merchant. Please return to cart and remove them.
+              </div>
+            )}
+
             {/* Place Order CTA */}
             <button
               type="submit"
-              disabled={loading || !deliveryInfo.calculated || deliveryInfo.deliveryUnavailable}
+              disabled={loading || !deliveryInfo.calculated || deliveryInfo.deliveryUnavailable || checkoutItems.some(i => i.isRestricted)}
               className="w-full py-4 bg-luxury-gold text-luxury-black font-bold tracking-widest text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl"
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-luxury-black border-t-transparent" />
                   {t('checkout.placingOrder', 'Placing Order…')}
+                </>
+              ) : checkoutItems.some(i => i.isRestricted) ? (
+                <>
+                  <FiAlertCircle />
+                  Order Contains Restricted Items
                 </>
               ) : deliveryInfo.deliveryUnavailable ? (
                 <>

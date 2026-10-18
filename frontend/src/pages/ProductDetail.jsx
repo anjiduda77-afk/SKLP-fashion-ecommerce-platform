@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck, FiCheckCircle } from 'react-icons/fi'
+import { FiShoppingBag, FiHeart, FiStar, FiChevronRight, FiPlus, FiMinus, FiTruck, FiActivity, FiX, FiCheck, FiCheckCircle, FiLock, FiCreditCard } from 'react-icons/fi'
 import { productService } from '@services/apiServices'
 import { useCart } from '@context/CartContext'
 import { useTheme } from '@context/ThemeContext'
@@ -345,16 +345,69 @@ function ProductDetail() {
                 </div>
               </div>
 
+              {/* Product Restriction Warning Banner if isRestricted */}
+              {product.isRestricted && (
+                <div className="p-4 rounded-2xl border border-red-500/40 bg-red-500/10 text-red-400 flex items-start gap-3">
+                  <FiLock className="shrink-0 mt-0.5 text-base" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider">Item Temporarily Restricted</p>
+                    <p className="text-[11px] opacity-80 mt-0.5">
+                      {product.restrictionReason || 'The merchant has temporarily restricted this product from checkout.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery and Payment highlights */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className={`p-3 rounded-xl border flex items-center gap-2.5 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <FiTruck className="text-luxury-gold shrink-0" size={16} />
+                  <div>
+                    <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">Delivery Fee</p>
+                    <p className="font-bold text-luxury-gold truncate">
+                      {product.deliveryType === 'paid' && product.deliveryFee > 0 ? `₹${product.deliveryFee} Flat Fee` : 'Free Delivery'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-xl border flex items-center gap-2.5 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <FiCreditCard className="text-luxury-gold shrink-0" size={16} />
+                  <div>
+                    <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">Payment Accepted</p>
+                    <p className="font-bold text-luxury-gold truncate">
+                      {product.isCodAllowed === false ? 'Prepaid / Online Only' : 'COD, Online, UPI & Bank'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Desktop action buttons */}
               <div className="hidden sm:flex gap-4">
                 <button
+                  disabled={product.isRestricted}
                   onClick={() => {
+                    if (product.isRestricted) {
+                      toast.error(product.restrictionReason || 'This product is currently restricted from order')
+                      return
+                    }
                     addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
                     toast.success(`Added to Cart from ${selectedOffer?.sellerId?.shopName || 'Style Street Official Store'}! 🎉`)
                   }}
-                  className="flex-grow py-4 px-3 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-[10px] xs:text-xs uppercase hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap touch-target"
+                  className={`flex-grow py-4 px-3 font-extrabold tracking-wider text-[10px] xs:text-xs uppercase transition-all flex items-center justify-center gap-2 rounded-xl whitespace-nowrap touch-target ${
+                    product.isRestricted 
+                      ? 'bg-gray-700/60 text-gray-400 cursor-not-allowed border border-gray-600/30' 
+                      : 'bg-luxury-gold text-luxury-black hover:bg-yellow-400'
+                  }`}
                 >
-                  <FiShoppingBag size={14} className="shrink-0" /> Buy Now / Add to Cart
+                  {product.isRestricted ? (
+                    <>
+                      <FiLock size={14} className="shrink-0" /> Restricted by Seller
+                    </>
+                  ) : (
+                    <>
+                      <FiShoppingBag size={14} className="shrink-0" /> Buy Now / Add to Cart
+                    </>
+                  )}
                 </button>
                  <button
                   onClick={() => toggleWishlist(product)}
@@ -536,13 +589,22 @@ function ProductDetail() {
             <FiHeart size={18} className={isInWishlist(product._id || product.id) ? 'fill-current' : ''} />
           </button>
           <button
+            disabled={product.isRestricted}
             onClick={() => {
+              if (product.isRestricted) {
+                toast.error(product.restrictionReason || 'This product is currently restricted from order')
+                return
+              }
               addToCart(product, quantity, { size: selectedSize, color: selectedColor }, selectedOffer?._id)
               toast.success('Added to Cart! 🎉')
             }}
-            className="flex-grow max-w-[200px] py-3.5 px-4 bg-luxury-gold text-luxury-black font-extrabold tracking-wider text-xs uppercase hover:bg-yellow-400 active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl shadow-glow touch-target"
+            className={`flex-grow max-w-[200px] py-3.5 px-4 font-extrabold tracking-wider text-xs uppercase active:scale-95 transition-all flex items-center justify-center gap-2 rounded-xl shadow-glow touch-target ${
+              product.isRestricted 
+                ? 'bg-gray-700/70 text-gray-400 cursor-not-allowed' 
+                : 'bg-luxury-gold text-luxury-black hover:bg-yellow-400'
+            }`}
           >
-            <FiShoppingBag size={15} /> Add to Cart
+            {product.isRestricted ? <><FiLock size={13} /> Restricted</> : <><FiShoppingBag size={15} /> Add to Cart</>}
           </button>
         </div>
       </div>

@@ -45,6 +45,7 @@ router.put('/delivery-settings', asyncHandler(sellerController.updateSellerDeliv
 router.get('/products', asyncHandler(sellerController.getSellerProducts))
 router.post('/products', uploadProductImages, handleMulterError, asyncHandler(sellerController.createSellerProduct))
 router.put('/products/:id', uploadProductImages, handleMulterError, asyncHandler(sellerController.updateSellerProduct))
+router.patch('/products/:id/toggle-restriction', asyncHandler(sellerController.toggleSellerProductRestriction))
 router.delete('/products/:id', asyncHandler(sellerController.deleteSellerProduct))
 router.delete('/products/:id/images/:imageIndex', asyncHandler(sellerController.deleteProductImage))
 

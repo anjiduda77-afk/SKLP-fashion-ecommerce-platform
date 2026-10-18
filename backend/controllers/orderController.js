@@ -113,7 +113,7 @@ export const createOrder = async (req, res) => {
   shippingAddress.city = normCity
 
   // Validate payment method
-  const validMethods = ['cod', 'razorpay', 'upi', 'card', 'phonePe', 'phonepe']
+  const validMethods = ['cod', 'razorpay', 'upi', 'card', 'phonepe', 'phonePe', 'googlepay', 'paytm', 'online', 'bankacc', 'bank_transfer', 'netbanking']
   if (!validMethods.includes(paymentMethod)) {
     throw new ApiError(400, 'Invalid payment method')
   }
@@ -143,6 +143,29 @@ export const createOrder = async (req, res) => {
     const product = await Product.findById(productId).lean()
     if (!product || product.isActive === false) {
       throw new ApiError(400, 'Product is not available for purchase')
+    }
+
+    if (product.isRestricted) {
+      throw new ApiError(400, product.restrictionReason || `Product "${product.name}" is restricted and cannot be purchased at this time.`)
+    }
+
+    // Payment method restriction verification
+    const normPm = (paymentMethod || '').toLowerCase()
+    if (product.isCodAllowed === false && normPm === 'cod') {
+      throw new ApiError(400, `Cash on Delivery is restricted for "${product.name}". Please choose Online, UPI, or Bank Transfer.`)
+    }
+    if (Array.isArray(product.allowedPaymentMethods) && product.allowedPaymentMethods.length > 0 && !product.allowedPaymentMethods.includes('all')) {
+      const isAllowed = product.allowedPaymentMethods.some(m => {
+        if (m === 'all') return true
+        if (m === 'cod' && normPm === 'cod') return true
+        if (m === 'online' && ['online', 'card', 'razorpay'].includes(normPm)) return true
+        if (m === 'upi' && ['upi', 'phonepe', 'googlepay', 'paytm'].includes(normPm)) return true
+        if ((m === 'bankacc' || m === 'bank_transfer') && ['bankacc', 'bank_transfer', 'netbanking'].includes(normPm)) return true
+        return false
+      })
+      if (!isAllowed) {
+        throw new ApiError(400, `Payment via ${paymentMethod.toUpperCase()} is restricted for "${product.name}".`)
+      }
     }
 
     const availableStock = product.stock !== undefined ? Math.max(0, product.stock - (product.reservedStock || 0)) : 999
@@ -225,11 +248,31 @@ export const createOrder = async (req, res) => {
       throw new ApiError(400, 'Cart is empty')
     }
 
-    // Validate available stock for each item before reservation
+    // Validate available stock and restrictions for each item before reservation
+    const normPm = (paymentMethod || '').toLowerCase()
     for (const item of cart.items) {
       const prod = await Product.findById(item.productId).lean()
       if (!prod || prod.isActive === false) {
         throw new ApiError(400, `Product "${item.productName || 'in cart'}" is no longer available`)
+      }
+      if (prod.isRestricted) {
+        throw new ApiError(400, prod.restrictionReason || `Product "${prod.name}" has been restricted from ordering.`)
+      }
+      if (prod.isCodAllowed === false && normPm === 'cod') {
+        throw new ApiError(400, `Cash on Delivery is restricted for "${prod.name}". Please choose Online, UPI, or Bank Transfer.`)
+      }
+      if (Array.isArray(prod.allowedPaymentMethods) && prod.allowedPaymentMethods.length > 0 && !prod.allowedPaymentMethods.includes('all')) {
+        const isAllowed = prod.allowedPaymentMethods.some(m => {
+          if (m === 'all') return true
+          if (m === 'cod' && normPm === 'cod') return true
+          if (m === 'online' && ['online', 'card', 'razorpay'].includes(normPm)) return true
+          if (m === 'upi' && ['upi', 'phonepe', 'googlepay', 'paytm'].includes(normPm)) return true
+          if ((m === 'bankacc' || m === 'bank_transfer') && ['bankacc', 'bank_transfer', 'netbanking'].includes(normPm)) return true
+          return false
+        })
+        if (!isAllowed) {
+          throw new ApiError(400, `Payment method ${paymentMethod.toUpperCase()} is restricted for "${prod.name}".`)
+        }
       }
       const availableStock = prod.stock !== undefined ? Math.max(0, prod.stock - (prod.reservedStock || 0)) : 999
       if (item.quantity > availableStock) {

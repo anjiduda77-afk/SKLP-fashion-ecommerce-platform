@@ -199,6 +199,15 @@ export const createSellerProduct = async (req, res) => {
     }));
   }
 
+  const {
+    allowedPaymentMethods,
+    isCodAllowed,
+    deliveryType,
+    deliveryFee,
+    isRestricted,
+    restrictionReason
+  } = req.body;
+
   const product = await Product.create({
     name,
     nameNormalized: (name || '').toLowerCase().trim(),
@@ -220,6 +229,12 @@ export const createSellerProduct = async (req, res) => {
     variants: variants || [],
     attributes: attributes || {},
     tags: tags || [],
+    allowedPaymentMethods: allowedPaymentMethods || ['all'],
+    isCodAllowed: isCodAllowed !== undefined ? Boolean(isCodAllowed) : true,
+    deliveryType: deliveryType === 'paid' ? 'paid' : 'free',
+    deliveryFee: deliveryType === 'paid' ? (Number(deliveryFee) || 0) : 0,
+    isRestricted: Boolean(isRestricted),
+    restrictionReason: restrictionReason || '',
     isActive: true,
     moderationStatus: 'pending',
     createdBy: req.user.id
@@ -272,7 +287,9 @@ export const updateSellerProduct = async (req, res) => {
   const allowedFields = [
     'name', 'description', 'shortDescription', 'category', 'subcategory',
     'gender', 'price', 'originalPrice', 'discount', 'stock',
-    'lowStockThreshold', 'variants', 'attributes', 'tags', 'images'
+    'lowStockThreshold', 'variants', 'attributes', 'tags', 'images',
+    'allowedPaymentMethods', 'isCodAllowed', 'deliveryType', 'deliveryFee',
+    'isRestricted', 'restrictionReason'
   ];
 
   allowedFields.forEach(field => {
@@ -297,6 +314,32 @@ export const updateSellerProduct = async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Product updated successfully',
+    product
+  });
+};
+
+// Toggle seller's product restriction (can restrict even after published)
+export const toggleSellerProductRestriction = async (req, res) => {
+  const { id } = req.params;
+  const { isRestricted, restrictionReason } = req.body;
+
+  const product = await Product.findOne({ _id: id, createdBy: req.user.id });
+  if (!product) {
+    throw new ApiError(404, 'Product not found or you do not own this product');
+  }
+
+  product.isRestricted = isRestricted !== undefined ? Boolean(isRestricted) : !product.isRestricted;
+  if (restrictionReason !== undefined) {
+    product.restrictionReason = restrictionReason;
+  }
+  product.updatedBy = req.user.id;
+  await product.save();
+
+  res.status(200).json({
+    success: true,
+    message: product.isRestricted 
+      ? `Product "${product.name}" has been restricted from purchases.` 
+      : `Product "${product.name}" restriction removed. Product is available.`,
     product
   });
 };

@@ -151,15 +151,30 @@ export const sendOTPMessage = async (phone, otp) => {
     process.env.TWILIO_PHONE_NUMBER
   );
 
-  // 1. Check if any provider is configured
+  // 1. Firebase Provider Handling (Client-driven via Google Identity Platform)
+  if (configuredProvider === 'firebase') {
+    if (hasFast2SMS) return await sendViaFast2SMS(cleanPhone, otp);
+    if (has2Factor) return await sendVia2Factor(cleanPhone, otp);
+    if (hasTwilio) return await sendViaTwilio(cleanPhone, otp);
+    
+    // When using Firebase Phone Auth, SMS OTP is dispatched directly by Google via client SDK
+    console.log(`[OTP SERVICE] Firebase Phone Authentication is active. SMS OTP is dispatched directly by Google to +91 ${cleanPhone}.`);
+    return {
+      success: true,
+      provider: 'Firebase',
+      message: 'Dispatched via Firebase Phone Authentication'
+    };
+  }
+
+  // 2. Check if any server gateway is configured
   if (!hasFast2SMS && !has2Factor && !hasTwilio) {
-    console.error('[OTP SERVICE] No active SMS provider configured in backend/.env.');
-    const error = new Error('SMS_GATEWAY_NOT_CONFIGURED: Real SMS cannot be delivered until SMS provider credentials (FAST2SMS_API_KEY, TWOFACTOR_API_KEY, or TWILIO) are set in backend/.env.');
+    console.error('[OTP SERVICE] No active server SMS provider configured in backend/.env.');
+    const error = new Error('SMS_GATEWAY_NOT_CONFIGURED: Real SMS cannot be delivered until SMS provider credentials (FAST2SMS_API_KEY, TWOFACTOR_API_KEY, or TWILIO) are set in backend/.env, or use Firebase Phone Authentication.');
     error.code = 'SMS_GATEWAY_NOT_CONFIGURED';
     throw error;
   }
 
-  // 2. Fast2SMS (Indian Gateway)
+  // 3. Fast2SMS (Indian Gateway)
   if ((configuredProvider === 'fast2sms' || configuredProvider === 'auto') && hasFast2SMS) {
     return await sendViaFast2SMS(cleanPhone, otp);
   }

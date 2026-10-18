@@ -11,6 +11,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   FIREBASE_CONFIGURED
 } from '../../config/firebase'
 import { toast } from 'react-toastify'
@@ -113,7 +115,9 @@ function Login() {
   const [otp, setOtp]               = useState(['', '', '', '', '', ''])
   const [otpLoading, setOtpLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
+  const [confirmResult, setConfirmResult] = useState(null)
   const otpRefs                     = useRef([])
+  const recaptchaVerifierRef        = useRef(null)
 
   // ── UI state ──────────────────────────────────────────────────────────
   const [step, setStep]         = useState('initial') // 'initial' | 'email' | 'password' | 'otp'
@@ -124,6 +128,16 @@ function Login() {
   // ── Refs ──────────────────────────────────────────────────────────────
   const sceneRef = useRef(null)
   const panelRef = useRef(null)
+
+  // Cleanup recaptcha verifier on unmount
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear() } catch (_) {}
+        recaptchaVerifierRef.current = null
+      }
+    }
+  }, [])
 
   // Lock body scroll while login overlay is active
   useEffect(() => {
@@ -330,18 +344,47 @@ function Login() {
     }
     setEmailError('')
 
-    // ── Phone path: send OTP then go to OTP step ──────────────────────
+    // ── Phone path: send REAL SMS OTP via Firebase Phone Authentication ──
     if (isPhone) {
       setLoading(true)
+      const cleanDigits = digits.slice(-10)
+      const e164 = `+91${cleanDigits}`
+
       try {
-        await authService.sendPhoneLoginOTP(trimmed)
+        if (!FIREBASE_CONFIGURED || !auth) {
+          throw new Error('Phone verification service is unavailable. Please sign in with email.')
+        }
+
+        // Initialize invisible reCAPTCHA verifier if not already present
+        if (!recaptchaVerifierRef.current) {
+          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'login-recaptcha-container', {
+            size: 'invisible',
+            callback: () => {}
+          })
+        }
+
+        const confirmation = await signInWithPhoneNumber(auth, e164, recaptchaVerifierRef.current)
+        setConfirmResult(confirmation)
         setOtp(['', '', '', '', '', ''])
         setResendTimer(60)
         goForward('otp')
-        toast.success('OTP sent to your mobile number!')
+        toast.success(`Verification code sent via SMS to +91 ${cleanDigits}`)
       } catch (err) {
-        const msg = err.response?.data?.message || 'Failed to send OTP. Check your number and try again.'
+        console.error('[Firebase Phone Auth] Send OTP failed:', err)
+        if (recaptchaVerifierRef.current) {
+          try { recaptchaVerifierRef.current.clear() } catch (_) {}
+          recaptchaVerifierRef.current = null
+        }
+        let msg = err.message || 'Failed to dispatch SMS verification code.'
+        if (err.code === 'auth/invalid-phone-number') {
+          msg = 'Invalid mobile number. Please check the 10-digit number and try again.'
+        } else if (err.code === 'auth/too-many-requests') {
+          msg = 'Too many requests. Please wait a few moments before trying again.'
+        } else if (err.code === 'auth/quota-exceeded') {
+          msg = 'SMS quota limit reached. Please sign in with your email and password.'
+        }
         setEmailError(msg)
+        toast.error(msg)
       } finally {
         setLoading(false)
       }
@@ -387,17 +430,49 @@ function Login() {
     if (otpStr.length !== 6) { toast.error('Please enter the complete 6-digit OTP.'); return }
     setOtpLoading(true)
     try {
-      const res = await authService.verifyPhoneLoginOTP(email.trim(), otpStr)
-      if (res.data?.success && res.data?.token) {
-        const { user: u, token: tk, refreshToken: rt, isNewUser } = res.data
-        login(u, tk, rt)
-        if (isNewUser) toast.success('Account created! Welcome to STYLE STREET')
-        handleRedirectAfterLogin(u)
+      if (confirmResult) {
+        // 1. Verify SMS OTP with Google Firebase
+        const credential = await confirmResult.confirm(otpStr)
+        const firebaseUser = credential.user
+
+        // 2. Obtain fresh cryptographically signed Firebase ID token
+        const idToken = await firebaseUser.getIdToken(true)
+
+        // 3. Authenticate with backend (verifies ID token & logs in or registers user)
+        const res = await authService.firebaseLogin({
+          idToken,
+          uid: firebaseUser.uid,
+          phone: firebaseUser.phoneNumber
+        })
+
+        if (res.data?.success && res.data?.token) {
+          const { user: u, token: tk, refreshToken: rt, isNewUser } = res.data
+          login(u, tk, rt)
+          if (isNewUser) toast.success('Account created! Welcome to STYLE STREET')
+          handleRedirectAfterLogin(u)
+        } else {
+          throw new Error(res.data?.message || 'Authentication failed on server')
+        }
       } else {
-        throw new Error(res.data?.message || 'OTP verification failed')
+        // Fallback to backend route if confirmResult is not present
+        const res = await authService.verifyPhoneLoginOTP(email.trim(), otpStr)
+        if (res.data?.success && res.data?.token) {
+          const { user: u, token: tk, refreshToken: rt, isNewUser } = res.data
+          login(u, tk, rt)
+          if (isNewUser) toast.success('Account created! Welcome to STYLE STREET')
+          handleRedirectAfterLogin(u)
+        } else {
+          throw new Error(res.data?.message || 'OTP verification failed')
+        }
       }
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Invalid OTP. Please try again.'
+      console.error('[Firebase Phone Auth] Verification error:', err)
+      let msg = err.response?.data?.message || err.message || 'Invalid or expired OTP. Please try again.'
+      if (err.code === 'auth/invalid-verification-code') {
+        msg = 'Invalid OTP code. Please enter the correct 6-digit code received on your phone.'
+      } else if (err.code === 'auth/code-expired') {
+        msg = 'Verification code has expired. Please tap "Resend OTP".'
+      }
       toast.error(msg)
     } finally {
       setOtpLoading(false)
@@ -408,14 +483,35 @@ function Login() {
   const handleResendOtp = async () => {
     if (resendTimer > 0) return
     setLoading(true)
+    const digits = email.trim().replace(/\D/g, '')
+    const cleanDigits = digits.slice(-10)
+    const e164 = `+91${cleanDigits}`
+
     try {
-      await authService.sendPhoneLoginOTP(email.trim())
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear() } catch (_) {}
+        recaptchaVerifierRef.current = null
+      }
+      if (!recaptchaVerifierRef.current && auth) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'login-recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        })
+      }
+
+      const confirmation = await signInWithPhoneNumber(auth, e164, recaptchaVerifierRef.current)
+      setConfirmResult(confirmation)
       setOtp(['', '', '', '', '', ''])
       setResendTimer(60)
       otpRefs.current[0]?.focus()
-      toast.success('New OTP sent!')
+      toast.success('New SMS verification code dispatched!')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend OTP')
+      console.error('[Firebase Phone Auth] Resend OTP error:', err)
+      let msg = err.message || 'Failed to resend OTP'
+      if (err.code === 'auth/too-many-requests') {
+        msg = 'Too many requests. Please wait a few moments before requesting another OTP.'
+      }
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -443,6 +539,7 @@ function Login() {
 
       {/* ── 3. Glass login panel ──────────────────────────────────────── */}
       <div className="lp-panel-wrap">
+        <div id="login-recaptcha-container"></div>
         <div
           ref={panelRef}
           className={`lp-glass ${isDarkMode ? 'lp-glass-dark' : 'lp-glass-light'}`}

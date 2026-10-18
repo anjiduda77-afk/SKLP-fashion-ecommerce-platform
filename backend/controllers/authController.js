@@ -492,12 +492,15 @@ export const firebaseLogin = async (req, res) => {
     }
     if (cleanPhone && !user.phone) {
       user.phone = cleanPhone
-    }
-    if (searchEmail && !user.email) {
-      user.email = searchEmail
+      user.phoneE164 = `+91${cleanPhone}`
     }
     if (cleanPhone || phone_number) {
       user.isPhoneVerified = true
+      user.phoneVerified = true
+      user.phoneVerifiedAt = user.phoneVerifiedAt || new Date()
+      if (!user.phoneE164 && cleanPhone) {
+        user.phoneE164 = `+91${cleanPhone}`
+      }
     }
     if (decodedToken.email_verified || searchEmail) {
       user.isEmailVerified = true
@@ -540,6 +543,7 @@ export const firebaseLogin = async (req, res) => {
         lastName,
         email: searchEmail || undefined,
         phone: cleanPhone || undefined,
+        phoneE164: cleanPhone ? `+91${cleanPhone}` : undefined,
         firebaseUid: uid || undefined,
         authProvider: determinedProvider,
         role: assignedRole,
@@ -547,6 +551,8 @@ export const firebaseLogin = async (req, res) => {
         isActive: true,
         isEmailVerified: Boolean(decodedToken.email_verified || searchEmail),
         isPhoneVerified: Boolean(cleanPhone || phone_number),
+        phoneVerified: Boolean(cleanPhone || phone_number),
+        phoneVerifiedAt: (cleanPhone || phone_number) ? new Date() : undefined,
         avatar: picture ? { url: picture, publicId: null } : undefined
       })
       console.log(`[MONGODB] User created successfully (ID: ${user._id}, Role: ${user.role})`)

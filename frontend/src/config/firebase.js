@@ -4,7 +4,9 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithRedirect, 
-  getRedirectResult 
+  getRedirectResult,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 } from 'firebase/auth'
 import { 
   getMessaging, 
@@ -148,6 +150,8 @@ export {
   signInWithPopup, 
   signInWithRedirect, 
   getRedirectResult, 
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   GoogleAuthProvider, 
   FIREBASE_CONFIGURED, 
   firebaseConfig 
